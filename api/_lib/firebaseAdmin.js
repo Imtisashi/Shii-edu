@@ -99,7 +99,6 @@ const getBody = async (req) => {
 const normalizeRole = (role) => String(role || '').trim().toLowerCase();
 
 const authenticateSuperAdmin = async (req) => {
-  const { admin: firebaseAdmin, firestore } = getAdminServices();
   const authorization = req.headers.authorization || '';
   const match = authorization.match(/^Bearer\s+(.+)$/i);
 
@@ -109,6 +108,7 @@ const authenticateSuperAdmin = async (req) => {
     throw error;
   }
 
+  const { admin: firebaseAdmin, firestore } = getAdminServices();
   const decodedToken = await firebaseAdmin.auth().verifyIdToken(match[1]);
   const userSnap = await firestore.collection('users').doc(decodedToken.uid).get();
 
@@ -220,7 +220,11 @@ const resolveInstituteDocument = async (firestore, instituteId) => {
 const sendError = (res, error, fallbackMessage = 'Request failed.') => {
   const statusCode = error.statusCode || 500;
   const isConfigurationError = error.message === 'Server is missing Firebase Admin credentials.';
-  const safeMessage = statusCode >= 500 && !isConfigurationError ? fallbackMessage : error.message;
+  const safeMessage = isConfigurationError
+    ? 'Server is not configured for institute management yet.'
+    : statusCode >= 500
+      ? fallbackMessage
+      : error.message;
   console.error(fallbackMessage, error.message);
   res.status(statusCode).json({ success: false, error: safeMessage });
 };
