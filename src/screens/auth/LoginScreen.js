@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Alert, Animated
+  ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Alert, Animated, ScrollView
 } from 'react-native';
 import { auth, db } from '../../../firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
@@ -167,108 +167,119 @@ export default function Login() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, layout.isDesktop && styles.containerDesktop, layout.isCompact && styles.containerCompact]}
+      style={styles.keyboardRoot}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {layout.isDesktop ? (
-        <Animated.View style={[styles.desktopBrandPanel, introStyle]}>
-          <BrandLogo size={68} variant="light" style={styles.brandIcon} />
-          <Text style={styles.brandTitle}>Shii Edu</Text>
-          <Text style={styles.brandCopy}>
-            A polished education SaaS workspace for superadmins, admins, teachers, and students.
-          </Text>
-          <View style={styles.brandFeatureRow}>
-            <Ionicons name="shield-checkmark" size={18} color="#C4B5FD" />
-            <Text style={styles.brandFeatureText}>Role-based secure access</Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.container,
+          layout.isDesktop && styles.containerDesktop,
+          layout.isCompact && styles.containerCompact,
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {layout.isDesktop ? (
+          <Animated.View style={[styles.desktopBrandPanel, introStyle]}>
+            <BrandLogo size={68} variant="light" style={styles.brandIcon} />
+            <Text style={styles.brandTitle}>Shii Edu</Text>
+            <Text style={styles.brandCopy}>
+              A polished education SaaS workspace for superadmins, admins, teachers, and students.
+            </Text>
+            <View style={styles.brandFeatureRow}>
+              <Ionicons name="shield-checkmark" size={18} color="#C4B5FD" />
+              <Text style={styles.brandFeatureText}>Role-based secure access</Text>
+            </View>
+            <View style={styles.brandFeatureRow}>
+              <Ionicons name="pie-chart" size={18} color="#C4B5FD" />
+              <Text style={styles.brandFeatureText}>Desktop analytics and mobile workflows</Text>
+            </View>
+          </Animated.View>
+        ) : null}
+
+        <Animated.View style={[styles.card, layout.isMobile && styles.cardMobile, layout.isDesktop && styles.cardDesktop, layout.isCompact && styles.cardCompact, introStyle]}>
+          <View style={[styles.header, layout.isMobile && styles.headerMobile]}>
+            <View style={[styles.logoCage, layout.isMobile && styles.logoCageMobile]}>
+              <BrandLogo size={58} />
+            </View>
+            <Text style={[styles.title, layout.isMobile && styles.titleMobile]}>Shii Edu</Text>
+            <Text style={styles.subtitle}>Sign in with your campus ID or email</Text>
           </View>
-          <View style={styles.brandFeatureRow}>
-            <Ionicons name="pie-chart" size={18} color="#C4B5FD" />
-            <Text style={styles.brandFeatureText}>Desktop analytics and mobile workflows</Text>
+
+          <View style={styles.form}>
+            <Text style={styles.label}>User ID or Email</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="person-outline" size={20} color="#94A3B8" style={styles.icon} />
+              <TextInput
+                style={styles.input}
+                placeholder={layout.isMobile ? 'ID or email' : 'e.g. STU-1024 or admin@college.edu'}
+                value={identifier}
+                onChangeText={setIdentifier}
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholderTextColor="#94A3B8"
+              />
+            </View>
+
+            <Text style={styles.label}>Password</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={20} color="#94A3B8" style={styles.icon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                placeholderTextColor="#94A3B8"
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+
+            {/* REMEMBER ME & FORGOT PASSWORD ROW */}
+            <View style={[styles.optionsRow, layout.isMobile && styles.optionsRowMobile, layout.isCompact && styles.optionsRowCompact]}>
+              <TouchableOpacity
+                style={styles.rememberRow}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setRememberMe(!rememberMe);
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.checkbox, rememberMe && styles.checkboxActive]} >
+                  {rememberMe && <Ionicons name="checkmark" size={14} color="#fff" />}
+                </View>
+                <Text style={styles.rememberText}>Remember Me</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => {
+                Haptics.selectionAsync();
+                setShowResetModal(true);
+              }}>
+                <Text style={styles.forgotText}>Forgot Password?</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.loginBtn}
+              onPress={handleLogin}
+              disabled={loading}
+            >
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginBtnText}>Secure Login</Text>}
+            </TouchableOpacity>
+          </View>
+
+          {/* REGISTRATION IS GONE. REPLACED WITH ADMIN NOTICE */}
+          <View style={styles.footer}>
+            <Ionicons name="shield-checkmark" size={16} color="#94A3B8" />
+            <Text style={styles.footerText}>
+              Access is managed by your campus administrator.
+            </Text>
           </View>
         </Animated.View>
-      ) : null}
-
-      <Animated.View style={[styles.card, layout.isMobile && styles.cardMobile, layout.isDesktop && styles.cardDesktop, layout.isCompact && styles.cardCompact, introStyle]}>
-        <View style={[styles.header, layout.isMobile && styles.headerMobile]}>
-          <View style={[styles.logoCage, layout.isMobile && styles.logoCageMobile]}>
-            <BrandLogo size={58} />
-          </View>
-          <Text style={[styles.title, layout.isMobile && styles.titleMobile]}>Shii Edu</Text>
-          <Text style={styles.subtitle}>Sign in with your campus ID or email</Text>
-        </View>
-
-        <View style={styles.form}>
-          <Text style={styles.label}>User ID or Email</Text>
-          <View style={styles.inputContainer}>
-            <Ionicons name="person-outline" size={20} color="#94A3B8" style={styles.icon} />
-            <TextInput
-              style={styles.input}
-              placeholder={layout.isMobile ? 'ID or email' : 'e.g. STU-1024 or admin@college.edu'}
-              value={identifier}
-              onChangeText={setIdentifier}
-              autoCapitalize="none"
-              autoCorrect={false}
-              placeholderTextColor="#94A3B8"
-            />
-          </View>
-
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#94A3B8" style={styles.icon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              placeholderTextColor="#94A3B8"
-            />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-              <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#94A3B8" />
-            </TouchableOpacity>
-          </View>
-
-          {/* REMEMBER ME & FORGOT PASSWORD ROW */}
-          <View style={[styles.optionsRow, layout.isMobile && styles.optionsRowMobile, layout.isCompact && styles.optionsRowCompact]}>
-            <TouchableOpacity
-              style={styles.rememberRow}
-              onPress={() => {
-                Haptics.selectionAsync();
-                setRememberMe(!rememberMe);
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.checkbox, rememberMe && styles.checkboxActive]} >
-                {rememberMe && <Ionicons name="checkmark" size={14} color="#fff" />}
-              </View>
-              <Text style={styles.rememberText}>Remember Me</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => {
-              Haptics.selectionAsync();
-              setShowResetModal(true);
-            }}>
-              <Text style={styles.forgotText}>Forgot Password?</Text>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
-            style={styles.loginBtn}
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginBtnText}>Secure Login</Text>}
-          </TouchableOpacity>
-        </View>
-
-        {/* REGISTRATION IS GONE. REPLACED WITH ADMIN NOTICE */}
-        <View style={styles.footer}>
-          <Ionicons name="shield-checkmark" size={16} color="#94A3B8" />
-          <Text style={styles.footerText}>
-            Access is managed by your campus administrator.
-          </Text>
-        </View>
-      </Animated.View>
+      </ScrollView>
 
       {/* Password Reset Modal */}
       <Modal
@@ -339,7 +350,9 @@ export default function Login() {
 
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  keyboardRoot: { flex: 1, backgroundColor: '#0F172A' },
+  scrollView: { flex: 1, backgroundColor: '#0F172A' },
+  container: { flexGrow: 1, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center', padding: 20 },
   containerDesktop: { flexDirection: 'row', padding: 40, gap: 28 },
   containerCompact: { padding: 14 },
   desktopBrandPanel: {

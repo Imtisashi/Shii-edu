@@ -66,7 +66,7 @@ export default function StudentHome() {
       <StatusBar barStyle="dark-content" />
 
       {/* STICKY GLASSMORPHISM HEADER */}
-      <Animated.View style={[styles.glassHeader, { opacity: headerOpacity }]}>
+      <Animated.View pointerEvents="none" style={[styles.glassHeader, { opacity: headerOpacity }]}>
         {Platform.OS === 'ios' ? (
           <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
         ) : (
@@ -81,7 +81,9 @@ export default function StudentHome() {
       </Animated.View>
 
       <Animated.ScrollView 
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false} 
+        keyboardShouldPersistTaps="handled"
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: USE_NATIVE_DRIVER })}
         scrollEventThrottle={16}
         contentContainerStyle={[styles.scrollContent, layout.isDesktop && styles.scrollContentDesktop]}
@@ -165,6 +167,7 @@ export default function StudentHome() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F4F4F5' }, // Enterprise subtle gray
+  scrollView: { flex: 1 },
   
   // Glass Header
   glassHeader: { position: 'absolute', top: 0, left: 0, right: 0, height: Platform.OS === 'ios' ? 100 : 80, zIndex: 100, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },

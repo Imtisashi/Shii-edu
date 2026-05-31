@@ -327,6 +327,7 @@ export default function SuperAdminHome() {
   return (
     <View style={styles.container}>
       <FlatList
+        style={styles.list}
         key={String(layout.listColumns)}
         data={institutes}
         numColumns={layout.listColumns}
@@ -539,6 +540,7 @@ export default function SuperAdminHome() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
+  list: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC' },
   loadingText: { marginTop: 12, color: '#64748B', fontWeight: '600' },
   listContent: { paddingVertical: 16, paddingBottom: 32 },

@@ -49,7 +49,7 @@ export default function AdminHome() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      <Animated.View style={[styles.glassHeader, { opacity: headerOpacity }]}>
+      <Animated.View pointerEvents="none" style={[styles.glassHeader, { opacity: headerOpacity }]}>
         {Platform.OS === 'ios' ? (
           <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
         ) : (
@@ -64,7 +64,9 @@ export default function AdminHome() {
       </Animated.View>
 
       <Animated.ScrollView 
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false} 
+        keyboardShouldPersistTaps="handled"
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: USE_NATIVE_DRIVER })}
         scrollEventThrottle={16}
         contentContainerStyle={[styles.scrollContent, layout.isDesktop && styles.scrollContentDesktop]}
@@ -128,6 +130,7 @@ export default function AdminHome() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F4F4F5' },
+  scrollView: { flex: 1 },
   glassHeader: { position: 'absolute', top: 0, left: 0, right: 0, height: Platform.OS === 'ios' ? 100 : 80, zIndex: 100, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
   glassHeaderContent: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingHorizontal: 20, paddingBottom: 15 },
   glassTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', letterSpacing: 0 },
