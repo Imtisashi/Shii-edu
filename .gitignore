@@ -8,6 +8,7 @@ node_modules/
 dist/
 web-build/
 expo-env.d.ts
+.vercel/
 
 # Native
 .kotlin/
@@ -31,12 +32,21 @@ yarn-error.*
 *.pem
 
 # local env files
-.env*.local
+.env
+.env.*
+!.env.example
+!.env*.example
+campus-backend/.env
 
 # typescript
 *.tsbuildinfo
 
 app-example
+app_backup/
+memory/
+MEMORY.md
+IMPLEMENTATION_COMPLETE.md
+IMPLEMENTATION_SUMMARY.md
 
 # generated native folders
 /ios

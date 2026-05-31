@@ -1,0 +1,143 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function role() {
+      return profile().role;
+    }
+
+    function isSuperAdmin() {
+      return signedIn() && (role() == 'superadmin' || role() == 'superAdmin');
+    }
+
+    function isAdmin() {
+      return signedIn() && role() == 'admin';
+    }
+
+    function isTeacher() {
+      return signedIn() && role() == 'teacher';
+    }
+
+    function isStudent() {
+      return signedIn() && role() == 'student';
+    }
+
+    function sameInstituteId(instituteId) {
+      return signedIn() && profile().instituteId == instituteId;
+    }
+
+    function sameInstitute(data) {
+      return sameInstituteId(data.instituteId);
+    }
+
+    function adminOrTeacherFor(instituteId) {
+      return (isAdmin() || isTeacher()) && sameInstituteId(instituteId);
+    }
+
+    function adminFor(instituteId) {
+      return isAdmin() && sameInstituteId(instituteId);
+    }
+
+    function immutableUserFields() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['uid', 'role', 'instituteId', 'createdAt', 'createdBy', 'authEmail']);
+    }
+
+    match /institutes/{instituteId} {
+      allow read: if isSuperAdmin() || sameInstituteId(instituteId);
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (
+        request.auth.uid == userId ||
+        isSuperAdmin() ||
+        ((isAdmin() || isTeacher()) && sameInstitute(resource.data))
+      );
+
+      allow create: if false;
+
+      allow update: if signedIn() && (
+        isSuperAdmin() ||
+        (request.auth.uid == userId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['profilePic', 'name', 'degree', 'experience', 'updatedAt'])) ||
+        (adminFor(resource.data.instituteId) && sameInstitute(request.resource.data) && immutableUserFields())
+      );
+
+      allow delete: if isSuperAdmin();
+    }
+
+    match /notices/{noticeId} {
+      allow read: if sameInstitute(resource.data);
+      allow create: if isSuperAdmin() || adminOrTeacherFor(request.resource.data.instituteId);
+      allow update, delete: if isSuperAdmin() || adminFor(resource.data.instituteId);
+    }
+
+    match /routines/{routineId} {
+      allow read: if sameInstitute(resource.data);
+      allow create: if isSuperAdmin() || adminFor(request.resource.data.instituteId);
+      allow update, delete: if isSuperAdmin() || adminFor(resource.data.instituteId);
+    }
+
+    match /assignments/{assignmentId} {
+      allow read: if sameInstitute(resource.data);
+      allow create: if isSuperAdmin() || adminOrTeacherFor(request.resource.data.instituteId);
+      allow update, delete: if isSuperAdmin() || adminOrTeacherFor(resource.data.instituteId);
+    }
+
+    match /grades/{gradeId} {
+      allow read: if isSuperAdmin() ||
+        ((isAdmin() || isTeacher()) && sameInstitute(resource.data)) ||
+        (isStudent() && resource.data.studentId == request.auth.uid);
+
+      allow create: if isSuperAdmin() || adminOrTeacherFor(request.resource.data.instituteId);
+      allow update, delete: if isSuperAdmin() || adminOrTeacherFor(resource.data.instituteId);
+    }
+
+    match /attendance/{attendanceId} {
+      allow read: if isSuperAdmin() ||
+        ((isAdmin() || isTeacher()) && sameInstitute(resource.data)) ||
+        (isStudent() && resource.data.studentId == request.auth.uid);
+
+      allow create: if isSuperAdmin() || adminOrTeacherFor(request.resource.data.instituteId);
+      allow update, delete: if isSuperAdmin() || adminFor(resource.data.instituteId);
+    }
+
+    match /gallery/{imageId} {
+      allow read: if sameInstitute(resource.data);
+      allow create: if isSuperAdmin() || adminFor(request.resource.data.instituteId);
+      allow update, delete: if isSuperAdmin() || adminFor(resource.data.instituteId);
+    }
+
+    match /pyqs/{paperId} {
+      allow read: if sameInstitute(resource.data);
+      allow create, update, delete: if isSuperAdmin() || adminFor(request.resource.data.instituteId);
+    }
+
+    match /paymentOrders/{orderId} {
+      allow read: if isSuperAdmin() ||
+        (signedIn() && resource.data.uid == request.auth.uid) ||
+        adminFor(resource.data.instituteId);
+      allow write: if false;
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isSuperAdmin() ||
+        (signedIn() && resource.data.uid == request.auth.uid) ||
+        adminFor(resource.data.instituteId);
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

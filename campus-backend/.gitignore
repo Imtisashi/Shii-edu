@@ -1,0 +1,18 @@
+# 1. THE VAULT (CRITICAL)
+# This prevents your Razorpay Secret Keys from being leaked
+.env
+
+# 2. THE BULK
+# node_modules are huge and can be reinstalled anytime with 'npm install'
+node_modules/
+
+# 3. THE LOGS
+# Debug logs from when the server crashes
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 4. SYSTEM FILES
+# Trash files created by Windows/Mac
+.DS_Store
+Thumbs.db

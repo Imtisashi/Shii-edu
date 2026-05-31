@@ -1,0 +1,140 @@
+import React, { useRef } from 'react';
+import { 
+  View, Text, StyleSheet, TouchableOpacity, 
+  ImageBackground, Animated, Platform, StatusBar 
+} from 'react-native';
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
+import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../contexts/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
+import PremiumActionCard from '../../components/ui/PremiumActionCard';
+
+export default function AdminHome() {
+  const navigation = useNavigation();
+  const { userData, logout } = useAuth();
+
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  const adminName = userData?.name || "Administrator";
+  const initials = adminName.charAt(0).toUpperCase();
+  const instituteName = userData?.instituteData?.name || "Edu-Hub Campus";
+  const isSchool = userData?.instituteData?.type?.toLowerCase().includes('school');
+
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [50, 120],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
+  const heroTranslateY = scrollY.interpolate({
+    inputRange: [-100, 0, 200],
+    outputRange: [0, 0, 100],
+    extrapolate: 'clamp',
+  });
+
+  const heroScale = scrollY.interpolate({
+    inputRange: [-100, 0],
+    outputRange: [1.2, 1],
+    extrapolate: 'clamp',
+  });
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+
+      <Animated.View style={[styles.glassHeader, { opacity: headerOpacity }]}>
+        {Platform.OS === 'ios' ? (
+          <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
+        ) : (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.95)' }]} />
+        )}
+        <View style={styles.glassHeaderContent}>
+          <Text style={styles.glassTitle}>Admin Command</Text>
+          <View style={[styles.glassAvatar, { backgroundColor: '#1E293B' }]}>
+            <Text style={styles.glassAvatarText}>{initials}</Text>
+          </View>
+        </View>
+      </Animated.View>
+
+      <Animated.ScrollView 
+        showsVerticalScrollIndicator={false} 
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+        scrollEventThrottle={16}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <Animated.View style={[styles.heroContainer, { transform: [{ translateY: heroTranslateY }, { scale: heroScale }] }]}>
+           <ImageBackground 
+            source={{ uri: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1000&auto=format&fit=crop' }}             style={styles.heroImage}
+           >
+             <View style={[styles.heroGradient, { backgroundColor: 'rgba(15, 23, 42, 0.85)' }]}>
+               <Text style={styles.instituteHeading}>{instituteName}</Text>
+               <View style={styles.profileRow}>
+                  <View style={styles.avatarFallback}><Text style={styles.avatarInitials}>{initials}</Text></View>
+                  <View style={{ marginLeft: 16 }}>
+                    <Text style={styles.greeting}>Command Center,</Text>
+                    <Text style={styles.greetingName}>{adminName.split(' ')[0]}</Text>
+                  </View>
+               </View>
+               
+               <View style={styles.pillContainer}>
+                 <View style={[styles.pillBadge, {backgroundColor: 'rgba(59, 130, 246, 0.3)', borderColor: '#3B82F6'}]}>
+                    <Ionicons name="shield-checkmark" size={12} color="#fff" style={{marginRight: 4}} />
+                    <Text style={styles.pillText}>Root Access</Text>
+                 </View>
+                 <View style={styles.pillBadge}>
+                    <Text style={styles.pillText}>{isSchool ? 'School Campus' : 'College Campus'}</Text>
+                 </View>
+               </View>
+             </View>
+           </ImageBackground>
+        </Animated.View>
+
+        <View style={styles.bodyContent}>
+          <Text style={styles.sectionTitle}>Platform Controls</Text>
+          
+          <View style={styles.gridContainer}>
+            <PremiumActionCard title="Students" icon="people" color="#3B82F6" bgColor="#EFF6FF" delay={100} onPress={() => navigation.navigate('Users')} />
+            <PremiumActionCard title="Faculty" icon="briefcase" color="#8B5CF6" bgColor="#F5F3FF" delay={200} onPress={() => navigation.navigate('ManageTeachers')} />
+            <PremiumActionCard title="Master Routine" icon="calendar" color="#E11D48" bgColor="#FFE4E6" delay={300} onPress={() => navigation.navigate('ManageRoutines')} />
+            <PremiumActionCard title="Revenue" icon="wallet" color="#10B981" bgColor="#ECFDF5" delay={400} onPress={() => navigation.navigate('Ledger')} />
+            <PremiumActionCard title="Broadcast" icon="megaphone" color="#F59E0B" bgColor="#FFFBEB" delay={500} onPress={() => navigation.navigate('Broadcasts')} />
+            <PremiumActionCard title="Calendar" icon="calendar-number" color="#64748B" bgColor="#F1F5F9" delay={600} onPress={() => navigation.navigate('ManageHolidays')} />
+          </View>
+
+          <TouchableOpacity style={styles.logoutBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); logout(); }}>
+            <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+            <Text style={styles.logoutBtnText}>Secure Sign Out</Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F4F4F5' },
+  glassHeader: { position: 'absolute', top: 0, left: 0, right: 0, height: Platform.OS === 'ios' ? 100 : 80, zIndex: 100, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
+  glassHeaderContent: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingHorizontal: 20, paddingBottom: 15 },
+  glassTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
+  glassAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#1E293B', justifyContent: 'center', alignItems: 'center' },
+  glassAvatarText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+  scrollContent: { paddingBottom: 120 },
+  heroContainer: { height: 320, width: '100%', backgroundColor: '#0F172A' },
+  heroImage: { width: '100%', height: '100%', justifyContent: 'flex-end' },
+  heroGradient: { width: '100%', height: '100%', padding: 24, justifyContent: 'flex-end' },
+  instituteHeading: { fontSize: 16, fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 20 },
+  profileRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  avatarFallback: { width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
+  avatarInitials: { fontSize: 28, fontWeight: 'bold', color: '#fff' },
+  greeting: { fontSize: 16, color: '#94A3B8', fontWeight: '500' },
+  greetingName: { fontSize: 32, fontWeight: '900', color: '#FFFFFF', marginTop: 2, letterSpacing: -0.5 },
+  pillContainer: { flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center' },
+  pillBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', marginRight: 10 },
+  pillText: { color: '#ffffff', fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
+  bodyContent: { padding: 20, marginTop: -20, backgroundColor: '#F4F4F5', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+  sectionTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', marginBottom: 16, marginTop: 10, letterSpacing: -0.5 },
+  gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 },
+  logoutBtn: { backgroundColor: '#fff', flexDirection: 'row', padding: 20, borderRadius: 20, alignItems: 'center', justifyContent: 'center', shadowColor: '#EF4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 2, marginTop: 10 },
+  logoutBtnText: { color: '#EF4444', fontWeight: 'bold', fontSize: 16, marginLeft: 10 },
+});
