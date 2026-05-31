@@ -9,10 +9,12 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import PremiumActionCard from '../../components/ui/PremiumActionCard';
+import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 
 export default function TeacherHome() {
   const navigation = useNavigation();
   const { userData, logout } = useAuth();
+  const layout = useResponsiveLayout();
 
   // Enterprise Scroll Animation Values
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -89,14 +91,22 @@ export default function TeacherHome() {
         showsVerticalScrollIndicator={false} 
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
         scrollEventThrottle={16}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, layout.isDesktop && styles.scrollContentDesktop]}
       >
         {/* PARALLAX HERO SECTION */}
-        <Animated.View style={[styles.heroContainer, { transform: [{ translateY: heroTranslateY }, { scale: heroScale }] }]}>
+        <Animated.View
+          style={[
+            styles.heroContainer,
+            { height: layout.heroHeight },
+            layout.isDesktop && styles.heroContainerDesktop,
+            layout.isDesktop && { maxWidth: layout.maxContentWidth },
+            { transform: [{ translateY: heroTranslateY }, { scale: heroScale }] },
+          ]}
+        >
            <ImageBackground 
             source={{ uri: userData?.instituteData?.heroImage || 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1000&auto=format&fit=crop' }}             style={styles.heroImage}
            >
-             <View style={[styles.heroGradient, { backgroundColor: 'rgba(76, 29, 149, 0.65)' }]}>
+             <View style={[styles.heroGradient, layout.isDesktop && styles.heroGradientDesktop, { backgroundColor: 'rgba(76, 29, 149, 0.65)' }]}>
                <Text style={styles.instituteHeading}>{instituteName}</Text>
                <View style={styles.profileRow}>
                   {userData?.profilePic ? (
@@ -104,7 +114,7 @@ export default function TeacherHome() {
                   ) : (
                     <View style={styles.avatarFallback}><Text style={styles.avatarInitials}>{initials}</Text></View>
                   )}
-                  <View style={{ marginLeft: 16 }}>
+                  <View style={styles.greetingBlock}>
                     <Text style={styles.greeting}>Faculty Portal,</Text>
                     <Text style={styles.greetingName}>{teacherName.split(' ')[0]}</Text>
                   </View>
@@ -114,16 +124,16 @@ export default function TeacherHome() {
            </ImageBackground>
         </Animated.View>
 
-        <View style={styles.bodyContent}>
+        <View style={[styles.bodyContent, layout.isDesktop && styles.bodyContentDesktop, layout.isDesktop && { maxWidth: layout.maxContentWidth }]}>
           <Text style={styles.sectionTitle}>Command Center</Text>
           
-          <View style={styles.gridContainer}>
-            <PremiumActionCard title="Attendance" icon="checkmark-done-circle" color="#10B981" bgColor="#ECFDF5" delay={100} onPress={() => navigation.navigate('Attendance')} />
-            <PremiumActionCard title="Notices" icon="megaphone" color="#3B82F6" bgColor="#EFF6FF" delay={200} onPress={() => navigation.navigate('TeacherNotifs')} />
-            <PremiumActionCard title="Directory" icon="people" color="#8B5CF6" bgColor="#F5F3FF" delay={300} onPress={() => navigation.navigate('Students')} />
-            <PremiumActionCard title="Routine" icon="calendar" color="#E11D48" bgColor="#FFE4E6" delay={400} onPress={() => navigation.navigate('Routine')} />
-            <PremiumActionCard title="Assignments" icon="document-text" color="#F59E0B" bgColor="#FFFBEB" delay={500} onPress={() => navigation.navigate('Assignments')} />
-            <PremiumActionCard title="Gallery" icon="images" color="#F97316" bgColor="#FFF7ED" delay={600} onPress={() => navigation.navigate('GalleryView')} />
+          <View style={[styles.gridContainer, layout.isDesktop && styles.gridContainerDesktop]}>
+            <PremiumActionCard columns={layout.dashboardColumns} compact={layout.isCompact} title="Attendance" icon="checkmark-done-circle" color="#10B981" bgColor="#ECFDF5" delay={100} onPress={() => navigation.navigate('Attendance')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={layout.isCompact} title="Notices" icon="megaphone" color="#3B82F6" bgColor="#EFF6FF" delay={200} onPress={() => navigation.navigate('TeacherNotifs')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={layout.isCompact} title="Directory" icon="people" color="#8B5CF6" bgColor="#F5F3FF" delay={300} onPress={() => navigation.navigate('Students')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={layout.isCompact} title="Routine" icon="calendar" color="#E11D48" bgColor="#FFE4E6" delay={400} onPress={() => navigation.navigate('Routine')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={layout.isCompact} title="Assignments" icon="document-text" color="#F59E0B" bgColor="#FFFBEB" delay={500} onPress={() => navigation.navigate('Assignments')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={layout.isCompact} title="Gallery" icon="images" color="#F97316" bgColor="#FFF7ED" delay={600} onPress={() => navigation.navigate('GalleryView')} />
           </View>
 
           <TouchableOpacity style={styles.logoutBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); logout(); }}>
@@ -140,26 +150,32 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F4F4F5' },
   glassHeader: { position: 'absolute', top: 0, left: 0, right: 0, height: Platform.OS === 'ios' ? 100 : 80, zIndex: 100, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
   glassHeaderContent: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingHorizontal: 20, paddingBottom: 15 },
-  glassTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
+  glassTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', letterSpacing: 0 },
   glassAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#8B5CF6', justifyContent: 'center', alignItems: 'center' },
   glassAvatarText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
   scrollContent: { paddingBottom: 120 },
+  scrollContentDesktop: { alignItems: 'center', paddingBottom: 80 },
   heroContainer: { height: 320, width: '100%', backgroundColor: '#0F172A' },
+  heroContainerDesktop: { width: '100%', alignSelf: 'center', borderRadius: 28, overflow: 'hidden', marginTop: 24 },
   heroImage: { width: '100%', height: '100%', justifyContent: 'flex-end' },
   heroGradient: { width: '100%', height: '100%', padding: 24, justifyContent: 'flex-end' },
+  heroGradientDesktop: { padding: 36 },
   instituteHeading: { fontSize: 16, fontWeight: '700', color: '#DDD6FE', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 20 },
   profileRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  greetingBlock: { marginLeft: 16, flex: 1, minWidth: 0 },
   avatarFallback: { width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)' },
   avatarInitials: { fontSize: 28, fontWeight: 'bold', color: '#fff' },
   avatarImage: { width: 70, height: 70, borderRadius: 35, borderWidth: 2, borderColor: '#fff' },
   greeting: { fontSize: 16, color: '#E2E8F0', fontWeight: '500' },
-  greetingName: { fontSize: 32, fontWeight: '900', color: '#FFFFFF', marginTop: 2, letterSpacing: -0.5 },
+  greetingName: { fontSize: 32, fontWeight: '900', color: '#FFFFFF', marginTop: 2, letterSpacing: 0 },
   pillContainer: { flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center' },
   pillBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', marginRight: 10 },
   pillText: { color: '#ffffff', fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
   bodyContent: { padding: 20, marginTop: -20, backgroundColor: '#F4F4F5', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
-  sectionTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', marginBottom: 16, marginTop: 10, letterSpacing: -0.5 },
+  bodyContentDesktop: { width: '100%', alignSelf: 'center', marginTop: 18, borderRadius: 0, paddingHorizontal: 0 },
+  sectionTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', marginBottom: 16, marginTop: 10, letterSpacing: 0 },
   gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 },
+  gridContainerDesktop: { alignContent: 'flex-start' },
   logoutBtn: { backgroundColor: '#fff', flexDirection: 'row', padding: 20, borderRadius: 20, alignItems: 'center', justifyContent: 'center', shadowColor: '#EF4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 2, marginTop: 10 },
   logoutBtnText: { color: '#EF4444', fontWeight: 'bold', fontSize: 16, marginLeft: 10 },
 });

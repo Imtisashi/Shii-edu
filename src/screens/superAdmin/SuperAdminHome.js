@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Dimensions,
   FlatList,
   Modal,
   Platform,
@@ -22,12 +21,12 @@ import { collection, getDocs } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 import { createInstituteAndAdmin, deleteInstituteAsSuperAdmin, getInstituteStats } from '../../services/firebaseAdminService';
 import { db } from '../../../firebaseConfig';
-
-const screenWidth = Dimensions.get('window').width;
+import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 
 export default function SuperAdminHome() {
   const navigation = useNavigation();
   const { userData, logout } = useAuth();
+  const layout = useResponsiveLayout();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
 
@@ -251,6 +250,7 @@ export default function SuperAdminHome() {
     <Animated.View
       style={[
         styles.instituteCard,
+        layout.listColumns > 1 && styles.instituteCardDesktop,
         {
           opacity: fadeAnim,
           transform: [
@@ -317,15 +317,23 @@ export default function SuperAdminHome() {
   return (
     <View style={styles.container}>
       <FlatList
+        key={String(layout.listColumns)}
         data={institutes}
+        numColumns={layout.listColumns}
+        columnWrapperStyle={layout.listColumns > 1 ? styles.instituteColumnWrapper : undefined}
         keyExtractor={(item) => item.id}
         renderItem={renderInstituteCard}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingHorizontal: layout.horizontalPadding },
+          layout.isDesktop && styles.listContentDesktop,
+          layout.isDesktop && { maxWidth: layout.maxContentWidth },
+        ]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshList} tintColor="#2563EB" />}
         ListHeaderComponent={
           <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-            <View style={styles.hero}>
+            <View style={[styles.hero, layout.isDesktop && styles.heroDesktop]}>
               <View>
                 <Text style={styles.eyebrow}>Super Admin</Text>
                 <Text style={styles.heroTitle}>Platform Command Center</Text>
@@ -340,7 +348,7 @@ export default function SuperAdminHome() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.statsGrid}>
+            <View style={[styles.statsGrid, layout.isDesktop && styles.statsGridDesktop]}>
               <View style={[styles.statCard, styles.statCardWide]}>
                 <Text style={styles.statsLabel}>Institutes</Text>
                 <Text style={styles.statsValue}>{dashboardStats.institutes}</Text>
@@ -356,40 +364,42 @@ export default function SuperAdminHome() {
               </View>
             </View>
 
-            <View style={styles.chartCard}>
-              <View style={styles.sectionHeader}>
-                <View>
-                  <Text style={styles.sectionTitle}>Platform Mix</Text>
-                  <Text style={styles.sectionSubtitle}>Students, teachers, and admins across institutes</Text>
+            <View style={[styles.insightRow, layout.isDesktop && styles.insightRowDesktop]}>
+              <View style={[styles.chartCard, layout.isDesktop && styles.chartCardDesktop]}>
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionHeaderText}>
+                    <Text style={styles.sectionTitle}>Platform Mix</Text>
+                    <Text style={styles.sectionSubtitle}>Students, teachers, and admins across institutes</Text>
+                  </View>
+                  <Ionicons name="pie-chart" size={24} color="#2563EB" />
                 </View>
-                <Ionicons name="pie-chart" size={24} color="#2563EB" />
+
+                <PieChart
+                  data={userMixData}
+                  width={layout.chartWidth(layout.isDesktop ? 560 : 520)}
+                  height={190}
+                  chartConfig={{ color: (opacity = 1) => `rgba(15, 23, 42, ${opacity})` }}
+                  accessor="population"
+                  backgroundColor="transparent"
+                  paddingLeft="8"
+                  absolute
+                />
               </View>
 
-              <PieChart
-                data={userMixData}
-                width={Math.min(screenWidth - 32, 520)}
-                height={190}
-                chartConfig={{ color: (opacity = 1) => `rgba(15, 23, 42, ${opacity})` }}
-                accessor="population"
-                backgroundColor="transparent"
-                paddingLeft="8"
-                absolute
-              />
-            </View>
-
-            <View style={styles.actionGrid}>
-              <TouchableOpacity style={styles.primaryAction} onPress={() => setShowAddInstituteModal(true)}>
-                <Ionicons name="add-circle" size={22} color="#FFFFFF" />
-                <Text style={styles.primaryActionText}>Add Institute</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryAction} onPress={() => navigation.navigate('ManageInstitutes')}>
-                <Ionicons name="business-outline" size={22} color="#2563EB" />
-                <Text style={styles.secondaryActionText}>Manage Institutes</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryAction} onPress={() => navigation.navigate('ManageAdminUsers')}>
-                <Ionicons name="people-outline" size={22} color="#2563EB" />
-                <Text style={styles.secondaryActionText}>Manage Admins</Text>
-              </TouchableOpacity>
+              <View style={[styles.actionGrid, layout.isDesktop && styles.actionPanelDesktop]}>
+                <TouchableOpacity style={styles.primaryAction} onPress={() => setShowAddInstituteModal(true)}>
+                  <Ionicons name="add-circle" size={22} color="#FFFFFF" />
+                  <Text style={styles.primaryActionText}>Add Institute</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.secondaryAction} onPress={() => navigation.navigate('ManageInstitutes')}>
+                  <Ionicons name="business-outline" size={22} color="#2563EB" />
+                  <Text style={styles.secondaryActionText}>Manage Institutes</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.secondaryAction} onPress={() => navigation.navigate('ManageAdminUsers')}>
+                  <Ionicons name="people-outline" size={22} color="#2563EB" />
+                  <Text style={styles.secondaryActionText}>Manage Admins</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.sectionHeader}>
@@ -521,13 +531,21 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC' },
   loadingText: { marginTop: 12, color: '#64748B', fontWeight: '600' },
-  listContent: { padding: 16, paddingBottom: 32 },
+  listContent: { paddingVertical: 16, paddingBottom: 32 },
+  listContentDesktop: { width: '100%', alignSelf: 'center', paddingTop: 24 },
   hero: {
     backgroundColor: '#0F172A',
     borderRadius: 22,
     padding: 22,
     marginBottom: 16,
     overflow: 'hidden',
+  },
+  heroDesktop: {
+    minHeight: 220,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    padding: 30,
   },
   eyebrow: { color: '#93C5FD', fontSize: 12, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase' },
   heroTitle: { color: '#FFFFFF', fontSize: 28, fontWeight: '900', marginTop: 8, lineHeight: 34 },
@@ -546,6 +564,7 @@ const styles = StyleSheet.create({
   },
   logoutText: { color: '#F8FAFC', fontWeight: '800', marginLeft: 8 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  statsGridDesktop: { gap: 14 },
   statCard: {
     flex: 1,
     minWidth: 140,
@@ -573,10 +592,24 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     overflow: 'hidden',
   },
+  insightRow: { marginBottom: 4 },
+  insightRowDesktop: { flexDirection: 'row', alignItems: 'stretch', gap: 14, marginBottom: 20 },
+  chartCardDesktop: { flex: 1.6, marginBottom: 0 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  sectionHeaderText: { flex: 1, minWidth: 0, paddingRight: 12 },
   sectionTitle: { color: '#0F172A', fontSize: 20, fontWeight: '900' },
   sectionSubtitle: { color: '#64748B', fontSize: 13, marginTop: 3 },
   actionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
+  actionPanelDesktop: {
+    flex: 1,
+    marginBottom: 0,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 16,
+    alignContent: 'stretch',
+  },
   primaryAction: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -618,6 +651,8 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 2,
   },
+  instituteColumnWrapper: { gap: 12 },
+  instituteCardDesktop: { flex: 1 },
   instituteIcon: {
     width: 46,
     height: 46,

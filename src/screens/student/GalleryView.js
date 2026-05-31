@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, FlatList, Image, StyleSheet, Dimensions, Text, ActivityIndicator } from 'react-native';
+import { View, FlatList, Image, StyleSheet, Text, ActivityIndicator } from 'react-native';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig'; // FIXED PATH
 import { useAuth } from '../../contexts/AuthContext';
-
-const { width } = Dimensions.get('window');
+import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 
 export default function GalleryView() {
   const { userData } = useAuth();
+  const layout = useResponsiveLayout();
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const gridGap = layout.isDesktop ? 8 : 2;
+  const imageSize = Math.floor((layout.availableWidth - gridGap * (layout.galleryColumns - 1)) / layout.galleryColumns);
 
   useEffect(() => {
     if (!userData?.instituteId) return;
@@ -32,12 +34,20 @@ export default function GalleryView() {
   return (
     <View style={styles.container}>
       <FlatList
+        key={String(layout.galleryColumns)}
         data={photos}
-        numColumns={3}
+        numColumns={layout.galleryColumns}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <Image source={{ uri: item.imageUrl }} style={styles.image} />
+          <Image source={{ uri: item.imageUrl }} style={[styles.image, { width: imageSize, height: imageSize }]} />
         )}
+        contentContainerStyle={[
+          styles.galleryContent,
+          { paddingHorizontal: layout.horizontalPadding, gap: gridGap },
+          layout.isDesktop && styles.galleryContentDesktop,
+          layout.isDesktop && { maxWidth: layout.maxContentWidth },
+        ]}
+        columnWrapperStyle={layout.galleryColumns > 1 ? { gap: gridGap } : undefined}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyText}>No campus photos uploaded yet.</Text>
@@ -50,7 +60,9 @@ export default function GalleryView() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  image: { width: width / 3 - 2, height: width / 3 - 2, margin: 1 },
+  galleryContent: { paddingVertical: 16 },
+  galleryContentDesktop: { width: '100%', alignSelf: 'center', paddingTop: 24 },
+  image: { borderRadius: 8, backgroundColor: '#E2E8F0' },
   empty: { flex: 1, alignItems: 'center', marginTop: 100 },
   emptyText: { color: '#94A3B8' }
 });

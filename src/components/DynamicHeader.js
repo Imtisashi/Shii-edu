@@ -3,10 +3,12 @@ import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import useResponsiveLayout from '../hooks/useResponsiveLayout';
 
 export default function DynamicHeader({ title, showBack = false }) {
   const { userData } = useAuth();
   const navigation = useNavigation();
+  const layout = useResponsiveLayout();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-12)).current;
   const bellScale = useRef(new Animated.Value(1)).current;
@@ -43,47 +45,50 @@ export default function DynamicHeader({ title, showBack = false }) {
     <Animated.View
       style={[
         styles.headerContainer,
+        layout.isDesktop && styles.headerContainerDesktop,
         {
           opacity: fadeAnim,
           transform: [{ translateY: slideAnim }],
         },
       ]}
     >
-      <View style={styles.leftSection}>
-        {showBack ? (
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#2D3748" />
-          </TouchableOpacity>
-        ) : null}
+      <View style={[styles.headerContent, layout.isDesktop && { maxWidth: layout.maxContentWidth }]}>
+        <View style={styles.leftSection}>
+          {showBack ? (
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#2D3748" />
+            </TouchableOpacity>
+          ) : null}
 
-        {/* Dynamic Logo */}
-        {logoUrl ? (
-          <Image source={{ uri: logoUrl }} style={styles.logo} resizeMode="contain" />
-        ) : (
-          <View style={styles.placeholderLogo}>
-            <Ionicons name="school" size={20} color="#fff" />
+          {/* Dynamic Logo */}
+          {logoUrl ? (
+            <Image source={{ uri: logoUrl }} style={styles.logo} resizeMode="contain" />
+          ) : (
+            <View style={styles.placeholderLogo}>
+              <Ionicons name="school" size={20} color="#fff" />
+            </View>
+          )}
+
+          {/* Dynamic Name or Page Title */}
+          <View style={styles.textContainer}>
+            <Text style={styles.instituteName} numberOfLines={1}>
+              {instituteName}
+            </Text>
+            {title && <Text style={styles.pageTitle} numberOfLines={1}>{title}</Text>}
           </View>
-        )}
-        
-        {/* Dynamic Name or Page Title */}
-        <View style={styles.textContainer}>
-          <Text style={styles.instituteName} numberOfLines={1}>
-            {instituteName}
-          </Text>
-          {title && <Text style={styles.pageTitle}>{title}</Text>}
         </View>
-      </View>
 
-      {/* Notification Bell (Global feature for all 3 UIs) */}
-      <TouchableOpacity 
-        style={styles.notificationButton}
-        onPress={pulseBell}
-      >
-        <Animated.View style={{ transform: [{ scale: bellScale }] }}>
-          <Ionicons name="notifications-outline" size={24} color="#2D3748" />
-        </Animated.View>
-        {/* Optional: Add a red dot badge here if unread notifications exist */}
-      </TouchableOpacity>
+        {/* Notification Bell (Global feature for all 3 UIs) */}
+        <TouchableOpacity
+          style={[styles.notificationButton, { minWidth: layout.touchTarget, minHeight: layout.touchTarget }]}
+          onPress={pulseBell}
+        >
+          <Animated.View style={{ transform: [{ scale: bellScale }] }}>
+            <Ionicons name="notifications-outline" size={24} color="#2D3748" />
+          </Animated.View>
+          {/* Optional: Add a red dot badge here if unread notifications exist */}
+        </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 }
@@ -104,6 +109,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 3,
     elevation: 3,
+  },
+  headerContainerDesktop: {
+    paddingTop: 22,
+    paddingHorizontal: 32,
+  },
+  headerContent: {
+    width: '100%',
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   leftSection: {
     flexDirection: 'row',
@@ -146,5 +162,7 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: '#F7FAFC',
     borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

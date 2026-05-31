@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 import DynamicHeader from '../../components/DynamicHeader';
 import { db } from '../../../firebaseConfig';
-
-const screenWidth = Dimensions.get('window').width;
+import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 
 export default function AttendanceView() {
   const { currentUser, userData } = useAuth();
+  const layout = useResponsiveLayout();
   const [loading, setLoading] = useState(true);
   const [attendanceStats, setAttendanceStats] = useState({
     present: 0,
@@ -107,8 +107,16 @@ export default function AttendanceView() {
           <Text style={styles.loadingText}>Loading attendance...</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.heroCard}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            { paddingHorizontal: layout.horizontalPadding },
+            layout.isDesktop && styles.contentDesktop,
+            layout.isDesktop && { maxWidth: layout.maxContentWidth },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.heroCard, layout.isCompact && styles.heroCardCompact]}>
             <View>
               <Text style={styles.heroLabel}>Attendance Rate</Text>
               <Text style={styles.heroValue}>{presentPercentage}%</Text>
@@ -119,37 +127,39 @@ export default function AttendanceView() {
             </View>
           </View>
 
-          <View style={styles.chartCard}>
-            <Text style={styles.cardTitle}>Overall Attendance</Text>
-            <PieChart
-              data={chartData}
-              width={Math.min(screenWidth - 32, 520)}
-              height={220}
-              chartConfig={{ color: (opacity = 1) => `rgba(15, 23, 42, ${opacity})` }}
-              accessor="population"
-              backgroundColor="transparent"
-              paddingLeft="12"
-              center={[8, 0]}
-              absolute
-            />
-          </View>
+          <View style={[styles.detailGrid, layout.isDesktop && styles.detailGridDesktop]}>
+            <View style={[styles.chartCard, layout.isDesktop && styles.chartCardDesktop]}>
+              <Text style={styles.cardTitle}>Overall Attendance</Text>
+              <PieChart
+                data={chartData}
+                width={layout.chartWidth(layout.isDesktop ? 540 : 520)}
+                height={220}
+                chartConfig={{ color: (opacity = 1) => `rgba(15, 23, 42, ${opacity})` }}
+                accessor="population"
+                backgroundColor="transparent"
+                paddingLeft="12"
+                center={[8, 0]}
+                absolute
+              />
+            </View>
 
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>Summary</Text>
-            <View style={styles.summaryRow}>
-              <View style={[styles.dot, { backgroundColor: '#10B981' }]} />
-              <Text style={styles.summaryLabel}>Present</Text>
-              <Text style={styles.summaryValue}>{attendanceStats.present}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />
-              <Text style={styles.summaryLabel}>Absent</Text>
-              <Text style={styles.summaryValue}>{attendanceStats.absent}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <View style={[styles.dot, { backgroundColor: '#F59E0B' }]} />
-              <Text style={styles.summaryLabel}>Not Marked</Text>
-              <Text style={styles.summaryValue}>{attendanceStats.notMarked}</Text>
+            <View style={[styles.summaryCard, layout.isDesktop && styles.summaryCardDesktop]}>
+              <Text style={styles.summaryTitle}>Summary</Text>
+              <View style={styles.summaryRow}>
+                <View style={[styles.dot, { backgroundColor: '#10B981' }]} />
+                <Text style={styles.summaryLabel}>Present</Text>
+                <Text style={styles.summaryValue}>{attendanceStats.present}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />
+                <Text style={styles.summaryLabel}>Absent</Text>
+                <Text style={styles.summaryValue}>{attendanceStats.absent}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <View style={[styles.dot, { backgroundColor: '#F59E0B' }]} />
+                <Text style={styles.summaryLabel}>Not Marked</Text>
+                <Text style={styles.summaryValue}>{attendanceStats.notMarked}</Text>
+              </View>
             </View>
           </View>
         </ScrollView>
@@ -162,7 +172,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { color: '#64748B', fontWeight: '700', marginTop: 12 },
-  content: { padding: 16, paddingBottom: 34 },
+  content: { paddingVertical: 16, paddingBottom: 34 },
+  contentDesktop: { width: '100%', alignSelf: 'center', paddingTop: 24 },
   heroCard: {
     backgroundColor: '#0F172A',
     borderRadius: 22,
@@ -172,6 +183,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  heroCardCompact: { flexDirection: 'column', alignItems: 'flex-start', gap: 16 },
   heroLabel: { color: '#93C5FD', fontSize: 13, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 },
   heroValue: { color: '#FFFFFF', fontSize: 44, fontWeight: '900', marginTop: 4 },
   heroBadge: { backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 18, paddingHorizontal: 18, paddingVertical: 14, alignItems: 'center' },
@@ -191,6 +203,9 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 2,
   },
+  detailGrid: {},
+  detailGridDesktop: { flexDirection: 'row', alignItems: 'stretch', gap: 16 },
+  chartCardDesktop: { flex: 1.55, marginBottom: 0 },
   cardTitle: { fontSize: 18, fontWeight: '900', color: '#0F172A', marginBottom: 12, alignSelf: 'flex-start' },
   summaryCard: {
     backgroundColor: '#FFFFFF',
@@ -199,6 +214,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
+  summaryCardDesktop: { flex: 1, alignSelf: 'stretch' },
   summaryTitle: { fontSize: 18, fontWeight: '900', color: '#0F172A', marginBottom: 12 },
   summaryRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   dot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },

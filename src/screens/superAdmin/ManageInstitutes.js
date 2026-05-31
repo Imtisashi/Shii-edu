@@ -18,9 +18,11 @@ import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
 import { db } from '../../../firebaseConfig';
 import { deleteInstituteAsSuperAdmin } from '../../services/firebaseAdminService';
+import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 
 export default function ManageInstitutes() {
   const navigation = useNavigation();
+  const layout = useResponsiveLayout();
   const [institutes, setInstitutes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -149,7 +151,7 @@ export default function ManageInstitutes() {
   };
 
   const renderInstitute = ({ item }) => (
-    <View style={styles.instituteCard}>
+    <View style={[styles.instituteCard, layout.listColumns > 1 && styles.instituteCardDesktop]}>
       <View style={styles.iconBox}>
         <Ionicons name="business" size={22} color="#2563EB" />
       </View>
@@ -195,15 +197,23 @@ export default function ManageInstitutes() {
   return (
     <View style={styles.container}>
       <FlatList
+        key={String(layout.listColumns)}
         data={sortedInstitutes}
+        numColumns={layout.listColumns}
+        columnWrapperStyle={layout.listColumns > 1 ? styles.columnWrapper : undefined}
         keyExtractor={(item) => item.id}
         renderItem={renderInstitute}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshInstitutes} tintColor="#2563EB" />}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingHorizontal: layout.horizontalPadding },
+          layout.isDesktop && styles.listContentDesktop,
+          layout.isDesktop && { maxWidth: layout.maxContentWidth },
+        ]}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <>
-            <View style={styles.header}>
+            <View style={[styles.header, layout.isDesktop && styles.headerDesktop]}>
               <Text style={styles.eyebrow}>Institutes</Text>
               <Text style={styles.title}>Manage Campuses</Text>
               <Text style={styles.subtitle}>Rename institutes, audit identifiers, and remove duplicate or test campuses.</Text>
@@ -268,8 +278,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
   loadingText: { marginTop: 12, color: '#64748B', fontWeight: '600' },
-  listContent: { padding: 16, paddingBottom: 32 },
+  listContent: { paddingVertical: 16, paddingBottom: 32 },
+  listContentDesktop: { width: '100%', alignSelf: 'center', paddingTop: 24 },
   header: { backgroundColor: '#0F172A', borderRadius: 22, padding: 22, marginBottom: 14 },
+  headerDesktop: { padding: 30 },
   eyebrow: { color: '#93C5FD', fontSize: 12, fontWeight: '900', letterSpacing: 1.2, textTransform: 'uppercase' },
   title: { fontSize: 28, fontWeight: '900', color: '#FFFFFF', marginTop: 8 },
   subtitle: { fontSize: 14, color: '#CBD5E1', marginTop: 8, lineHeight: 21 },
@@ -298,6 +310,8 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 2,
   },
+  columnWrapper: { gap: 12 },
+  instituteCardDesktop: { flex: 1 },
   iconBox: {
     width: 46,
     height: 46,

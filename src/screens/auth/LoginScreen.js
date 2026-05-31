@@ -8,6 +8,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 
 const showLoginAlert = (message) => {
   if (Platform.OS === 'web') {
@@ -18,6 +19,7 @@ const showLoginAlert = (message) => {
 };
 
 export default function Login() {
+  const layout = useResponsiveLayout();
   const [identifier, setIdentifier] = useState(''); // Can be Email OR Student ID
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -131,10 +133,30 @@ export default function Login() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, layout.isDesktop && styles.containerDesktop, layout.isCompact && styles.containerCompact]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.card}>
+      {layout.isDesktop ? (
+        <View style={styles.desktopBrandPanel}>
+          <View style={styles.brandIcon}>
+            <Ionicons name="school" size={34} color="#FFFFFF" />
+          </View>
+          <Text style={styles.brandTitle}>Edu-Hub</Text>
+          <Text style={styles.brandCopy}>
+            A responsive campus command center for superadmins, admins, teachers, and students.
+          </Text>
+          <View style={styles.brandFeatureRow}>
+            <Ionicons name="shield-checkmark" size={18} color="#C4B5FD" />
+            <Text style={styles.brandFeatureText}>Role-based secure access</Text>
+          </View>
+          <View style={styles.brandFeatureRow}>
+            <Ionicons name="pie-chart" size={18} color="#C4B5FD" />
+            <Text style={styles.brandFeatureText}>Desktop analytics and mobile workflows</Text>
+          </View>
+        </View>
+      ) : null}
+
+      <View style={[styles.card, layout.isDesktop && styles.cardDesktop, layout.isCompact && styles.cardCompact]}>
         <View style={styles.header}>
           <View style={styles.logoCage}>
             <Ionicons name="school" size={40} color="#8B5CF6" />
@@ -175,7 +197,7 @@ export default function Login() {
           </View>
 
           {/* REMEMBER ME & FORGOT PASSWORD ROW */}
-          <View style={styles.optionsRow}>
+          <View style={[styles.optionsRow, layout.isCompact && styles.optionsRowCompact]}>
             <TouchableOpacity
               style={styles.rememberRow}
               onPress={() => setRememberMe(!rememberMe)}
@@ -218,7 +240,7 @@ export default function Login() {
         onRequestClose={handleResetModalClose}
       >
         <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, layout.isDesktop && styles.modalContentDesktop]}>
             <View style={styles.modalHeader}>
               <Ionicons name="mail-outline" size={28} color="#4A90E2" />
               <Text style={styles.modalTitle}>Reset Password</Text>
@@ -280,7 +302,27 @@ export default function Login() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  containerDesktop: { flexDirection: 'row', padding: 40, gap: 28 },
+  containerCompact: { padding: 14 },
+  desktopBrandPanel: {
+    flex: 1,
+    maxWidth: 520,
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    padding: 34,
+    borderRadius: 30,
+    backgroundColor: 'rgba(139, 92, 246, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(196, 181, 253, 0.22)',
+  },
+  brandIcon: { width: 66, height: 66, borderRadius: 20, backgroundColor: '#8B5CF6', alignItems: 'center', justifyContent: 'center', marginBottom: 22 },
+  brandTitle: { color: '#FFFFFF', fontSize: 42, fontWeight: '900', letterSpacing: 0 },
+  brandCopy: { color: '#CBD5E1', fontSize: 17, lineHeight: 26, marginTop: 12, marginBottom: 26, maxWidth: 430 },
+  brandFeatureRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12 },
+  brandFeatureText: { color: '#EDE9FE', marginLeft: 10, fontSize: 15, fontWeight: '700' },
   card: { backgroundColor: '#ffffff', width: '100%', maxWidth: 450, borderRadius: 30, padding: 30, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 20 },
+  cardDesktop: { maxWidth: 440 },
+  cardCompact: { padding: 22, borderRadius: 24 },
   header: { alignItems: 'center', marginBottom: 35 },
   logoCage: { backgroundColor: '#F5F3FF', padding: 15, borderRadius: 20, marginBottom: 15 },
   title: { fontSize: 28, fontWeight: '900', color: '#1E293B', marginBottom: 5 },
@@ -294,6 +336,7 @@ const styles = StyleSheet.create({
   eyeIcon: { paddingHorizontal: 15 },
 
   optionsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 },
+  optionsRowCompact: { flexWrap: 'wrap', gap: 12 },
   rememberRow: { flexDirection: 'row', alignItems: 'center' },
   checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: '#CBD5E0', justifyContent: 'center', alignItems: 'center', marginRight: 8 },
   checkboxActive: { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' },
@@ -305,4 +348,19 @@ const styles = StyleSheet.create({
 
   footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10, paddingTop: 20, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
   footerText: { fontSize: 12, color: '#94A3B8', marginLeft: 6, fontWeight: '500' },
+  modalContainer: { flex: 1, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { width: '100%', maxWidth: 430, backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24, shadowColor: '#0F172A', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.12, shadowRadius: 22, elevation: 8 },
+  modalContentDesktop: { maxWidth: 460 },
+  modalHeader: { alignItems: 'center', marginBottom: 18 },
+  modalTitle: { marginTop: 10, fontSize: 22, fontWeight: '900', color: '#0F172A' },
+  modalBody: { width: '100%' },
+  modalSubtitle: { color: '#64748B', textAlign: 'center', lineHeight: 21, marginBottom: 18 },
+  modalMessage: { textAlign: 'center', fontWeight: '700' },
+  modalMessageSuccess: { color: '#059669' },
+  modalMessageError: { color: '#DC2626' },
+  modalBtn: { backgroundColor: '#4A90E2', borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
+  modalBtnLoading: { opacity: 0.75 },
+  modalBtnText: { color: '#FFFFFF', fontWeight: '900', fontSize: 15 },
+  modalCancelBtn: { alignItems: 'center', paddingVertical: 14 },
+  modalCancelBtnText: { color: '#64748B', fontWeight: '800' },
 });

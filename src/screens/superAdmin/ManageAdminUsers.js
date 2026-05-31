@@ -16,9 +16,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { collection, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
+import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 
 export default function ManageAdminUsers() {
   const navigation = useNavigation();
+  const layout = useResponsiveLayout();
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -145,7 +147,7 @@ export default function ManageAdminUsers() {
   };
 
   const renderAdmin = ({ item }) => (
-    <View style={styles.adminCard}>
+    <View style={[styles.adminCard, layout.listColumns > 1 && styles.adminCardDesktop]}>
       <View style={styles.avatar}>
         <Text style={styles.avatarText}>{(item.name || item.email || 'A').charAt(0).toUpperCase()}</Text>
       </View>
@@ -188,15 +190,23 @@ export default function ManageAdminUsers() {
   return (
     <View style={styles.container}>
       <FlatList
+        key={String(layout.listColumns)}
         data={sortedAdmins}
+        numColumns={layout.listColumns}
+        columnWrapperStyle={layout.listColumns > 1 ? styles.columnWrapper : undefined}
         keyExtractor={(item) => item.id}
         renderItem={renderAdmin}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshAdmins} tintColor="#2563EB" />}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingHorizontal: layout.horizontalPadding },
+          layout.isDesktop && styles.listContentDesktop,
+          layout.isDesktop && { maxWidth: layout.maxContentWidth },
+        ]}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <>
-            <View style={styles.header}>
+            <View style={[styles.header, layout.isDesktop && styles.headerDesktop]}>
               <Text style={styles.eyebrow}>Administrators</Text>
               <Text style={styles.title}>Institute Admins</Text>
               <Text style={styles.subtitle}>Review ownership, update contact details, and clean up admin profiles.</Text>
@@ -274,8 +284,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
   loadingText: { marginTop: 12, color: '#64748B', fontWeight: '600' },
-  listContent: { padding: 16, paddingBottom: 32 },
+  listContent: { paddingVertical: 16, paddingBottom: 32 },
+  listContentDesktop: { width: '100%', alignSelf: 'center', paddingTop: 24 },
   header: { backgroundColor: '#0F172A', borderRadius: 22, padding: 22, marginBottom: 14 },
+  headerDesktop: { padding: 30 },
   eyebrow: { color: '#93C5FD', fontSize: 12, fontWeight: '900', letterSpacing: 1.2, textTransform: 'uppercase' },
   title: { fontSize: 28, fontWeight: '900', color: '#FFFFFF', marginTop: 8 },
   subtitle: { fontSize: 14, color: '#CBD5E1', marginTop: 8, lineHeight: 21 },
@@ -304,6 +316,8 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 2,
   },
+  columnWrapper: { gap: 12 },
+  adminCardDesktop: { flex: 1 },
   avatar: { width: 48, height: 48, borderRadius: 15, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginRight: 14 },
   avatarText: { color: '#2563EB', fontSize: 18, fontWeight: '900' },
   adminInfo: { flex: 1, minWidth: 0 },

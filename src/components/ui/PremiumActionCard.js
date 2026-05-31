@@ -3,7 +3,13 @@ import { Animated, TouchableWithoutFeedback, View, Text, StyleSheet } from 'reac
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function PremiumActionCard({ title, icon, color, bgColor, delay, onPress }) {
+const getCardWidth = (columns) => {
+  if (columns >= 4) return '23.5%';
+  if (columns === 3) return '31.8%';
+  return '48%';
+};
+
+export default function PremiumActionCard({ title, icon, color, bgColor, delay, onPress, columns = 2, compact = false, style }) {
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
@@ -46,18 +52,21 @@ export default function PremiumActionCard({ title, icon, color, bgColor, delay, 
     <TouchableWithoutFeedback onPressIn={handlePressIn} onPressOut={handlePressOut} onPress={handlePress}>
       <Animated.View style={[
         styles.cardBody, 
+        compact && styles.compactCard,
         { 
+          width: getCardWidth(columns),
           backgroundColor: bgColor, 
           opacity: fadeAnim, 
           transform: [{ scale: scaleAnim }, { translateY: slideAnim }, { rotateZ: tilt }] 
-        }
+        },
+        style,
       ]}>
         <View style={styles.glowOverlay} />
         <View style={styles.cornerAccent} />
-        <View style={[styles.iconCage, { backgroundColor: color + '15' }]}>
-          <Ionicons name={icon} size={28} color={color} />
+        <View style={[styles.iconCage, compact && styles.compactIconCage, { backgroundColor: color + '15' }]}>
+          <Ionicons name={icon} size={compact ? 24 : 28} color={color} />
         </View>
-        <Text style={styles.title}>{title}</Text>
+        <Text style={[styles.title, compact && styles.compactTitle]} numberOfLines={2}>{title}</Text>
       </Animated.View>
     </TouchableWithoutFeedback>
   );
@@ -65,7 +74,6 @@ export default function PremiumActionCard({ title, icon, color, bgColor, delay, 
 
 const styles = StyleSheet.create({
   cardBody: {
-    width: '48%',
     paddingVertical: 24,
     paddingHorizontal: 16,
     borderRadius: 20,
@@ -79,6 +87,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.6)',
+  },
+  compactCard: {
+    paddingVertical: 20,
+    paddingHorizontal: 12,
+    marginBottom: 14,
   },
   glowOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -102,11 +115,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
   },
+  compactIconCage: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    marginBottom: 12,
+  },
   title: {
     color: '#0F172A',
     fontWeight: '800',
     fontSize: 15,
-    letterSpacing: -0.3,
+    letterSpacing: 0,
     textAlign: 'center',
-  }
+  },
+  compactTitle: {
+    fontSize: 14,
+  },
 });

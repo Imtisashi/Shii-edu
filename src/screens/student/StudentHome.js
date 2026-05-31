@@ -11,10 +11,12 @@ import { db } from '../../../firebaseConfig';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import PremiumActionCard from '../../components/ui/PremiumActionCard';
+import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 
 export default function StudentHome() {
   const navigation = useNavigation();
   const { userData, logout } = useAuth();
+  const layout = useResponsiveLayout();
   const [notices, setNotices] = useState([]);
 
   // Enterprise Scroll Animation Values
@@ -79,14 +81,22 @@ export default function StudentHome() {
         showsVerticalScrollIndicator={false} 
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
         scrollEventThrottle={16}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, layout.isDesktop && styles.scrollContentDesktop]}
       >
         {/* PARALLAX HERO SECTION */}
-        <Animated.View style={[styles.heroContainer, { transform: [{ translateY: heroTranslateY }, { scale: heroScale }] }]}>
+        <Animated.View
+          style={[
+            styles.heroContainer,
+            { height: layout.heroHeight },
+            layout.isDesktop && styles.heroContainerDesktop,
+            layout.isDesktop && { maxWidth: layout.maxContentWidth },
+            { transform: [{ translateY: heroTranslateY }, { scale: heroScale }] },
+          ]}
+        >
            <ImageBackground 
             source={{ uri: userData?.instituteData?.heroImage || 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1000&auto=format&fit=crop' }}             style={styles.heroImage}
            >
-             <View style={styles.heroGradient}>
+             <View style={[styles.heroGradient, layout.isDesktop && styles.heroGradientDesktop]}>
                <Text style={styles.instituteHeading}>{instituteName}</Text>
                <View style={styles.profileRow}>
                   {userData?.profilePic ? (
@@ -94,7 +104,7 @@ export default function StudentHome() {
                   ) : (
                     <View style={styles.avatarFallback}><Text style={styles.avatarInitials}>{initials}</Text></View>
                   )}
-                  <View style={{ marginLeft: 16 }}>
+                  <View style={styles.greetingBlock}>
                     <Text style={styles.greeting}>Welcome back,</Text>
                     <Text style={styles.greetingName}>{studentName}</Text>
                   </View>
@@ -108,16 +118,16 @@ export default function StudentHome() {
            </ImageBackground>
         </Animated.View>
 
-        <View style={styles.bodyContent}>
+        <View style={[styles.bodyContent, layout.isDesktop && styles.bodyContentDesktop, layout.isDesktop && { maxWidth: layout.maxContentWidth }]}>
           <Text style={styles.sectionTitle}>Dashboard</Text>
           
-          <View style={styles.gridContainer}>
-            <PremiumActionCard title="Grades" icon="school" color="#8B5CF6" bgColor="#F5F3FF" delay={100} onPress={() => navigation.navigate('Grades')} />
-            <PremiumActionCard title="Attendance" icon="bar-chart" color="#10B981" bgColor="#ECFDF5" delay={200} onPress={() => navigation.navigate('AttendanceView')} />
-            <PremiumActionCard title="Fee Ledger" icon="wallet" color="#F59E0B" bgColor="#FFFBEB" delay={300} onPress={() => navigation.navigate('FeePayment')} />
-            <PremiumActionCard title="Routine" icon="calendar" color="#E11D48" bgColor="#FFE4E6" delay={400} onPress={() => navigation.navigate('Routine')} />
-            <PremiumActionCard title="PYQs" icon="document-text" color="#3B82F6" bgColor="#EFF6FF" delay={500} onPress={() => navigation.navigate('PYQView')} />
-            <PremiumActionCard title="Gallery" icon="images" color="#F97316" bgColor="#FFF7ED" delay={600} onPress={() => navigation.navigate('GalleryView')} />
+          <View style={[styles.gridContainer, layout.isDesktop && styles.gridContainerDesktop]}>
+            <PremiumActionCard columns={layout.dashboardColumns} compact={layout.isCompact} title="Grades" icon="school" color="#8B5CF6" bgColor="#F5F3FF" delay={100} onPress={() => navigation.navigate('Grades')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={layout.isCompact} title="Attendance" icon="bar-chart" color="#10B981" bgColor="#ECFDF5" delay={200} onPress={() => navigation.navigate('AttendanceView')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={layout.isCompact} title="Fee Ledger" icon="wallet" color="#F59E0B" bgColor="#FFFBEB" delay={300} onPress={() => navigation.navigate('FeePayment')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={layout.isCompact} title="Routine" icon="calendar" color="#E11D48" bgColor="#FFE4E6" delay={400} onPress={() => navigation.navigate('Routine')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={layout.isCompact} title="PYQs" icon="document-text" color="#3B82F6" bgColor="#EFF6FF" delay={500} onPress={() => navigation.navigate('PYQView')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={layout.isCompact} title="Gallery" icon="images" color="#F97316" bgColor="#FFF7ED" delay={600} onPress={() => navigation.navigate('GalleryView')} />
           </View>
 
           <Text style={styles.sectionTitle}>Recent Broadcasts</Text>
@@ -130,7 +140,7 @@ export default function StudentHome() {
                   <View style={styles.noticeIconCage}>
                     <Ionicons name="notifications" size={16} color="#3B82F6" />
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View style={styles.noticeTextBlock}>
                     <Text style={styles.miniNoticeTitle} numberOfLines={1}>{item.title}</Text>
                     <Text style={styles.miniNoticeMeta}>{item.author || 'Campus'} - {item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString() : 'Just now'}</Text>
                   </View>
@@ -156,23 +166,27 @@ const styles = StyleSheet.create({
   // Glass Header
   glassHeader: { position: 'absolute', top: 0, left: 0, right: 0, height: Platform.OS === 'ios' ? 100 : 80, zIndex: 100, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
   glassHeaderContent: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingHorizontal: 20, paddingBottom: 15 },
-  glassTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
+  glassTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', letterSpacing: 0 },
   glassAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#3B82F6', justifyContent: 'center', alignItems: 'center' },
   glassAvatarText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
 
   scrollContent: { paddingBottom: 120 },
+  scrollContentDesktop: { alignItems: 'center', paddingBottom: 80 },
   
   // Parallax Hero
   heroContainer: { height: 320, width: '100%', backgroundColor: '#0F172A' },
+  heroContainerDesktop: { width: '100%', alignSelf: 'center', borderRadius: 28, overflow: 'hidden', marginTop: 24 },
   heroImage: { width: '100%', height: '100%', justifyContent: 'flex-end' },
   heroGradient: { backgroundColor: 'rgba(0,0,0,0.6)', width: '100%', height: '100%', padding: 24, justifyContent: 'flex-end' },
+  heroGradientDesktop: { padding: 36 },
   instituteHeading: { fontSize: 16, fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 20 },
   profileRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  greetingBlock: { marginLeft: 16, flex: 1, minWidth: 0 },
   avatarFallback: { width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)' },
   avatarInitials: { fontSize: 28, fontWeight: 'bold', color: '#fff' },
   avatarImage: { width: 70, height: 70, borderRadius: 35, borderWidth: 2, borderColor: '#fff' },
   greeting: { fontSize: 16, color: '#E2E8F0', fontWeight: '500' },
-  greetingName: { fontSize: 32, fontWeight: '900', color: '#FFFFFF', marginTop: 2, letterSpacing: -0.5 },
+  greetingName: { fontSize: 32, fontWeight: '900', color: '#FFFFFF', marginTop: 2, letterSpacing: 0 },
   
   pillContainer: { flexDirection: 'row', flexWrap: 'nowrap' },
   pillBadge: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', marginRight: 10 },
@@ -180,14 +194,17 @@ const styles = StyleSheet.create({
   
   // Body
   bodyContent: { padding: 20, marginTop: -20, backgroundColor: '#F4F4F5', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
-  sectionTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', marginBottom: 16, marginTop: 10, letterSpacing: -0.5 },
+  bodyContentDesktop: { width: '100%', alignSelf: 'center', marginTop: 18, borderRadius: 0, paddingHorizontal: 0 },
+  sectionTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', marginBottom: 16, marginTop: 10, letterSpacing: 0 },
   
   gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 },
+  gridContainerDesktop: { alignContent: 'flex-start' },
   
   // Notices
   noticeContainer: { backgroundColor: '#fff', borderRadius: 24, padding: 16, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.03, shadowRadius: 15, marginBottom: 30 },
   miniNotice: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   noticeIconCage: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+  noticeTextBlock: { flex: 1, minWidth: 0 },
   miniNoticeTitle: { fontWeight: '700', fontSize: 15, color: '#1E293B', marginBottom: 4 },
   miniNoticeMeta: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
   emptyNotices: { color: '#94A3B8', fontStyle: 'italic', textAlign: 'center', paddingVertical: 20 },
