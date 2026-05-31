@@ -4,7 +4,11 @@
   "outputDirectory": "web-build",
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/api/super-admin/institutes/:instituteId",
+      "destination": "/api/super-admin/institutes/[instituteId]"
+    },
+    {
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]

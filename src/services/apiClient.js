@@ -11,6 +11,10 @@ export const getApiBaseUrl = () => {
     return Platform.OS === 'android' ? 'http://10.0.2.2:5000' : 'http://localhost:5000';
   }
 
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.origin) {
+    return trimTrailingSlash(window.location.origin);
+  }
+
   throw new Error('Missing EXPO_PUBLIC_API_BASE_URL for production API calls.');
 };
 
@@ -35,7 +39,15 @@ export const authenticatedFetch = async (path, currentUser, options = {}) => {
   });
 
   const text = await response.text();
-  const data = text ? JSON.parse(text) : {};
+  let data = {};
+
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch (_error) {
+      data = { error: text };
+    }
+  }
 
   if (!response.ok) {
     throw new Error(data.error || 'Request failed.');
