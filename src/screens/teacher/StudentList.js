@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
-  TextInput,
-  ActivityIndicator,
-  Image
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, Image } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
@@ -137,7 +130,7 @@ export default function StudentList() {
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8E24AA" />
+          <SmoothSpinner size="large" color="#8E24AA" />
         </View>
       ) : (
         <FlatList

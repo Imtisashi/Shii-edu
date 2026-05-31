@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, 
-  ActivityIndicator, Platform, Alert 
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Alert } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
@@ -120,7 +118,7 @@ export default function FeePayment() {
     }
   };
 
-  if (!feeData) return <ActivityIndicator style={{ flex: 1, marginTop: 100 }} color="#8B5CF6" size="large" />;
+  if (!feeData) return <SmoothSpinner style={{ flex: 1, marginTop: 100 }} color="#8B5CF6" size="large" />;
 
   const paid = feeData.feePaid || 0;
   const total = feeData.totalFee || 0;
@@ -170,7 +168,7 @@ export default function FeePayment() {
             onPress={handleRazorpayCheckout} 
             disabled={isPaying || paid >= total}
           >
-            {isPaying ? <ActivityIndicator color="#fff" /> : (
+            {isPaying ? <SmoothSpinner color="#fff" /> : (
               <>
                 <Ionicons name={paid >= total ? "checkmark-done" : "card"} size={20} color="#fff" style={{ marginRight: 8 }} />
                 <Text style={styles.payText}>{paid >= total ? "All Dues Cleared" : "Pay with Razorpay"}</Text>

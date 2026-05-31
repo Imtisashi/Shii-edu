@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, FlatList, Image, StyleSheet, Text, ActivityIndicator } from 'react-native';
+import { View, FlatList, Image, StyleSheet, Text } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig'; // FIXED PATH
 import { useAuth } from '../../contexts/AuthContext';
@@ -29,7 +30,7 @@ export default function GalleryView() {
     return () => unsubscribe();
   }, [userData]);
 
-  if (loading) return <ActivityIndicator style={{ marginTop: 50 }} color="#4A90E2" />;
+  if (loading) return <SmoothSpinner style={{ marginTop: 50 }} color="#4A90E2" />;
 
   return (
     <View style={styles.container}>

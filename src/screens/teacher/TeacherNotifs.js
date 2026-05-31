@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, TouchableOpacity, FlatList,
-  TextInput, ScrollView, ActivityIndicator, Alert, Platform
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, ScrollView, Alert, Platform } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
@@ -117,7 +115,7 @@ export default function TeacherNotifs() {
 
       {activeTab === 'read' && (
         loading ? (
-          <View style={styles.centerContainer}><ActivityIndicator size="large" color="#8E24AA" /></View>
+          <View style={styles.centerContainer}><SmoothSpinner size="large" color="#8E24AA" /></View>
         ) : (
           <FlatList
             data={notices}
@@ -150,7 +148,7 @@ export default function TeacherNotifs() {
           </View>
 
           <TouchableOpacity style={styles.submitBtn} onPress={handleSendNotice} disabled={sending}>
-            {sending ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Broadcast Notification</Text>}
+            {sending ? <SmoothSpinner color="#fff" /> : <Text style={styles.submitBtnText}>Broadcast Notification</Text>}
           </TouchableOpacity>
         </ScrollView>
       )}

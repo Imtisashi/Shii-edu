@@ -32,6 +32,33 @@ const setCorsHeaders = (req, res) => {
 
 const createRequestId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
+class FirebaseAdminConfigurationError extends Error {
+  constructor(message, code = 'FIREBASE_ADMIN_CONFIG_MISSING') {
+    super(message);
+    this.name = 'FirebaseAdminConfigurationError';
+    this.code = code;
+    this.statusCode = 503;
+  }
+}
+
+const FIREBASE_ADMIN_ENV_HINT = [
+  'FIREBASE_SERVICE_ACCOUNT_JSON',
+  'or FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY',
+];
+
+const getFirebaseAdminConfigStatus = () => {
+  const hasServiceAccountJson = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+  const requiredTriplet = ['FIREBASE_PROJECT_ID', 'FIREBASE_CLIENT_EMAIL', 'FIREBASE_PRIVATE_KEY'];
+  const missingTriplet = requiredTriplet.filter((key) => !process.env[key]);
+
+  return {
+    configured: hasServiceAccountJson || missingTriplet.length === 0,
+    hasServiceAccountJson,
+    missingTriplet,
+    acceptedForms: FIREBASE_ADMIN_ENV_HINT,
+  };
+};
+
 const handleOptions = (req, res) => {
   setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') {
@@ -44,7 +71,23 @@ const handleOptions = (req, res) => {
 
 const getServiceAccount = () => {
   if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+    let serviceAccount;
+    try {
+      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+    } catch (_error) {
+      throw new FirebaseAdminConfigurationError(
+        'FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON.',
+        'FIREBASE_ADMIN_CONFIG_INVALID_JSON'
+      );
+    }
+
+    if (!serviceAccount.project_id || !serviceAccount.client_email || !serviceAccount.private_key) {
+      throw new FirebaseAdminConfigurationError(
+        'FIREBASE_SERVICE_ACCOUNT_JSON is missing project_id, client_email, or private_key.',
+        'FIREBASE_ADMIN_CONFIG_INCOMPLETE_JSON'
+      );
+    }
+
     if (serviceAccount.private_key) {
       serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
     }
@@ -71,7 +114,7 @@ const initializeFirebaseAdmin = () => {
 
   const serviceAccount = getServiceAccount();
   if (!serviceAccount) {
-    throw new Error('Server is missing Firebase Admin credentials.');
+    throw new FirebaseAdminConfigurationError('Server is missing Firebase Admin credentials.');
   }
 
   return admin.initializeApp({
@@ -231,9 +274,10 @@ const resolveInstituteDocument = async (firestore, instituteId) => {
 
 const sendError = (res, error, fallbackMessage = 'Request failed.', requestId = createRequestId()) => {
   const statusCode = error.statusCode || 500;
-  const isConfigurationError = error.message === 'Server is missing Firebase Admin credentials.';
+  const isConfigurationError = error.name === 'FirebaseAdminConfigurationError' ||
+    String(error.code || '').startsWith('FIREBASE_ADMIN_CONFIG_');
   const safeMessage = isConfigurationError
-    ? 'Server is not configured for institute management yet.'
+    ? 'Server is missing Firebase Admin credentials. Add Firebase Admin environment variables in Vercel, then redeploy.'
     : statusCode >= 500
       ? fallbackMessage
       : error.message;
@@ -244,7 +288,15 @@ const sendError = (res, error, fallbackMessage = 'Request failed.', requestId = 
     message: error.message,
     fallbackMessage,
   }));
-  res.status(statusCode).json({ success: false, error: safeMessage, requestId });
+
+  const response = { success: false, error: safeMessage, requestId };
+  if (isConfigurationError) {
+    response.code = error.code || 'FIREBASE_ADMIN_CONFIG_MISSING';
+    response.requiredEnv = FIREBASE_ADMIN_ENV_HINT;
+    response.configured = getFirebaseAdminConfigStatus().configured;
+  }
+
+  res.status(statusCode).json(response);
 };
 
 module.exports = {
@@ -256,6 +308,7 @@ module.exports = {
   createRequestId,
   deleteWhere,
   generateInstituteId,
+  getFirebaseAdminConfigStatus,
   getAdminServices,
   getBody,
   handleOptions,

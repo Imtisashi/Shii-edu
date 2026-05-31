@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert,
-  ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Modal
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, KeyboardAvoidingView, Platform, Modal } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../../firebaseConfig';
@@ -209,7 +207,7 @@ export default function RegisterScreen({ navigation, route }) {
           onPress={handleRegister}
           disabled={!instituteData || loading}
         >
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Create Account</Text>}
+          {loading ? <SmoothSpinner color="#fff" /> : <Text style={styles.btnText}>Create Account</Text>}
         </TouchableOpacity>
 
         <View style={styles.optionsRow}>

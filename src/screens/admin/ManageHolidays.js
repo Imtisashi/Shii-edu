@@ -1,16 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
-  TouchableOpacity, 
-  TextInput,
-  ActivityIndicator,
-  Alert,
-  Modal,
-  Platform
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, Modal, Platform } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { Ionicons } from '@expo/vector-icons';
 import DynamicHeader from '../../components/DynamicHeader';
 
@@ -107,7 +97,7 @@ export default function ManageHolidays() {
       
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#2D3748" />
+          <SmoothSpinner size="large" color="#2D3748" />
         </View>
       ) : (
         <FlatList
@@ -170,7 +160,7 @@ export default function ManageHolidays() {
               onPress={handleAddHoliday}
               disabled={adding}
             >
-              {adding ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitBtnText}>Add Holiday</Text>}
+              {adding ? <SmoothSpinner color="#FFFFFF" /> : <Text style={styles.submitBtnText}>Add Holiday</Text>}
             </TouchableOpacity>
           </View>
         </View>

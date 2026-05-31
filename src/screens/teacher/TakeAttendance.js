@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { collection, query, where, getDocs, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
@@ -82,7 +83,7 @@ export default function TakeAttendance({ navigation }) {
     }
   };
 
-  if (loading) return <ActivityIndicator style={{marginTop: 50}} />;
+  if (loading) return <SmoothSpinner style={{marginTop: 50}} />;
 
   return (
     <View style={styles.container}>

@@ -5,6 +5,7 @@ import * as Font from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './src/contexts/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import { installWebPerformanceTuning } from './src/utils/webPerformanceTuning';
 import { installWebScrollFix } from './src/utils/webScrollFix';
 
 const linking = {
@@ -23,6 +24,7 @@ export default function App() {
   const [iconsReady, setIconsReady] = React.useState(false);
 
   React.useEffect(() => {
+    installWebPerformanceTuning();
     installWebScrollFix();
 
     let mounted = true;

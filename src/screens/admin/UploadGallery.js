@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, TouchableOpacity, StyleSheet, FlatList, 
-  Image, ActivityIndicator, Alert, Platform, Dimensions 
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, Image, Alert, Platform, Dimensions } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import * as ImagePicker from 'expo-image-picker';
 import { collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig'; 
@@ -97,7 +95,7 @@ export default function UploadGallery() {
           <Text style={styles.headerSub}>Manage official event photos</Text>
         </View>
         <TouchableOpacity style={styles.uploadBtn} onPress={handlePickAndUpload} disabled={uploading}>
-          {uploading ? <ActivityIndicator color="#fff" size="small" /> : (
+          {uploading ? <SmoothSpinner color="#fff" size="small" /> : (
             <>
               <Ionicons name="cloud-upload" size={20} color="#fff" />
               <Text style={styles.uploadBtnText}>Upload</Text>
@@ -107,7 +105,7 @@ export default function UploadGallery() {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#F97316" style={{ marginTop: 50 }} />
+        <SmoothSpinner size="large" color="#F97316" style={{ marginTop: 50 }} />
       ) : (
         <FlatList
           data={images}

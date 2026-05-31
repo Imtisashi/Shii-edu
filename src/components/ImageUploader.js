@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, Alert } from 'react-native';
+import { SmoothSpinner } from './ui/LoadingState';
 import * as ImagePicker from 'expo-image-picker';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
@@ -39,12 +40,12 @@ export default function ImageUploader() {
         await updateDoc(userRef, {
           profilePic: cloudinaryUrl
         });
-        Alert.alert("Success", "Profile picture updated via Cloudinary!");
+        Alert.alert("Success", "Profile picture updated.");
       } catch (_err) {
-        Alert.alert("Error", "Cloudinary worked, but Firestore failed to save the URL.");
+        Alert.alert("Error", "The image uploaded, but the profile could not be updated.");
       }
     } else {
-      Alert.alert("Error", "Cloudinary upload failed.");
+      Alert.alert("Error", "Image upload failed.");
     }
     setUploading(false);
   };
@@ -58,7 +59,7 @@ export default function ImageUploader() {
         />
         <TouchableOpacity style={styles.editBtn} onPress={pickImage} disabled={uploading}>
           {uploading ? (
-            <ActivityIndicator color="#fff" size="small" />
+            <SmoothSpinner color="#fff" size="small" />
           ) : (
             <Ionicons name="camera" size={20} color="#fff" />
           )}

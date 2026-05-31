@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, 
-  TextInput, ActivityIndicator, Alert, Platform, KeyboardAvoidingView 
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Platform, KeyboardAvoidingView } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
@@ -156,13 +154,13 @@ export default function ManageRoutines() {
           </View>
 
           <TouchableOpacity style={styles.submitBtn} onPress={handleAssignRoutine} disabled={isSaving || !selectedTeacher}>
-            {isSaving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Save to Master Schedule</Text>}
+            {isSaving ? <SmoothSpinner color="#fff" /> : <Text style={styles.submitText}>Save to Master Schedule</Text>}
           </TouchableOpacity>
         </View>
 
         {/* ACTIVE ROUTINES VIEWER */}
         <Text style={styles.sectionTitle}>Active Master Schedule</Text>
-        {loading ? <ActivityIndicator color="#3B82F6" /> : routines.length === 0 ? (
+        {loading ? <SmoothSpinner color="#3B82F6" /> : routines.length === 0 ? (
           <Text style={styles.emptyText}>No routines assigned yet.</Text>
         ) : (
           routines.map(r => (

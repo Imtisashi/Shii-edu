@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Linking } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
@@ -26,7 +27,7 @@ export default function PYQView() {
     return () => unsubscribe();
   }, [userData]);
 
-  if (loading) return <ActivityIndicator style={{marginTop: 50}} color="#43A047" />;
+  if (loading) return <SmoothSpinner style={{marginTop: 50}} color="#43A047" />;
 
   return (
     <View style={styles.container}>

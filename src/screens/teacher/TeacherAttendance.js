@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, FlatList, TouchableOpacity, 
-  ActivityIndicator, Alert, Platform, Dimensions
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, Platform, Dimensions } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { collection, query, where, getDocs, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { PieChart } from 'react-native-chart-kit';
 import { db } from '../../../firebaseConfig';
@@ -197,7 +195,7 @@ export default function TeacherAttendance() {
       <DynamicHeader title="Daily Attendance" showBack={true} />
       
       {loading ? (
-        <ActivityIndicator size="large" color="#10B981" style={{ marginTop: 50 }} />
+        <SmoothSpinner size="large" color="#10B981" style={{ marginTop: 50 }} />
       ) : (
         <>
           <View style={styles.summaryBox}>
@@ -245,7 +243,7 @@ export default function TeacherAttendance() {
 
           <View style={styles.footer}>
             <TouchableOpacity style={styles.submitBtn} onPress={handleSubmitAttendance} disabled={submitting}>
-              {submitting ? <ActivityIndicator color="#fff" /> : (
+              {submitting ? <SmoothSpinner color="#fff" /> : (
                 <Text style={styles.submitBtnText}>Submit to Server</Text>
               )}
             </TouchableOpacity>

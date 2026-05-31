@@ -1,16 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
-  TouchableOpacity, 
-  TextInput,
-  ActivityIndicator,
-  Image,
-  Alert,
-  Platform
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Image, Alert, Platform } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
@@ -193,7 +183,7 @@ export default function ManageUsers({ navigation }) {
       {/* List */}
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
+          <SmoothSpinner size="large" color="#3B82F6" />
         </View>
       ) : (
         <FlatList

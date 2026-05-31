@@ -51,3 +51,5 @@ IMPLEMENTATION_SUMMARY.md
 # generated native folders
 /ios
 /android
+
+.vercel

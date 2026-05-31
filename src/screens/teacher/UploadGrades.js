@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, TextInput, TouchableOpacity, StyleSheet, 
-  FlatList, ActivityIndicator, Alert, ScrollView 
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, Alert, ScrollView } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
@@ -81,7 +79,7 @@ export default function UploadGrades({ navigation }) {
     }
   };
 
-  if (loading) return <ActivityIndicator style={{ marginTop: 50 }} color="#8E24AA" />;
+  if (loading) return <SmoothSpinner style={{ marginTop: 50 }} color="#8E24AA" />;
 
   return (
     <View style={styles.container}>

@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import { 
-  View, Text, TextInput, TouchableOpacity, StyleSheet, 
-  ActivityIndicator, Platform, Alert, KeyboardAvoidingView 
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Alert, KeyboardAvoidingView } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
@@ -91,7 +89,7 @@ export default function TeacherProfileSettings({ navigation }) {
         />
 
         <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
-          {saving ? <ActivityIndicator color="#fff" /> : (
+          {saving ? <SmoothSpinner color="#fff" /> : (
             <>
               <Ionicons name="save-outline" size={20} color="#fff" />
               <Text style={styles.saveText}>Save Changes</Text>

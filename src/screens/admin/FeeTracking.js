@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, 
-  ActivityIndicator, Platform, Alert, KeyboardAvoidingView, Keyboard
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Platform, Alert, KeyboardAvoidingView, Keyboard } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { collection, query, where, onSnapshot, doc, updateDoc, writeBatch, increment } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
@@ -180,7 +178,7 @@ export default function FeeManagement() {
       {/* TAB: LEDGER */}
       {activeTab === 'ledger' && (
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {loading ? <ActivityIndicator size="large" color="#8B5CF6" style={{ marginTop: 40 }} /> : students.length === 0 ? <Text style={styles.emptyText}>No students enrolled.</Text> : (
+          {loading ? <SmoothSpinner size="large" color="#8B5CF6" style={{ marginTop: 40 }} /> : students.length === 0 ? <Text style={styles.emptyText}>No students enrolled.</Text> : (
             students.map(student => {
               const isFullyPaid = student.totalFee > 0 && student.feePaid >= student.totalFee;
               const hasNoFees = student.totalFee === 0;
@@ -252,7 +250,7 @@ export default function FeeManagement() {
             <TextInput style={styles.input} placeholder="All" value={targetGroup} onChangeText={setTargetGroup} />
 
             <TouchableOpacity style={styles.allocateBtn} onPress={handleAllocateFees} disabled={isAllocating}>
-              {isAllocating ? <ActivityIndicator color="#fff" /> : <Text style={styles.allocateText}>Bulk Allocate Fees</Text>}
+              {isAllocating ? <SmoothSpinner color="#fff" /> : <Text style={styles.allocateText}>Bulk Allocate Fees</Text>}
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -274,7 +272,7 @@ export default function FeeManagement() {
             </View>
 
             <TouchableOpacity style={styles.submitBtn} onPress={handleRecordPayment} disabled={isProcessing}>
-              {isProcessing ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Confirm Payment</Text>}
+              {isProcessing ? <SmoothSpinner color="#fff" /> : <Text style={styles.submitText}>Confirm Payment</Text>}
             </TouchableOpacity>
           </KeyboardAvoidingView>
         </View>

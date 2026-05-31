@@ -37,6 +37,18 @@ const validateForm = ({ instituteName, adminName, adminEmail, adminPassword }) =
   return errors;
 };
 
+const getCreateInstituteError = (result) => {
+  if (result?.code === 'FIREBASE_ADMIN_CONFIG_MISSING') {
+    return 'Firebase Admin is not configured on Vercel yet. Add FIREBASE_SERVICE_ACCOUNT_JSON, redeploy, and this button will create institutes normally.';
+  }
+
+  if (result?.code?.startsWith('FIREBASE_ADMIN_CONFIG_')) {
+    return 'Firebase Admin credentials on Vercel are incomplete or malformed. Recheck the service account JSON and redeploy.';
+  }
+
+  return result?.error || 'Failed to create institute.';
+};
+
 export default function AddInstituteModal({ visible, currentUser, onClose, onCreated }) {
   const layout = useResponsiveLayout();
   const [form, setForm] = useState(initialForm);
@@ -85,7 +97,7 @@ export default function AddInstituteModal({ visible, currentUser, onClose, onCre
       }, currentUser);
 
       if (!result.success) {
-        setServerError(result.error || 'Failed to create institute.');
+        setServerError(getCreateInstituteError(result));
         return;
       }
 

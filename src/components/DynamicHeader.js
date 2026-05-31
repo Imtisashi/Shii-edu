@@ -61,6 +61,29 @@ export default function DynamicHeader({ title, showBack = false }) {
     Alert.alert('Notifications', 'No notification center is configured for this role yet.');
   };
 
+  const returnToRoleHome = () => {
+    const role = userData?.role?.trim().toLowerCase();
+
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    if (role === 'teacher') {
+      navigation.navigate('TeacherHome');
+      return;
+    }
+
+    if (role === 'student' || role === 'admin') {
+      navigation.navigate('MainTabs');
+      return;
+    }
+
+    if (role === 'superadmin') {
+      navigation.navigate('SuperAdminHome');
+    }
+  };
+
   // Fallback to placeholders if the institute hasn't configured them yet
   const instituteData = userData?.instituteData;
   const instituteName = instituteData?.name || "Shii Edu";
@@ -86,9 +109,7 @@ export default function DynamicHeader({ title, showBack = false }) {
             <TouchableOpacity
               onPress={() => {
                 Haptics.selectionAsync();
-                if (navigation.canGoBack()) {
-                  navigation.goBack();
-                }
+                returnToRoleHome();
               }}
               style={[styles.backButton, { minWidth: layout.touchTarget, minHeight: layout.touchTarget }]}
             >

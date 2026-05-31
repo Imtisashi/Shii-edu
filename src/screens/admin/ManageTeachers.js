@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, 
-  TextInput, ActivityIndicator, Alert, Platform, KeyboardAvoidingView, Switch
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Platform, KeyboardAvoidingView, Switch } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
@@ -149,7 +147,7 @@ export default function ManageTeachers() {
       {/* TAB 1: ROSTER DIRECTORY */}
       {activeTab === 'roster' && (
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {loading ? <ActivityIndicator size="large" color="#10B981" /> : teachers.length === 0 ? (
+          {loading ? <SmoothSpinner size="large" color="#10B981" /> : teachers.length === 0 ? (
             <Text style={styles.emptyText}>No teachers found in the database.</Text>
           ) : (
             teachers.map(t => (
@@ -240,7 +238,7 @@ export default function ManageTeachers() {
                 )}
 
                 <TouchableOpacity style={styles.submitBtn} onPress={handleSaveRole} disabled={isSaving}>
-                  {isSaving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Save Privileges</Text>}
+                  {isSaving ? <SmoothSpinner color="#fff" /> : <Text style={styles.submitText}>Save Privileges</Text>}
                 </TouchableOpacity>
               </View>
             )}

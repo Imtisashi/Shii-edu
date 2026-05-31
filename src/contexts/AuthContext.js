@@ -14,6 +14,7 @@ export function AuthProvider({ children }) {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const unsubscribeDocRef = useRef(null);
+  const authResolvedRef = useRef(false);
 
   const logout = async () => {
     try {
@@ -27,6 +28,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const handleAuthStateChange = async (user) => {
+      authResolvedRef.current = true;
       setCurrentUser(user);
       if (user) {
         const userRef = doc(db, "users", user.uid);
@@ -88,9 +90,18 @@ export function AuthProvider({ children }) {
     };
 
     const unsubscribeAuth = onAuthStateChanged(auth, handleAuthStateChange);
+    const authTimeout = setTimeout(() => {
+      if (authResolvedRef.current) return;
+
+      console.warn('Firebase Auth did not resolve before the startup timeout.');
+      setCurrentUser(null);
+      setUserData(null);
+      setLoading(false);
+    }, 8000);
 
     // Cleanup function
     return () => {
+      clearTimeout(authTimeout);
       unsubscribeAuth();
       if (unsubscribeDocRef.current) {
         unsubscribeDocRef.current();

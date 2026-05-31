@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import { 
-  View, Text, TextInput, TouchableOpacity, StyleSheet, 
-  ScrollView, ActivityIndicator, Platform, Alert, KeyboardAvoidingView
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Platform, Alert, KeyboardAvoidingView } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import * as DocumentPicker from 'expo-document-picker';
 import Papa from 'papaparse';
 import { useAuth } from '../../contexts/AuthContext';
@@ -217,7 +215,7 @@ export default function AddUser({ navigation }) {
           </View>
 
           <TouchableOpacity style={styles.submitBtn} onPress={handleManualCreate} disabled={isCreating}>
-            {isCreating ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Create Account</Text>}
+            {isCreating ? <SmoothSpinner color="#fff" /> : <Text style={styles.submitBtnText}>Create Account</Text>}
           </TouchableOpacity>
         </ScrollView>
       )}
@@ -250,7 +248,7 @@ export default function AddUser({ navigation }) {
             onPress={handleBulkUpload} 
             disabled={isUploading || parsedData.length === 0}
           >
-            {isUploading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Start Bulk Upload</Text>}
+            {isUploading ? <SmoothSpinner color="#fff" /> : <Text style={styles.submitBtnText}>Start Bulk Upload</Text>}
           </TouchableOpacity>
         </ScrollView>
       )}

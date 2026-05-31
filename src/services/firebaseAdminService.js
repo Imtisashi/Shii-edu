@@ -69,7 +69,13 @@ export const createInstituteAndAdmin = async ({ instituteName, adminEmail, admin
     });
   } catch (error) {
     console.error('Error creating institute and admin:', error);
-    return { success: false, error: error.message };
+    return {
+      success: false,
+      error: error.message,
+      code: error.payload?.code,
+      requestId: error.payload?.requestId,
+      requiredEnv: error.payload?.requiredEnv,
+    };
   }
 };
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, Platform } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
@@ -69,7 +70,7 @@ export default function UploadAssignment() {
         </View>
 
         <TouchableOpacity style={styles.submitBtn} onPress={handleUpload} disabled={uploading}>
-          {uploading ? <ActivityIndicator color="#FFFFFF" /> : (
+          {uploading ? <SmoothSpinner color="#FFFFFF" /> : (
             <>
               <Ionicons name="cloud-upload" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
               <Text style={styles.submitBtnText}>Post Assignment</Text>

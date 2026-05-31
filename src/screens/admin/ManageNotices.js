@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, 
-  Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Keyboard, FlatList 
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform, Keyboard, FlatList } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig'; 
 import { useAuth } from '../../contexts/AuthContext';
@@ -107,7 +105,7 @@ export default function ManageNotices() {
         </View>
 
         {loadingList ? (
-          <ActivityIndicator size="large" color="#4A90E2" style={{ marginTop: 50 }} />
+          <SmoothSpinner size="large" color="#4A90E2" style={{ marginTop: 50 }} />
         ) : (
           <FlatList
             data={notices}
@@ -171,7 +169,7 @@ export default function ManageNotices() {
           />
 
           <TouchableOpacity style={styles.submitBtn} onPress={handleBroadcast} disabled={isSubmitting}>
-            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Send to All</Text>}
+            {isSubmitting ? <SmoothSpinner color="#fff" /> : <Text style={styles.submitText}>Send to All</Text>}
           </TouchableOpacity>
         </View>
       </ScrollView>

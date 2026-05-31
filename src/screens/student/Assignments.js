@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
@@ -29,7 +30,7 @@ export default function Assignments() {
     return () => unsubscribe();
   }, [userData]);
 
-  if (loading) return <ActivityIndicator style={{marginTop: 50}} color="#EF6C00" />;
+  if (loading) return <SmoothSpinner style={{marginTop: 50}} color="#EF6C00" />;
 
   return (
     <View style={styles.container}>

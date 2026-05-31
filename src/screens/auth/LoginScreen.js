@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Alert, Animated, ScrollView
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Modal, Alert, Animated, ScrollView } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { auth, db } from '../../../firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
@@ -25,6 +23,9 @@ const showLoginAlert = (message) => {
 export default function Login() {
   const layout = useResponsiveLayout();
   const introAnim = useRef(new Animated.Value(0)).current;
+  const mobileCardWidth = layout.isMobile
+    ? Math.max(280, layout.width - (layout.isCompact ? 28 : 40))
+    : undefined;
   const [identifier, setIdentifier] = useState(''); // Can be Email OR Student ID
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -174,6 +175,7 @@ export default function Login() {
         style={styles.scrollView}
         contentContainerStyle={[
           styles.container,
+          layout.isMobile && styles.containerMobile,
           layout.isDesktop && styles.containerDesktop,
           layout.isCompact && styles.containerCompact,
         ]}
@@ -198,7 +200,7 @@ export default function Login() {
           </Animated.View>
         ) : null}
 
-        <Animated.View style={[styles.card, layout.isMobile && styles.cardMobile, layout.isDesktop && styles.cardDesktop, layout.isCompact && styles.cardCompact, introStyle]}>
+        <Animated.View style={[styles.card, layout.isMobile && styles.cardMobile, layout.isMobile && { width: mobileCardWidth }, layout.isDesktop && styles.cardDesktop, layout.isCompact && styles.cardCompact, introStyle]}>
           <View style={[styles.header, layout.isMobile && styles.headerMobile]}>
             <View style={[styles.logoCage, layout.isMobile && styles.logoCageMobile]}>
               <BrandLogo size={58} />
@@ -267,7 +269,7 @@ export default function Login() {
               onPress={handleLogin}
               disabled={loading}
             >
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginBtnText}>Secure Login</Text>}
+              {loading ? <SmoothSpinner color="#fff" /> : <Text style={styles.loginBtnText}>Secure Login</Text>}
             </TouchableOpacity>
           </View>
 
@@ -329,7 +331,7 @@ export default function Login() {
                 disabled={resetLoading}
               >
                 {resetLoading ? (
-                  <ActivityIndicator color="#fff" size={20} />
+                  <SmoothSpinner color="#fff" size={20} />
                 ) : (
                   <Text style={styles.modalBtnText}>Send Reset Link</Text>
                 )}
@@ -353,6 +355,7 @@ const styles = StyleSheet.create({
   keyboardRoot: { flex: 1, backgroundColor: '#0F172A' },
   scrollView: { flex: 1, backgroundColor: '#0F172A' },
   container: { flexGrow: 1, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  containerMobile: { alignItems: 'stretch' },
   containerDesktop: { flexDirection: 'row', padding: 40, gap: 28 },
   containerCompact: { padding: 14 },
   desktopBrandPanel: {
@@ -373,8 +376,8 @@ const styles = StyleSheet.create({
   brandFeatureText: { color: '#EDE9FE', marginLeft: 10, fontSize: 15, fontWeight: '700' },
   card: { backgroundColor: '#ffffff', width: '100%', maxWidth: 450, borderRadius: 30, padding: 30, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 20 },
   cardDesktop: { maxWidth: 440 },
-  cardMobile: { borderRadius: 26, padding: 24 },
-  cardCompact: { padding: 22, borderRadius: 24 },
+  cardMobile: { alignSelf: 'center', maxWidth: '100%', borderRadius: 26, padding: 20 },
+  cardCompact: { padding: 18, borderRadius: 24 },
   header: { alignItems: 'center', marginBottom: 35 },
   headerMobile: { marginBottom: 26 },
   logoCage: { backgroundColor: '#F5F3FF', padding: 10, borderRadius: 22, marginBottom: 15 },
@@ -387,11 +390,11 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: 'bold', color: '#475569', marginBottom: 8, textTransform: 'uppercase' },
   inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 14, marginBottom: 20 },
   icon: { paddingHorizontal: 15 },
-  input: { flex: 1, paddingVertical: 16, fontSize: 16, color: '#1E293B', outlineStyle: 'none' },
-  eyeIcon: { paddingHorizontal: 15 },
+  input: { flex: 1, minWidth: 0, paddingVertical: 16, fontSize: 16, color: '#1E293B', outlineStyle: 'none' },
+  eyeIcon: { paddingHorizontal: 10, paddingVertical: 12 },
 
   optionsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 },
-  optionsRowMobile: { alignItems: 'flex-start', gap: 10 },
+  optionsRowMobile: { justifyContent: 'flex-start', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 24 },
   optionsRowCompact: { flexWrap: 'wrap', gap: 12 },
   rememberRow: { flexDirection: 'row', alignItems: 'center' },
   checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: '#CBD5E0', justifyContent: 'center', alignItems: 'center', marginRight: 8 },

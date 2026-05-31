@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { PieChart } from 'react-native-chart-kit';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
@@ -103,7 +104,7 @@ export default function AttendanceView() {
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563EB" />
+          <SmoothSpinner size="large" color="#2563EB" />
           <Text style={styles.loadingText}>Loading attendance...</Text>
         </View>
       ) : (
