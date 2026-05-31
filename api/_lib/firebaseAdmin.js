@@ -160,7 +160,15 @@ const authenticateUserProfile = async (req, allowedRoles = []) => {
   }
 
   const { admin: firebaseAdmin, firestore } = getAdminServices();
-  const decodedToken = await firebaseAdmin.auth().verifyIdToken(match[1]);
+  let decodedToken;
+  try {
+    decodedToken = await firebaseAdmin.auth().verifyIdToken(match[1]);
+  } catch (_error) {
+    const error = new Error('Invalid or expired Firebase ID token.');
+    error.statusCode = 401;
+    throw error;
+  }
+
   const userSnap = await firestore.collection('users').doc(decodedToken.uid).get();
 
   if (!userSnap.exists) {
