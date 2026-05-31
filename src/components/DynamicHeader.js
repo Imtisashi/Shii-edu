@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import useResponsiveLayout from '../hooks/useResponsiveLayout';
+import BrandLogo from './BrandLogo';
 
 export default function DynamicHeader({ title, showBack = false }) {
   const { userData } = useAuth();
@@ -65,7 +66,7 @@ export default function DynamicHeader({ title, showBack = false }) {
             <Image source={{ uri: logoUrl }} style={styles.logo} resizeMode="contain" />
           ) : (
             <View style={styles.placeholderLogo}>
-              <Ionicons name="school" size={20} color="#fff" />
+              <BrandLogo size={40} />
             </View>
           )}
 
@@ -139,7 +140,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 8,
-    backgroundColor: '#4A90E2', // Default theme color
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,

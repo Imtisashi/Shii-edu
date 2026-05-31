@@ -9,6 +9,7 @@ import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/aut
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
+import BrandLogo from '../../components/BrandLogo';
 
 const showLoginAlert = (message) => {
   if (Platform.OS === 'web') {
@@ -138,9 +139,7 @@ export default function Login() {
     >
       {layout.isDesktop ? (
         <View style={styles.desktopBrandPanel}>
-          <View style={styles.brandIcon}>
-            <Ionicons name="school" size={34} color="#FFFFFF" />
-          </View>
+          <BrandLogo size={68} variant="light" style={styles.brandIcon} />
           <Text style={styles.brandTitle}>Edu-Hub</Text>
           <Text style={styles.brandCopy}>
             A responsive campus command center for superadmins, admins, teachers, and students.
@@ -159,7 +158,7 @@ export default function Login() {
       <View style={[styles.card, layout.isDesktop && styles.cardDesktop, layout.isCompact && styles.cardCompact]}>
         <View style={styles.header}>
           <View style={styles.logoCage}>
-            <Ionicons name="school" size={40} color="#8B5CF6" />
+            <BrandLogo size={58} />
           </View>
           <Text style={styles.title}>Edu-Hub</Text>
           <Text style={styles.subtitle}>Enter your Campus ID or Email to continue</Text>
@@ -315,7 +314,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(196, 181, 253, 0.22)',
   },
-  brandIcon: { width: 66, height: 66, borderRadius: 20, backgroundColor: '#8B5CF6', alignItems: 'center', justifyContent: 'center', marginBottom: 22 },
+  brandIcon: { marginBottom: 22 },
   brandTitle: { color: '#FFFFFF', fontSize: 42, fontWeight: '900', letterSpacing: 0 },
   brandCopy: { color: '#CBD5E1', fontSize: 17, lineHeight: 26, marginTop: 12, marginBottom: 26, maxWidth: 430 },
   brandFeatureRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12 },
@@ -324,7 +323,7 @@ const styles = StyleSheet.create({
   cardDesktop: { maxWidth: 440 },
   cardCompact: { padding: 22, borderRadius: 24 },
   header: { alignItems: 'center', marginBottom: 35 },
-  logoCage: { backgroundColor: '#F5F3FF', padding: 15, borderRadius: 20, marginBottom: 15 },
+  logoCage: { backgroundColor: '#F5F3FF', padding: 10, borderRadius: 22, marginBottom: 15 },
   title: { fontSize: 28, fontWeight: '900', color: '#1E293B', marginBottom: 5 },
   subtitle: { fontSize: 14, color: '#64748B', textAlign: 'center' },
 
