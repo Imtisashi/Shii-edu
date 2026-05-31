@@ -289,13 +289,16 @@ const sendError = (res, error, fallbackMessage = 'Request failed.', requestId = 
     : statusCode >= 500
       ? fallbackMessage
       : error.message;
-  console.error(JSON.stringify({
-    level: 'error',
+  const logLevel = statusCode >= 500 ? 'error' : 'warn';
+  const logPayload = {
+    level: logLevel,
     requestId,
     statusCode,
     message: error.message,
     fallbackMessage,
-  }));
+  };
+  const writeLog = statusCode >= 500 ? console.error : console.warn;
+  writeLog(JSON.stringify(logPayload));
 
   const response = { success: false, error: safeMessage, requestId };
   if (isConfigurationError) {
