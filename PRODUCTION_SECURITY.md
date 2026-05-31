@@ -9,7 +9,8 @@
 5. Restrict the Firebase web API key in Google Cloud Console to trusted app domains and package identifiers.
 6. Configure `APP_ORIGIN` on the backend to production origins only.
 7. Use a restricted Cloudinary unsigned upload preset, or replace client uploads with a signed backend upload endpoint.
-8. Migrate Expo/React Native to a currently supported SDK before public production release; the current SDK line still has transitive audit findings that require a breaking upgrade.
+8. Keep Expo SDK and native module versions aligned with `npx expo install --check` before each release.
+9. Keep AI provider keys server-side only. Do not expose Gemini/OpenAI/etc. keys through `EXPO_PUBLIC_*` variables.
 
 ## Backend Expectations
 
@@ -18,3 +19,4 @@
 - Payment completion requires Razorpay signature verification before Firestore fee updates.
 - Firebase Admin credentials must be provided via `GOOGLE_APPLICATION_CREDENTIALS` or `FIREBASE_SERVICE_ACCOUNT_JSON`.
 - Firebase web config is public client configuration, but it must still be restricted in Google Cloud and supplied through Expo public env vars.
+- Current npm audit output contains moderate transitive `uuid` advisories through upstream Expo/Firebase Admin tooling; no high or critical production dependency advisories remain after the SDK upgrade.

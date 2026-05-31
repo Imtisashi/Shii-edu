@@ -10,6 +10,14 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function RegisterScreen({ navigation, route }) {
   const { instituteId, role, uniqueId, email: inviteEmail } = route.params || {};
+  const navigateToLogin = React.useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate('Login');
+  }, [navigation]);
 
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
@@ -18,6 +26,7 @@ export default function RegisterScreen({ navigation, route }) {
 
   const [loading, setLoading] = useState(false);
   const [instituteData, setInstituteData] = useState(null);
+  const [invitationError, setInvitationError] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Validate invitation parameters
@@ -30,21 +39,19 @@ export default function RegisterScreen({ navigation, route }) {
           if (instSnap.exists()) {
             setInstituteData(instSnap.data());
           } else {
-            Alert.alert("Error", "Invalid institute invitation. Please contact administrator.");
-            navigation.goBack();
+            setInvitationError('Invalid institute invitation. Please contact your administrator.');
           }
         } catch (e) {
           console.error(e);
-          Alert.alert("Error", "Failed to validate invitation.");
+          setInvitationError('Failed to validate invitation. Please try the invite link again.');
         }
       };
 
       validateInstitute();
     } else {
-      Alert.alert("Error", "Invalid invitation link. Please contact administrator.");
-      navigation.goBack();
+      setInvitationError('Invalid invitation link. Please contact your administrator for a fresh invite.');
     }
-  }, [instituteId, role, navigation]);
+  }, [instituteId, role, navigateToLogin]);
 
   const handleRegister = async () => {
     if (!name.trim() || !email.trim() || !password || !confirmPassword) {
@@ -103,6 +110,17 @@ export default function RegisterScreen({ navigation, route }) {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        {invitationError ? (
+          <View style={styles.invalidInviteCard}>
+            <Ionicons name="alert-circle-outline" size={34} color="#EF4444" />
+            <Text style={styles.invalidInviteTitle}>Invite Required</Text>
+            <Text style={styles.invalidInviteText}>{invitationError}</Text>
+            <TouchableOpacity style={styles.btn} onPress={navigateToLogin}>
+              <Text style={styles.btnText}>Back to Login</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
         {instituteData && (
           <View style={styles.instituteHeader}>
             <Text style={styles.instituteName}>{instituteData.name}</Text>
@@ -195,10 +213,12 @@ export default function RegisterScreen({ navigation, route }) {
         </TouchableOpacity>
 
         <View style={styles.optionsRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} disabled={loading}>
+          <TouchableOpacity onPress={navigateToLogin} disabled={loading}>
             <Text style={styles.backLink}>{"< Back to Login"}</Text>
           </TouchableOpacity>
         </View>
+          </>
+        )}
       </ScrollView>
 
       {/* Success Modal */}
@@ -234,6 +254,9 @@ export default function RegisterScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container: { flexGrow: 1, padding: 25, justifyContent: 'flex-start', backgroundColor: '#fff' },
+  invalidInviteCard: { marginTop: 80, padding: 24, borderRadius: 24, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA', alignItems: 'center' },
+  invalidInviteTitle: { fontSize: 22, fontWeight: 'bold', color: '#991B1B', marginTop: 12 },
+  invalidInviteText: { fontSize: 15, color: '#7F1D1D', textAlign: 'center', marginTop: 10, lineHeight: 22 },
   instituteHeader: { marginBottom: 20, padding: 15, backgroundColor: '#F0F9FF', borderRadius: 12 },
   instituteName: { fontSize: 20, fontWeight: 'bold', color: '#1E40AF', textAlign: 'center' },
   instituteRole: { fontSize: 16, color: '#3B82F6', textAlign: 'center', marginTop: 5 },
