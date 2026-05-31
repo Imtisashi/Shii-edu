@@ -14,6 +14,14 @@ export default function TakeAttendance({ navigation }) {
   const [selectedSubject, setSelectedSubject] = useState('');
 
   const instType = userData?.instituteData?.type || 'school';
+  const returnToTeacherHome = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate('TeacherHome');
+  };
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -66,7 +74,7 @@ export default function TakeAttendance({ navigation }) {
       });
       await batch.commit();
       Alert.alert("Success", "Attendance recorded.");
-      navigation.goBack();
+      returnToTeacherHome();
     } catch (_err) {
       Alert.alert("Error", "Failed to save.");
     } finally {

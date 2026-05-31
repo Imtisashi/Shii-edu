@@ -9,6 +9,14 @@ export default function AdminNotifs({ navigation }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const { userData } = useAuth();
+  const returnToAdminHome = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate('MainTabs');
+  };
 
   const handlePost = async () => {
     if (!title || !content) return Alert.alert("Error", "Please fill in all fields.");
@@ -25,7 +33,7 @@ export default function AdminNotifs({ navigation }) {
       Alert.alert("Success", "Notice posted to the board!");
       setTitle('');
       setContent('');
-      navigation.goBack();
+      returnToAdminHome();
     } catch (_error) {
       Alert.alert("Error", "Failed to post notice.");
     }

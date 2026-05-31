@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
@@ -16,17 +15,20 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
-import { useNavigation } from '@react-navigation/native';
 import { db } from '../../../firebaseConfig';
 import { deleteInstituteAsSuperAdmin } from '../../services/firebaseAdminService';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
+import { useAuth } from '../../contexts/AuthContext';
+import AddInstituteModal from '../../components/superAdmin/AddInstituteModal';
+import LoadingState, { SmoothSpinner } from '../../components/ui/LoadingState';
 
 export default function ManageInstitutes() {
-  const navigation = useNavigation();
   const layout = useResponsiveLayout();
+  const { currentUser } = useAuth();
   const [institutes, setInstitutes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showAddInstituteModal, setShowAddInstituteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editInstituteId, setEditInstituteId] = useState('');
   const [editName, setEditName] = useState('');
@@ -176,10 +178,10 @@ export default function ManageInstitutes() {
         <TouchableOpacity
           style={[styles.deleteButton, layout.isMobile && styles.smallActionButtonMobile, deletingInstituteId === item.id && styles.disabledBtn]}
           onPress={() => handleDeleteInstitute(item)}
-          disabled={deletingInstituteId === item.id}
+        disabled={deletingInstituteId === item.id}
         >
           {deletingInstituteId === item.id ? (
-            <ActivityIndicator size="small" color="#EF4444" />
+            <SmoothSpinner size={18} stroke={3} color="#EF4444" trackColor="#FEE2E2" />
           ) : (
             <Ionicons name="trash-outline" size={20} color="#EF4444" />
           )}
@@ -189,12 +191,7 @@ export default function ManageInstitutes() {
   );
 
   if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#2563EB" />
-        <Text style={styles.loadingText}>Loading institutes...</Text>
-      </View>
-    );
+    return <LoadingState label="Loading institutes..." color="#2563EB" />;
   }
 
   return (
@@ -222,9 +219,9 @@ export default function ManageInstitutes() {
               <Text style={[styles.subtitle, layout.isMobile && styles.subtitleMobile]}>Rename institutes, audit identifiers, and remove duplicate or test campuses.</Text>
             </View>
 
-            <TouchableOpacity style={[styles.addButton, layout.isMobile && styles.addButtonMobile]} onPress={() => { Haptics.selectionAsync(); navigation.navigate('SuperAdminHome'); }}>
+            <TouchableOpacity style={[styles.addButton, layout.isMobile && styles.addButtonMobile]} onPress={() => { Haptics.selectionAsync(); setShowAddInstituteModal(true); }}>
               <Ionicons name="add-circle" size={22} color="#fff" />
-              <Text style={styles.buttonText} numberOfLines={1}>Add Institute From Dashboard</Text>
+              <Text style={styles.buttonText} numberOfLines={1}>Add Institute</Text>
             </TouchableOpacity>
           </>
         }
@@ -264,7 +261,7 @@ export default function ManageInstitutes() {
               </View>
 
               <TouchableOpacity style={[styles.modalBtn, saving && styles.disabledBtn]} onPress={handleSaveEdit} disabled={saving}>
-                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalBtnText}>Save Changes</Text>}
+                {saving ? <SmoothSpinner size={18} stroke={3} color="#FFFFFF" trackColor="rgba(255,255,255,0.28)" /> : <Text style={styles.modalBtnText}>Save Changes</Text>}
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalCancelBtn} onPress={closeEditModal} disabled={saving}>
                 <Text style={styles.modalCancelBtnText}>Cancel</Text>
@@ -273,6 +270,13 @@ export default function ManageInstitutes() {
           </ScrollView>
         </View>
       </Modal>
+
+      <AddInstituteModal
+        visible={showAddInstituteModal}
+        currentUser={currentUser}
+        onClose={() => setShowAddInstituteModal(false)}
+        onCreated={() => fetchInstitutes({ showLoader: false })}
+      />
     </View>
   );
 }

@@ -38,10 +38,20 @@ export default function AddUser({ navigation }) {
 
   const instType = userData?.instituteData?.type || 'school';
 
+  const returnToAdminHome = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate('MainTabs');
+  };
+
   const createUserAccount = async ({ fullName, userIdentifier, userPassword, userRole, primary, secondary }) => {
     return authenticatedFetch('/api/admin/users', currentUser, {
       method: 'POST',
       body: {
+        instituteId: userData?.instituteId,
         name: fullName,
         identifier: userIdentifier,
         password: userPassword,
@@ -81,7 +91,7 @@ export default function AddUser({ navigation }) {
       setName(''); setIdentifier(''); setPassword(''); setPrimaryTag(''); setSecondaryTag('');
     } catch (error) {
       console.error(error);
-      const err = "Failed to create user. ID might already exist.";
+      const err = error.message || "Failed to create user. ID might already exist.";
       showPlatformAlert("Error", err);
     } finally {
       setIsCreating(false);
@@ -143,7 +153,7 @@ export default function AddUser({ navigation }) {
       const msg = `Bulk upload complete. ${successCount} users added, ${failCount} skipped.`;
       showPlatformAlert("Success", msg);
       setCsvFile(null); setParsedData([]);
-      navigation.goBack();
+      returnToAdminHome();
     } catch (error) {
       console.error(error);
       showPlatformAlert("Error", "Bulk upload failed.");

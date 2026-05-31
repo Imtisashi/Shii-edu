@@ -1,4 +1,9 @@
+import { Platform } from 'react-native';
+
+const ENABLE_SCREEN_MOTION = Platform.OS !== 'web';
+
 export const sharedStackScreenOptions = {
+  animationEnabled: ENABLE_SCREEN_MOTION,
   cardStyle: { backgroundColor: '#F8FAFC' },
   transitionSpec: {
     open: {
@@ -36,6 +41,6 @@ export const sharedStackScreenOptions = {
 };
 
 export const sharedTabScreenOptions = {
-  animation: 'fade',
+  animation: ENABLE_SCREEN_MOTION ? 'fade' : 'none',
   tabBarHideOnKeyboard: true,
 };

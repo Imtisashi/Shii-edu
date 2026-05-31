@@ -2,6 +2,7 @@ const {
   admin,
   authenticateSuperAdmin,
   commitDeleteBatch,
+  createRequestId,
   deleteWhere,
   getAdminServices,
   handleOptions,
@@ -30,8 +31,10 @@ const getInstituteIdFromRequest = (req) => {
 };
 
 module.exports = async (req, res) => {
+  const requestId = createRequestId();
   if (handleOptions(req, res)) return;
   setCorsHeaders(req, res);
+  res.setHeader('X-Request-Id', requestId);
 
   if (req.method !== 'DELETE') {
     res.setHeader('Allow', 'DELETE, OPTIONS');
@@ -84,8 +87,8 @@ module.exports = async (req, res) => {
       }
     }
 
-    res.json({ success: true, deleted, instituteId });
+    res.json({ success: true, deleted, instituteId, requestId });
   } catch (error) {
-    sendError(res, error, 'Failed to delete institute.');
+    sendError(res, error, 'Failed to delete institute.', requestId);
   }
 };

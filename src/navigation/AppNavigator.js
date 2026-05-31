@@ -1,6 +1,6 @@
 import React from 'react';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import LoadingState from '../components/ui/LoadingState';
 
 // Import all navigators
 import AuthNavigator from './AuthNavigator';
@@ -14,11 +14,7 @@ export default function AppNavigator() {
 
   // 1. Show loading while checking auth state or during the registration gap
   if (loading || (currentUser && !userData)) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4A90E2" />
-      </View>
-    );
+    return <LoadingState label="Preparing Shii Edu..." color="#4A90E2" />;
   }
 
   // 2. Not logged in? Go to Login/Register
@@ -44,12 +40,3 @@ export default function AppNavigator() {
   // 4. Default to Student for everyone else
   return <StudentNavigator />;
 }
-
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-  },
-});

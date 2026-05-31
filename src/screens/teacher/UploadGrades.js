@@ -21,6 +21,14 @@ export default function UploadGrades({ navigation }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const instType = userData?.instituteData?.type || 'school';
+  const returnToTeacherHome = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate('TeacherHome');
+  };
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -65,7 +73,7 @@ export default function UploadGrades({ navigation }) {
       });
 
       Alert.alert("Success", `Grades uploaded for ${selectedStudent.name}`);
-      navigation.goBack();
+      returnToTeacherHome();
     } catch (_err) {
       Alert.alert("Error", "Failed to upload grades.");
     } finally {

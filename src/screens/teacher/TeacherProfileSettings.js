@@ -11,6 +11,14 @@ import DynamicHeader from '../../components/DynamicHeader';
 
 export default function TeacherProfileSettings({ navigation }) {
   const { userData } = useAuth();
+  const returnToTeacherHome = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate('TeacherHome');
+  };
   
   const [name, setName] = useState(userData?.name || '');
   const [degree, setDegree] = useState(userData?.degree || '');
@@ -32,7 +40,7 @@ export default function TeacherProfileSettings({ navigation }) {
       } else {
         Alert.alert("Success", msg);
       }
-      navigation.goBack();
+      returnToTeacherHome();
     } catch (_error) {
       const err = "Failed to update profile.";
       if (Platform.OS === 'web') {

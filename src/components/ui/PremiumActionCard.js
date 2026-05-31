@@ -4,6 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
+const ENABLE_MOTION = Platform.OS !== 'web';
 
 const getCardWidth = (columns) => {
   if (columns >= 4) return '23.5%';
@@ -16,12 +17,14 @@ const triggerImpact = (style) => {
 };
 
 export default function PremiumActionCard({ title, icon, color, bgColor, delay, onPress, columns = 2, compact = false, style }) {
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(40)).current;
+  const scaleAnim = useRef(new Animated.Value(ENABLE_MOTION ? 0.8 : 1)).current;
+  const fadeAnim = useRef(new Animated.Value(ENABLE_MOTION ? 0 : 1)).current;
+  const slideAnim = useRef(new Animated.Value(ENABLE_MOTION ? 40 : 0)).current;
   const tiltAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (!ENABLE_MOTION) return;
+
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 500, delay: delay, useNativeDriver: USE_NATIVE_DRIVER }),
       Animated.spring(slideAnim, { toValue: 0, friction: 8, tension: 40, delay: delay, useNativeDriver: USE_NATIVE_DRIVER }),
@@ -31,6 +34,7 @@ export default function PremiumActionCard({ title, icon, color, bgColor, delay, 
 
   const handlePressIn = () => {
     triggerImpact(Haptics.ImpactFeedbackStyle.Light);
+    if (!ENABLE_MOTION) return;
     Animated.parallel([
       Animated.spring(scaleAnim, { toValue: 0.94, useNativeDriver: USE_NATIVE_DRIVER }),
       Animated.spring(tiltAnim, { toValue: 1, useNativeDriver: USE_NATIVE_DRIVER })
@@ -38,6 +42,7 @@ export default function PremiumActionCard({ title, icon, color, bgColor, delay, 
   };
 
   const handlePressOut = () => {
+    if (!ENABLE_MOTION) return;
     Animated.parallel([
       Animated.spring(scaleAnim, { toValue: 1, friction: 5, tension: 50, useNativeDriver: USE_NATIVE_DRIVER }),
       Animated.spring(tiltAnim, { toValue: 0, friction: 5, tension: 50, useNativeDriver: USE_NATIVE_DRIVER })

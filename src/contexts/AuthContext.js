@@ -38,41 +38,42 @@ export function AuthProvider({ children }) {
         unsubscribeDocRef.current = onSnapshot(userRef, async (userSnap) => {
           if (userSnap.exists()) {
             const basicData = userSnap.data();
+            const normalizedRole = (basicData.role || '').trim().toLowerCase();
+            const instituteId = basicData.instituteId || null;
 
             try {
               // Fetch the parent Institute's data to apply white-labeling and routing logic
-              const instRef = doc(db, "institutes", basicData.instituteId);
-              const instSnap = await getDoc(instRef);
-
-              const instituteData = instSnap.exists() ? instSnap.data() : null;
-
-              // Normalize role for consistent comparison (trim + lowercase)
-              const normalizedRole = (basicData.role || '').trim().toLowerCase();
+              const instituteData = instituteId
+                ? await getDoc(doc(db, "institutes", instituteId)).then((instSnap) => (instSnap.exists() ? instSnap.data() : null))
+                : null;
 
               setUserData({
+                ...basicData,
                 uid: user.uid,
                 role: normalizedRole || 'student', // default to student if not set or invalid
-                instituteId: basicData.instituteId || null,
+                instituteId,
                 uniqueId: basicData.uniqueId || null, // for teacher and student
-                ...basicData,
                 instituteData: instituteData
               });
             } catch (err) {
               console.error("Failed to fetch Institute Data:", err);
               // Fallback if institute fetch fails
-              const normalizedRole = (basicData.role || '').trim().toLowerCase();
               setUserData({
+                ...basicData,
                 uid: user.uid,
                 role: normalizedRole || 'student',
-                instituteId: basicData.instituteId || null,
+                instituteId,
                 uniqueId: basicData.uniqueId || null,
-                ...basicData
               });
             }
           } else {
             console.error("Critical Error: Firebase Auth exists, but Firestore User Profile is missing.");
             setUserData(null);
           }
+          setLoading(false);
+        }, (error) => {
+          console.error("User profile subscription failed:", error);
+          setUserData(null);
           setLoading(false);
         });
       } else {

@@ -56,9 +56,9 @@ export const generateInstituteId = async (name) => {
  * @param {Object} params - Institute and admin details
  * @returns {Promise<Object>} Result with instituteId and adminUid
  */
-export const createInstituteAndAdmin = async ({ instituteName, adminEmail, adminPassword, adminName }) => {
+export const createInstituteAndAdmin = async ({ instituteName, adminEmail, adminPassword, adminName }, currentUser = auth.currentUser) => {
   try {
-    return await authenticatedFetch('/api/super-admin/institutes', auth.currentUser, {
+    return await authenticatedFetch('/api/super-admin/institutes', currentUser, {
       method: 'POST',
       body: {
         instituteName,

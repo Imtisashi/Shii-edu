@@ -30,6 +30,8 @@ const setCorsHeaders = (req, res) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 };
 
+const createRequestId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
 const handleOptions = (req, res) => {
   setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') {
@@ -87,18 +89,24 @@ const getAdminServices = () => {
 };
 
 const getBody = async (req) => {
-  if (req.body && typeof req.body === 'object') return req.body;
-  if (typeof req.body === 'string') return JSON.parse(req.body || '{}');
+  try {
+    if (req.body && typeof req.body === 'object') return req.body;
+    if (typeof req.body === 'string') return JSON.parse(req.body || '{}');
 
-  const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
-  const rawBody = Buffer.concat(chunks).toString('utf8');
-  return rawBody ? JSON.parse(rawBody) : {};
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const rawBody = Buffer.concat(chunks).toString('utf8');
+    return rawBody ? JSON.parse(rawBody) : {};
+  } catch (_error) {
+    const error = new Error('Invalid JSON request body.');
+    error.statusCode = 400;
+    throw error;
+  }
 };
 
 const normalizeRole = (role) => String(role || '').trim().toLowerCase();
 
-const authenticateSuperAdmin = async (req) => {
+const authenticateUserProfile = async (req, allowedRoles = []) => {
   const authorization = req.headers.authorization || '';
   const match = authorization.match(/^Bearer\s+(.+)$/i);
 
@@ -119,7 +127,8 @@ const authenticateSuperAdmin = async (req) => {
   }
 
   const profile = { id: userSnap.id, ...userSnap.data() };
-  if (normalizeRole(profile.role) !== 'superadmin') {
+  const role = normalizeRole(profile.role);
+  if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
     const error = new Error('You do not have permission to perform this action.');
     error.statusCode = 403;
     throw error;
@@ -128,9 +137,12 @@ const authenticateSuperAdmin = async (req) => {
   return {
     uid: decodedToken.uid,
     token: decodedToken,
+    role,
     profile,
   };
 };
+
+const authenticateSuperAdmin = async (req) => authenticateUserProfile(req, ['superadmin']);
 
 const assertPassword = (password) => {
   if (typeof password !== 'string' || password.length < 8) {
@@ -217,7 +229,7 @@ const resolveInstituteDocument = async (firestore, instituteId) => {
   return { ref: snap.ref, snap };
 };
 
-const sendError = (res, error, fallbackMessage = 'Request failed.') => {
+const sendError = (res, error, fallbackMessage = 'Request failed.', requestId = createRequestId()) => {
   const statusCode = error.statusCode || 500;
   const isConfigurationError = error.message === 'Server is missing Firebase Admin credentials.';
   const safeMessage = isConfigurationError
@@ -225,15 +237,23 @@ const sendError = (res, error, fallbackMessage = 'Request failed.') => {
     : statusCode >= 500
       ? fallbackMessage
       : error.message;
-  console.error(fallbackMessage, error.message);
-  res.status(statusCode).json({ success: false, error: safeMessage });
+  console.error(JSON.stringify({
+    level: 'error',
+    requestId,
+    statusCode,
+    message: error.message,
+    fallbackMessage,
+  }));
+  res.status(statusCode).json({ success: false, error: safeMessage, requestId });
 };
 
 module.exports = {
   admin,
   assertPassword,
+  authenticateUserProfile,
   authenticateSuperAdmin,
   commitDeleteBatch,
+  createRequestId,
   deleteWhere,
   generateInstituteId,
   getAdminServices,

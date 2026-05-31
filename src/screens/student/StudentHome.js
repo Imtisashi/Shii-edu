@@ -14,6 +14,7 @@ import PremiumActionCard from '../../components/ui/PremiumActionCard';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
+const ENABLE_SCROLL_MOTION = Platform.OS !== 'web';
 
 export default function StudentHome() {
   const navigation = useNavigation();
@@ -43,23 +44,23 @@ export default function StudentHome() {
   const recentNotices = notices.slice(0, 3);
 
   // Interpolations for Parallax & Glass Header
-  const headerOpacity = scrollY.interpolate({
+  const headerOpacity = ENABLE_SCROLL_MOTION ? scrollY.interpolate({
     inputRange: [50, 120],
     outputRange: [0, 1],
     extrapolate: 'clamp',
-  });
+  }) : 0;
 
-  const heroTranslateY = scrollY.interpolate({
+  const heroTranslateY = ENABLE_SCROLL_MOTION ? scrollY.interpolate({
     inputRange: [-100, 0, 200],
     outputRange: [0, 0, 100],
     extrapolate: 'clamp',
-  });
+  }) : 0;
 
-  const heroScale = scrollY.interpolate({
+  const heroScale = ENABLE_SCROLL_MOTION ? scrollY.interpolate({
     inputRange: [-100, 0],
     outputRange: [1.2, 1],
     extrapolate: 'clamp',
-  });
+  }) : 1;
 
   return (
     <View style={styles.container}>
@@ -84,7 +85,7 @@ export default function StudentHome() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false} 
         keyboardShouldPersistTaps="handled"
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: USE_NATIVE_DRIVER })}
+        onScroll={ENABLE_SCROLL_MOTION ? Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: USE_NATIVE_DRIVER }) : undefined}
         scrollEventThrottle={16}
         contentContainerStyle={[styles.scrollContent, layout.isDesktop && styles.scrollContentDesktop]}
       >
@@ -95,7 +96,7 @@ export default function StudentHome() {
             { height: layout.heroHeight },
             layout.isDesktop && styles.heroContainerDesktop,
             layout.isDesktop && { maxWidth: layout.maxContentWidth },
-            { transform: [{ translateY: heroTranslateY }, { scale: heroScale }] },
+            ENABLE_SCROLL_MOTION && { transform: [{ translateY: heroTranslateY }, { scale: heroScale }] },
           ]}
         >
            <ImageBackground 

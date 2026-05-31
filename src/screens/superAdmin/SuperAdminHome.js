@@ -1,16 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Animated,
   FlatList,
-  Modal,
   Platform,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -20,15 +16,17 @@ import { PieChart } from 'react-native-chart-kit';
 import { useNavigation } from '@react-navigation/native';
 import { collection, getDocs } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
-import { createInstituteAndAdmin, deleteInstituteAsSuperAdmin, getInstituteStats } from '../../services/firebaseAdminService';
+import { deleteInstituteAsSuperAdmin, getInstituteStats } from '../../services/firebaseAdminService';
 import { db } from '../../../firebaseConfig';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
+import AddInstituteModal from '../../components/superAdmin/AddInstituteModal';
+import LoadingState, { SmoothSpinner } from '../../components/ui/LoadingState';
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 export default function SuperAdminHome() {
   const navigation = useNavigation();
-  const { userData, logout } = useAuth();
+  const { currentUser, userData, logout } = useAuth();
   const layout = useResponsiveLayout();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
@@ -37,11 +35,6 @@ export default function SuperAdminHome() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showAddInstituteModal, setShowAddInstituteModal] = useState(false);
-  const [instituteName, setInstituteName] = useState('');
-  const [adminEmail, setAdminEmail] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [adminName, setAdminName] = useState('');
-  const [creatingInstitute, setCreatingInstitute] = useState(false);
   const [deletingInstituteId, setDeletingInstituteId] = useState('');
 
   useEffect(() => {
@@ -154,56 +147,6 @@ export default function SuperAdminHome() {
         ];
   }, [dashboardStats]);
 
-  const resetInstituteForm = () => {
-    setInstituteName('');
-    setAdminEmail('');
-    setAdminPassword('');
-    setAdminName('');
-  };
-
-  const handleAddInstitute = async () => {
-    const cleanedEmail = adminEmail.trim().toLowerCase();
-
-    if (!instituteName.trim() || !cleanedEmail || !adminPassword || !adminName.trim()) {
-      Alert.alert('Error', 'Please fill in all fields.');
-      return;
-    }
-
-    if (!/^\S+@\S+\.\S+$/.test(cleanedEmail)) {
-      Alert.alert('Error', 'Please enter a valid admin email address.');
-      return;
-    }
-
-    if (adminPassword.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters.');
-      return;
-    }
-
-    setCreatingInstitute(true);
-    try {
-      const result = await createInstituteAndAdmin({
-        instituteName: instituteName.trim(),
-        adminEmail: cleanedEmail,
-        adminPassword,
-        adminName: adminName.trim(),
-      });
-
-      if (result.success) {
-        Alert.alert('Success', 'Institute and admin created successfully.');
-        setShowAddInstituteModal(false);
-        resetInstituteForm();
-        fetchInstitutes({ showLoader: false });
-      } else {
-        Alert.alert('Error', result.error || 'Failed to create institute.');
-      }
-    } catch (error) {
-      console.error('Error creating institute:', error);
-      Alert.alert('Error', 'An unexpected error occurred.');
-    } finally {
-      setCreatingInstitute(false);
-    }
-  };
-
   const performDeleteInstitute = async (institute) => {
     const instituteId = institute.instituteId || institute.id;
     setDeletingInstituteId(institute.id);
@@ -307,7 +250,7 @@ export default function SuperAdminHome() {
         disabled={deletingInstituteId === item.id}
       >
         {deletingInstituteId === item.id ? (
-          <ActivityIndicator size="small" color="#EF4444" />
+          <SmoothSpinner size={18} stroke={3} color="#EF4444" trackColor="#FEE2E2" />
         ) : (
           <Ionicons name="trash-outline" size={20} color="#EF4444" />
         )}
@@ -316,12 +259,7 @@ export default function SuperAdminHome() {
   );
 
   if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#2563EB" />
-        <Text style={styles.loadingText}>Loading superadmin dashboard...</Text>
-      </View>
-    );
+    return <LoadingState label="Loading superadmin dashboard..." color="#2563EB" />;
   }
 
   return (
@@ -436,104 +374,12 @@ export default function SuperAdminHome() {
         }
       />
 
-      <Modal
-        animationType="fade"
-        transparent
+      <AddInstituteModal
         visible={showAddInstituteModal}
-        onRequestClose={() => setShowAddInstituteModal(false)}
-      >
-        <View style={styles.modalContainer}>
-          <ScrollView contentContainerStyle={styles.modalScrollContent} keyboardShouldPersistTaps="handled">
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <View style={styles.modalIcon}>
-                  <Ionicons name="school" size={28} color="#2563EB" />
-                </View>
-                <Text style={styles.modalTitle}>Add New Institute</Text>
-                <Text style={styles.modalSubtitle}>Create a campus and its first administrator account.</Text>
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Ionicons name="business-outline" size={20} color="#64748B" style={styles.icon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Institute Name"
-                  placeholderTextColor="#94A3B8"
-                  value={instituteName}
-                  onChangeText={setInstituteName}
-                  autoCapitalize="words"
-                  returnKeyType="next"
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Ionicons name="person-outline" size={20} color="#64748B" style={styles.icon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Admin Full Name"
-                  placeholderTextColor="#94A3B8"
-                  value={adminName}
-                  onChangeText={setAdminName}
-                  returnKeyType="next"
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Ionicons name="mail-outline" size={20} color="#64748B" style={styles.icon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Admin Email"
-                  placeholderTextColor="#94A3B8"
-                  value={adminEmail}
-                  onChangeText={setAdminEmail}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  returnKeyType="next"
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={20} color="#64748B" style={styles.icon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Admin Password (min 8 characters)"
-                  placeholderTextColor="#94A3B8"
-                  value={adminPassword}
-                  onChangeText={setAdminPassword}
-                  secureTextEntry
-                  returnKeyType="done"
-                  onSubmitEditing={handleAddInstitute}
-                />
-              </View>
-
-              {creatingInstitute ? (
-                <View style={styles.creatingRow}>
-                  <ActivityIndicator size="small" color="#2563EB" />
-                  <Text style={styles.creatingText}>Creating institute...</Text>
-                </View>
-              ) : null}
-
-              <TouchableOpacity
-                style={[styles.modalButton, creatingInstitute && styles.disabledButton]}
-                onPress={handleAddInstitute}
-                disabled={creatingInstitute}
-              >
-                <Text style={styles.modalButtonText}>Create Institute</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => {
-                  setShowAddInstituteModal(false);
-                  resetInstituteForm();
-                }}
-                disabled={creatingInstitute}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </View>
-      </Modal>
+        currentUser={currentUser}
+        onClose={() => setShowAddInstituteModal(false)}
+        onCreated={() => fetchInstitutes({ showLoader: false })}
+      />
     </View>
   );
 }

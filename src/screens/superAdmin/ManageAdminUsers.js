@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
@@ -19,6 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { collection, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
+import LoadingState, { SmoothSpinner } from '../../components/ui/LoadingState';
 
 export default function ManageAdminUsers() {
   const navigation = useNavigation();
@@ -190,12 +190,7 @@ export default function ManageAdminUsers() {
   );
 
   if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#2563EB" />
-        <Text style={styles.loadingText}>Loading administrators...</Text>
-      </View>
-    );
+    return <LoadingState label="Loading administrators..." color="#2563EB" />;
   }
 
   return (
@@ -278,7 +273,7 @@ export default function ManageAdminUsers() {
               </View>
 
               <TouchableOpacity style={[styles.modalBtn, saving && styles.disabledBtn]} onPress={handleSaveEdit} disabled={saving}>
-                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalBtnText}>Save Changes</Text>}
+                {saving ? <SmoothSpinner size={18} stroke={3} color="#FFFFFF" trackColor="rgba(255,255,255,0.28)" /> : <Text style={styles.modalBtnText}>Save Changes</Text>}
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalCancelBtn} onPress={closeEditModal} disabled={saving}>
                 <Text style={styles.modalCancelBtnText}>Cancel</Text>
