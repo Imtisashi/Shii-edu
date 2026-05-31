@@ -7,7 +7,9 @@ import {
   TouchableOpacity, 
   TextInput,
   ActivityIndicator,
-  Image
+  Image,
+  Alert,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
@@ -77,6 +79,30 @@ export default function ManageUsers({ navigation }) {
     }
   }, [activeTab, searchQuery, students, teachers]);
 
+  const showUserDetails = (item) => {
+    const roleLabel = activeTab === 'students' ? 'Student' : 'Teacher';
+    const academicLines = activeTab === 'students'
+      ? (instType === 'school'
+        ? [`Class: ${item.class || 'N/A'}`, `Section: ${item.section || 'N/A'}`]
+        : [`Department: ${item.dept || 'N/A'}`, `Semester: ${item.sem || 'N/A'}`])
+      : [`Teacher Code: ${item.teacherCode || 'N/A'}`, `Degree: ${item.degree || 'Faculty'}`];
+
+    const message = [
+      `Name: ${item.name || 'Unnamed user'}`,
+      `Email: ${item.email || 'No email'}`,
+      `Role: ${roleLabel}`,
+      `User ID: ${item.uniqueId || item.id || 'N/A'}`,
+      ...academicLines,
+    ].join('\n');
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.alert(message);
+      return;
+    }
+
+    Alert.alert('User Details', message);
+  };
+
   // --- 3. RENDER CARD ---
   const renderUserCard = ({ item }) => {
     const initials = item.name ? item.name.charAt(0).toUpperCase() : 'U';
@@ -118,7 +144,11 @@ export default function ManageUsers({ navigation }) {
         </View>
         
         {/* Context Menu Button */}
-        <TouchableOpacity style={styles.actionBtn}>
+        <TouchableOpacity
+          style={styles.actionBtn}
+          onPress={() => showUserDetails(item)}
+          accessibilityLabel={`View ${item.name || 'user'} details`}
+        >
           <Ionicons name="ellipsis-vertical" size={20} color="#A0AEC0" />
         </TouchableOpacity>
       </View>

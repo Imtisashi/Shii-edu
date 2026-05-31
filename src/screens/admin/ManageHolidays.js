@@ -8,7 +8,8 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  Modal
+  Modal,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DynamicHeader from '../../components/DynamicHeader';
@@ -61,14 +62,23 @@ export default function ManageHolidays() {
   };
 
   const deleteHoliday = (id) => {
+    const removeHoliday = () => {
+      setHolidays(prev => prev.filter(item => item.id !== id));
+    };
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      if (window.confirm('Are you sure you want to remove this holiday?')) {
+        removeHoliday();
+      }
+      return;
+    }
+
     Alert.alert('Remove Holiday', 'Are you sure you want to remove this holiday?', [
       { text: 'Cancel', style: 'cancel' },
       { 
         text: 'Remove', 
         style: 'destructive',
-        onPress: () => {
-          setHolidays(prev => prev.filter(item => item.id !== id));
-        }
+        onPress: removeHoliday
       }
     ]);
   };

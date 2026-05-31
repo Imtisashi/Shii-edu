@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../contexts/AuthContext';
@@ -33,12 +33,32 @@ export default function DynamicHeader({ title, showBack = false }) {
     ]).start();
   }, [fadeAnim, slideAnim]);
 
-  const pulseBell = () => {
+  const handleBellPress = () => {
     Haptics.selectionAsync();
     Animated.sequence([
       Animated.spring(bellScale, { toValue: 0.9, useNativeDriver: USE_NATIVE_DRIVER }),
       Animated.spring(bellScale, { toValue: 1, friction: 5, useNativeDriver: USE_NATIVE_DRIVER }),
     ]).start();
+
+    const role = userData?.role?.trim().toLowerCase();
+    try {
+      if (role === 'student') {
+        navigation.navigate('MainTabs', { screen: 'Notices' });
+        return;
+      }
+      if (role === 'teacher') {
+        navigation.navigate('TeacherNotifs');
+        return;
+      }
+      if (role === 'admin') {
+        navigation.navigate('MainTabs', { screen: 'Broadcasts' });
+        return;
+      }
+    } catch (error) {
+      console.warn('Notification navigation failed', error);
+    }
+
+    Alert.alert('Notifications', 'No notification center is configured for this role yet.');
   };
 
   // Fallback to placeholders if the institute hasn't configured them yet
@@ -66,7 +86,9 @@ export default function DynamicHeader({ title, showBack = false }) {
             <TouchableOpacity
               onPress={() => {
                 Haptics.selectionAsync();
-                navigation.goBack();
+                if (navigation.canGoBack()) {
+                  navigation.goBack();
+                }
               }}
               style={[styles.backButton, { minWidth: layout.touchTarget, minHeight: layout.touchTarget }]}
             >
@@ -99,7 +121,8 @@ export default function DynamicHeader({ title, showBack = false }) {
             layout.isCompact && styles.notificationButtonCompact,
             { minWidth: layout.touchTarget, minHeight: layout.touchTarget },
           ]}
-          onPress={pulseBell}
+          onPress={handleBellPress}
+          accessibilityLabel="Open notifications"
         >
           <Animated.View style={{ transform: [{ scale: bellScale }] }}>
             <Ionicons name="notifications-outline" size={layout.isCompact ? 21 : 24} color="#2D3748" />

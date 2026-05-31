@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -119,29 +120,36 @@ export default function ManageAdminUsers() {
     }
   };
 
+  const deleteAdminProfile = async (adminId) => {
+    try {
+      await deleteDoc(doc(db, 'users', adminId));
+      Alert.alert('Success', 'Administrator profile deleted successfully.');
+      fetchAdmins({ showLoader: false });
+    } catch (error) {
+      console.error('Error deleting admin:', error);
+      Alert.alert('Error', 'Failed to delete administrator.');
+    }
+  };
+
   const handleDeleteAdmin = async (adminId) => {
     Haptics.selectionAsync();
-    Alert.alert(
-      'Delete Administrator',
-      'Are you sure you want to delete this administrator profile? The Firebase Auth account may still need to be removed separately.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteDoc(doc(db, 'users', adminId));
-              Alert.alert('Success', 'Administrator profile deleted successfully.');
-              fetchAdmins({ showLoader: false });
-            } catch (error) {
-              console.error('Error deleting admin:', error);
-              Alert.alert('Error', 'Failed to delete administrator.');
-            }
-          },
-        },
-      ]
-    );
+    const message = 'Are you sure you want to delete this administrator profile? The Firebase Auth account may still need to be removed separately.';
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      if (window.confirm(message)) {
+        deleteAdminProfile(adminId);
+      }
+      return;
+    }
+
+    Alert.alert('Delete Administrator', message, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => deleteAdminProfile(adminId),
+      },
+    ]);
   };
 
   const refreshAdmins = () => {

@@ -141,7 +141,15 @@ export default function StudentHome() {
               <Text style={styles.emptyNotices}>No recent announcements.</Text>
             ) : (
               recentNotices.map((item, index) => (
-                <TouchableOpacity key={item.id} style={[styles.miniNotice, index === recentNotices.length - 1 && { borderBottomWidth: 0 }]} onPress={() => Haptics.selectionAsync()}>
+                <TouchableOpacity
+                  key={item.id}
+                  style={[styles.miniNotice, index === recentNotices.length - 1 && { borderBottomWidth: 0 }]}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    navigation.navigate('MainTabs', { screen: 'Notices' });
+                  }}
+                  accessibilityLabel={`Open notice ${item.title || 'details'}`}
+                >
                   <View style={styles.noticeIconCage}>
                     <Ionicons name="notifications" size={16} color="#3B82F6" />
                   </View>
