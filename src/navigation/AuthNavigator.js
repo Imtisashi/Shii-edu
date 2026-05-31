@@ -1,5 +1,6 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
+import { sharedStackScreenOptions } from './animatedScreenOptions';
 
 // Import the screens from your auth folder
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -12,6 +13,7 @@ export default function AuthNavigator() {
     <Stack.Navigator
       initialRouteName="Login"
       screenOptions={{
+        ...sharedStackScreenOptions,
         headerShown: false, // Keeps the login/register look clean and full-screen
       }}
     >

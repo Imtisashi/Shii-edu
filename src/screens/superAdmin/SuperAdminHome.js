@@ -6,6 +6,7 @@ import {
   Dimensions,
   FlatList,
   Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -17,9 +18,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { PieChart } from 'react-native-chart-kit';
 import { useNavigation } from '@react-navigation/native';
-import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
-import { createInstituteAndAdmin, getInstituteStats } from '../../services/firebaseAdminService';
+import { createInstituteAndAdmin, deleteInstituteAsSuperAdmin, getInstituteStats } from '../../services/firebaseAdminService';
 import { db } from '../../../firebaseConfig';
 
 const screenWidth = Dimensions.get('window').width;
@@ -39,6 +40,7 @@ export default function SuperAdminHome() {
   const [adminPassword, setAdminPassword] = useState('');
   const [adminName, setAdminName] = useState('');
   const [creatingInstitute, setCreatingInstitute] = useState(false);
+  const [deletingInstituteId, setDeletingInstituteId] = useState('');
 
   useEffect(() => {
     Animated.parallel([
@@ -195,25 +197,46 @@ export default function SuperAdminHome() {
     }
   };
 
-  const handleDeleteInstitute = async (instituteId) => {
+  const performDeleteInstitute = async (institute) => {
+    const instituteId = institute.instituteId || institute.id;
+    setDeletingInstituteId(institute.id);
+    try {
+      const result = await deleteInstituteAsSuperAdmin(instituteId);
+      if (!result.success) {
+        Alert.alert('Error', result.error || 'Failed to delete institute.');
+        return;
+      }
+
+      const userCount = result.deleted?.users || 0;
+      Alert.alert('Success', `Institute deleted successfully. ${userCount} linked user profile${userCount === 1 ? '' : 's'} removed.`);
+      fetchInstitutes({ showLoader: false });
+    } catch (error) {
+      console.error('Error deleting institute:', error);
+      Alert.alert('Error', 'Failed to delete institute.');
+    } finally {
+      setDeletingInstituteId('');
+    }
+  };
+
+  const handleDeleteInstitute = (institute) => {
+    const message = `Delete ${institute.name || 'this institute'} and all linked users, attendance, payments, notices, routines, assignments, grades, gallery items, and papers? This cannot be undone.`;
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(message)) {
+        performDeleteInstitute(institute);
+      }
+      return;
+    }
+
     Alert.alert(
       'Delete Institute',
-      'Are you sure you want to delete this institute? This action cannot be undone.',
+      message,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteDoc(doc(db, 'institutes', instituteId));
-              Alert.alert('Success', 'Institute deleted successfully.');
-              fetchInstitutes();
-            } catch (error) {
-              console.error('Error deleting institute:', error);
-              Alert.alert('Error', 'Failed to delete institute.');
-            }
-          },
+          onPress: () => performDeleteInstitute(institute),
         },
       ]
     );
@@ -268,11 +291,16 @@ export default function SuperAdminHome() {
       </View>
 
       <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => handleDeleteInstitute(item.id)}
+        style={[styles.deleteButton, deletingInstituteId === item.id && styles.disabledButton]}
+        onPress={() => handleDeleteInstitute(item)}
         accessibilityLabel={`Delete ${item.name || 'institute'}`}
+        disabled={deletingInstituteId === item.id}
       >
-        <Ionicons name="trash-outline" size={20} color="#EF4444" />
+        {deletingInstituteId === item.id ? (
+          <ActivityIndicator size="small" color="#EF4444" />
+        ) : (
+          <Ionicons name="trash-outline" size={20} color="#EF4444" />
+        )}
       </TouchableOpacity>
     </Animated.View>
   );

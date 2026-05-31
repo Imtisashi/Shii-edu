@@ -2,6 +2,7 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { sharedStackScreenOptions, sharedTabScreenOptions } from './animatedScreenOptions';
 
 // Import Admin Screens
 import AdminHome from '../screens/admin/AdminHome';
@@ -22,6 +23,7 @@ function AdminBottomTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
+        ...sharedTabScreenOptions,
         headerShown: false,
         tabBarIcon: ({ focused, color }) => {
           let iconName;
@@ -59,6 +61,7 @@ export default function AdminNavigator() {
   return (
     <Stack.Navigator 
       screenOptions={{ 
+        ...sharedStackScreenOptions,
         headerStyle: { backgroundColor: '#fff', elevation: 0, shadowOpacity: 0 }, 
         headerTintColor: '#1E293B',
         headerTitleStyle: { fontWeight: 'bold' },

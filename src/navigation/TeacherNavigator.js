@@ -1,5 +1,6 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
+import { sharedStackScreenOptions } from './animatedScreenOptions';
 
 // ==========================================
 // 1. IMPORT ALL 10 TEACHER SCREENS
@@ -22,7 +23,7 @@ const Stack = createStackNavigator();
 
 export default function TeacherNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ ...sharedStackScreenOptions, headerShown: false }}>
       
       {/* THE MAIN DASHBOARD */}
       <Stack.Screen name="TeacherHome" component={TeacherHome} />

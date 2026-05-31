@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
@@ -7,6 +7,32 @@ import { useNavigation } from '@react-navigation/native';
 export default function DynamicHeader({ title, showBack = false }) {
   const { userData } = useAuth();
   const navigation = useNavigation();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(-12)).current;
+  const bellScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 320,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 8,
+        tension: 55,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeAnim, slideAnim]);
+
+  const pulseBell = () => {
+    Animated.sequence([
+      Animated.spring(bellScale, { toValue: 0.9, useNativeDriver: true }),
+      Animated.spring(bellScale, { toValue: 1, friction: 5, useNativeDriver: true }),
+    ]).start();
+  };
 
   // Fallback to placeholders if the institute hasn't configured them yet
   const instituteData = userData?.instituteData;
@@ -14,7 +40,15 @@ export default function DynamicHeader({ title, showBack = false }) {
   const logoUrl = instituteData?.logoUrl || null; 
 
   return (
-    <View style={styles.headerContainer}>
+    <Animated.View
+      style={[
+        styles.headerContainer,
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        },
+      ]}
+    >
       <View style={styles.leftSection}>
         {showBack ? (
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -43,12 +77,14 @@ export default function DynamicHeader({ title, showBack = false }) {
       {/* Notification Bell (Global feature for all 3 UIs) */}
       <TouchableOpacity 
         style={styles.notificationButton}
-        onPress={() => console.log("Navigate to Notifications")}
+        onPress={pulseBell}
       >
-        <Ionicons name="notifications-outline" size={24} color="#2D3748" />
+        <Animated.View style={{ transform: [{ scale: bellScale }] }}>
+          <Ionicons name="notifications-outline" size={24} color="#2D3748" />
+        </Animated.View>
         {/* Optional: Add a red dot badge here if unread notifications exist */}
       </TouchableOpacity>
-    </View>
+    </Animated.View>
   );
 }
 

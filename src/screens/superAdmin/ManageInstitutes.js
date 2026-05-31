@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -13,9 +14,10 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
 import { db } from '../../../firebaseConfig';
+import { deleteInstituteAsSuperAdmin } from '../../services/firebaseAdminService';
 
 export default function ManageInstitutes() {
   const navigation = useNavigation();
@@ -26,6 +28,7 @@ export default function ManageInstitutes() {
   const [editInstituteId, setEditInstituteId] = useState('');
   const [editName, setEditName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deletingInstituteId, setDeletingInstituteId] = useState('');
 
   const sortedInstitutes = useMemo(
     () => [...institutes].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
@@ -95,25 +98,46 @@ export default function ManageInstitutes() {
     }
   };
 
-  const handleDeleteInstitute = async (instituteId) => {
+  const performDeleteInstitute = async (institute) => {
+    const instituteId = institute.instituteId || institute.id;
+    setDeletingInstituteId(institute.id);
+    try {
+      const result = await deleteInstituteAsSuperAdmin(instituteId);
+      if (!result.success) {
+        Alert.alert('Error', result.error || 'Failed to delete institute.');
+        return;
+      }
+
+      const userCount = result.deleted?.users || 0;
+      Alert.alert('Success', `Institute deleted successfully. ${userCount} linked user profile${userCount === 1 ? '' : 's'} removed.`);
+      fetchInstitutes({ showLoader: false });
+    } catch (error) {
+      console.error('Error deleting institute:', error);
+      Alert.alert('Error', 'Failed to delete institute.');
+    } finally {
+      setDeletingInstituteId('');
+    }
+  };
+
+  const handleDeleteInstitute = (institute) => {
+    const message = `Delete ${institute.name || 'this institute'} and all linked users, attendance, payments, notices, routines, assignments, grades, gallery items, and papers? This cannot be undone.`;
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(message)) {
+        performDeleteInstitute(institute);
+      }
+      return;
+    }
+
     Alert.alert(
       'Delete Institute',
-      'Are you sure you want to delete this institute? This action cannot be undone. All associated data can become orphaned.',
+      message,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteDoc(doc(db, 'institutes', instituteId));
-              Alert.alert('Success', 'Institute deleted successfully.');
-              fetchInstitutes({ showLoader: false });
-            } catch (error) {
-              console.error('Error deleting institute:', error);
-              Alert.alert('Error', 'Failed to delete institute.');
-            }
-          },
+          onPress: () => performDeleteInstitute(institute),
         },
       ]
     );
@@ -144,8 +168,16 @@ export default function ManageInstitutes() {
         <TouchableOpacity style={styles.editButton} onPress={() => handleEditInstitute(item)}>
           <Ionicons name="create-outline" size={20} color="#2563EB" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteInstitute(item.id)}>
-          <Ionicons name="trash-outline" size={20} color="#EF4444" />
+        <TouchableOpacity
+          style={[styles.deleteButton, deletingInstituteId === item.id && styles.disabledBtn]}
+          onPress={() => handleDeleteInstitute(item)}
+          disabled={deletingInstituteId === item.id}
+        >
+          {deletingInstituteId === item.id ? (
+            <ActivityIndicator size="small" color="#EF4444" />
+          ) : (
+            <Ionicons name="trash-outline" size={20} color="#EF4444" />
+          )}
         </TouchableOpacity>
       </View>
     </View>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
+import { sharedStackScreenOptions } from './animatedScreenOptions';
 import SuperAdminHome from '../screens/superAdmin/SuperAdminHome';
 import ManageAdminUsers from '../screens/superAdmin/ManageAdminUsers';
 import ManageInstitutes from '../screens/superAdmin/ManageInstitutes';
@@ -10,6 +11,7 @@ export default function SuperAdminNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{
+        ...sharedStackScreenOptions,
         headerShown: true,
         headerStyle: {
           backgroundColor: '#0F172A',

@@ -1,6 +1,19 @@
 import { auth, db } from '../../firebaseConfig';
-import { doc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, query, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { authenticatedFetch } from './apiClient';
+
+const INSTITUTE_SCOPED_COLLECTIONS = [
+  'users',
+  'notices',
+  'routines',
+  'assignments',
+  'grades',
+  'attendance',
+  'gallery',
+  'pyqs',
+  'paymentOrders',
+  'payments',
+];
 
 /**
  * Generates a unique institute ID from the institute name
@@ -57,6 +70,94 @@ export const createInstituteAndAdmin = async ({ instituteName, adminEmail, admin
   } catch (error) {
     console.error('Error creating institute and admin:', error);
     return { success: false, error: error.message };
+  }
+};
+
+export const deleteInstituteAsSuperAdmin = async (instituteId) => {
+  try {
+    return await authenticatedFetch(`/api/super-admin/institutes/${encodeURIComponent(instituteId)}`, auth.currentUser, {
+      method: 'DELETE',
+    });
+  } catch (error) {
+    if (error.message?.includes('Missing EXPO_PUBLIC_API_BASE_URL')) {
+      return deleteInstituteFromFirestore(instituteId);
+    }
+
+    console.error('Error deleting institute:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+const deleteSnapshot = async (snapshot) => {
+  if (snapshot.empty) return 0;
+
+  const batch = writeBatch(db);
+  snapshot.docs.forEach((document) => batch.delete(document.ref));
+  await batch.commit();
+  return snapshot.size;
+};
+
+const deleteCollectionByInstituteId = async (collectionName, instituteId) => {
+  let deleted = 0;
+
+  while (true) {
+    const snapshot = await getDocs(query(
+      collection(db, collectionName),
+      where('instituteId', '==', instituteId),
+      limit(400)
+    ));
+
+    if (snapshot.empty) return deleted;
+    deleted += await deleteSnapshot(snapshot);
+  }
+};
+
+const resolveInstituteSnapshot = async (instituteId) => {
+  const directRef = doc(db, 'institutes', instituteId);
+  const directSnap = await getDoc(directRef);
+
+  if (directSnap.exists()) {
+    return directSnap;
+  }
+
+  const byPublicId = await getDocs(query(
+    collection(db, 'institutes'),
+    where('instituteId', '==', instituteId),
+    limit(1)
+  ));
+
+  return byPublicId.docs[0] || null;
+};
+
+const deleteInstituteFromFirestore = async (instituteId) => {
+  try {
+    const instituteSnap = await resolveInstituteSnapshot(instituteId);
+    if (!instituteSnap) {
+      return { success: false, error: 'Institute not found.' };
+    }
+
+    const publicInstituteId = instituteSnap.data().instituteId || instituteSnap.id;
+    const deleted = {};
+
+    for (const collectionName of INSTITUTE_SCOPED_COLLECTIONS) {
+      deleted[collectionName] = await deleteCollectionByInstituteId(collectionName, publicInstituteId);
+    }
+
+    const batch = writeBatch(db);
+    batch.delete(instituteSnap.ref);
+    await batch.commit();
+    deleted.institutes = 1;
+    deleted.authUsers = 0;
+
+    return {
+      success: true,
+      fallback: 'firestore',
+      instituteId: publicInstituteId,
+      deleted,
+    };
+  } catch (error) {
+    console.error('Firestore institute delete failed:', error);
+    return { success: false, error: error.message || 'Failed to delete institute.' };
   }
 };
 
@@ -152,6 +253,7 @@ export const updateInstituteSettings = async (instituteId, settings) => {
 export default {
   generateInstituteId,
   createInstituteAndAdmin,
+  deleteInstituteAsSuperAdmin,
   inviteUserToInstitute,
   getInstituteStats,
   updateInstituteSettings

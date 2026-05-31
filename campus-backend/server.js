@@ -167,6 +167,61 @@ const getInstituteType = async (instituteId) => {
   return String(instituteSnap.data()?.type || 'school').toLowerCase();
 };
 
+const commitDeleteBatch = async (docs) => {
+  let deleted = 0;
+
+  for (const chunk of chunkArray(docs, 450)) {
+    const batch = firestore.batch();
+    chunk.forEach((document) => batch.delete(document.ref));
+    await batch.commit();
+    deleted += chunk.length;
+  }
+
+  return deleted;
+};
+
+const deleteWhere = async (collectionName, fieldName, value) => {
+  let deleted = 0;
+
+  while (true) {
+    const snapshot = await firestore
+      .collection(collectionName)
+      .where(fieldName, '==', value)
+      .limit(450)
+      .get();
+
+    if (snapshot.empty) return deleted;
+    deleted += await commitDeleteBatch(snapshot.docs);
+  }
+};
+
+const chunkArray = (items, size) => {
+  const chunks = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+};
+
+const resolveInstituteDocument = async (instituteId) => {
+  const directRef = firestore.collection('institutes').doc(instituteId);
+  const directSnap = await directRef.get();
+
+  if (directSnap.exists) {
+    return { ref: directRef, snap: directSnap };
+  }
+
+  const byPublicId = await firestore
+    .collection('institutes')
+    .where('instituteId', '==', instituteId)
+    .limit(1)
+    .get();
+
+  if (byPublicId.empty) return null;
+  const snap = byPublicId.docs[0];
+  return { ref: snap.ref, snap };
+};
+
 app.get('/health', (_req, res) => {
   res.json({ ok: true });
 });
@@ -225,6 +280,58 @@ app.post('/api/super-admin/institutes', authenticate, requireRole('superadmin'),
 
     console.error('Create institute failed:', error.message);
     res.status(400).json({ success: false, error: error.message || 'Failed to create institute.' });
+  }
+});
+
+app.delete('/api/super-admin/institutes/:instituteId', authenticate, requireRole('superadmin'), async (req, res) => {
+  try {
+    const requestedInstituteId = String(req.params.instituteId || '').trim();
+    if (!requestedInstituteId) {
+      return res.status(400).json({ error: 'Institute ID is required.' });
+    }
+
+    const institute = await resolveInstituteDocument(requestedInstituteId);
+    if (!institute) {
+      return res.status(404).json({ error: 'Institute not found.' });
+    }
+
+    const instituteData = institute.snap.data();
+    const instituteId = instituteData.instituteId || institute.snap.id;
+    const usersSnapshot = await firestore
+      .collection('users')
+      .where('instituteId', '==', instituteId)
+      .get();
+    const userIds = usersSnapshot.docs.map((userDoc) => userDoc.id);
+
+    const deleted = {
+      users: await commitDeleteBatch(usersSnapshot.docs),
+      notices: await deleteWhere('notices', 'instituteId', instituteId),
+      routines: await deleteWhere('routines', 'instituteId', instituteId),
+      assignments: await deleteWhere('assignments', 'instituteId', instituteId),
+      grades: await deleteWhere('grades', 'instituteId', instituteId),
+      attendance: await deleteWhere('attendance', 'instituteId', instituteId),
+      gallery: await deleteWhere('gallery', 'instituteId', instituteId),
+      pyqs: await deleteWhere('pyqs', 'instituteId', instituteId),
+      paymentOrders: await deleteWhere('paymentOrders', 'instituteId', instituteId),
+      payments: await deleteWhere('payments', 'instituteId', instituteId),
+      institutes: 1,
+      authUsers: 0,
+    };
+
+    await institute.ref.delete();
+
+    for (const chunk of chunkArray(userIds, 1000)) {
+      const result = await admin.auth().deleteUsers(chunk);
+      deleted.authUsers += result.successCount;
+      if (result.failureCount > 0) {
+        console.warn('Some institute auth users could not be deleted:', result.errors.map((entry) => entry.error.message));
+      }
+    }
+
+    res.json({ success: true, deleted, instituteId });
+  } catch (error) {
+    console.error('Delete institute failed:', error.message);
+    res.status(500).json({ success: false, error: 'Failed to delete institute.' });
   }
 });
 
