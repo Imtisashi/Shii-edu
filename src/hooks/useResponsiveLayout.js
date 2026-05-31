@@ -11,15 +11,16 @@ export default function useResponsiveLayout() {
   const isTablet = !isDesktop && width >= 768;
   const isMobile = !isDesktop && !isTablet;
   const isCompact = width < 380;
+  const isNarrowPhone = width < 430;
   const deviceType = isDesktop ? 'desktop' : isTablet ? 'tablet' : 'mobile';
 
-  const horizontalPadding = isDesktop ? 32 : isTablet ? 24 : 16;
+  const horizontalPadding = isDesktop ? 32 : isTablet ? 24 : isCompact ? 14 : 16;
   const maxContentWidth = width >= 1360 ? WIDE_CONTENT_WIDTH : MAX_CONTENT_WIDTH;
   const dashboardColumns = isDesktop ? 3 : isTablet ? 3 : 2;
   const listColumns = isDesktop ? 2 : 1;
   const galleryColumns = isDesktop ? 5 : isTablet ? 4 : isCompact ? 2 : 3;
-  const heroHeight = isDesktop ? 360 : isCompact ? 290 : 320;
-  const touchTarget = isDesktop ? 44 : 48;
+  const heroHeight = isDesktop ? 360 : isCompact ? 252 : isNarrowPhone ? 280 : 310;
+  const touchTarget = isDesktop ? 44 : isCompact ? 44 : 48;
 
   const availableWidth = Math.min(width - horizontalPadding * 2, maxContentWidth);
   const chartWidth = (maxWidth = 520) => Math.max(
@@ -37,6 +38,7 @@ export default function useResponsiveLayout() {
     isTablet,
     isMobile,
     isCompact,
+    isNarrowPhone,
     deviceType,
     horizontalPadding,
     maxContentWidth,

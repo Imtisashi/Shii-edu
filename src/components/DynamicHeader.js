@@ -1,10 +1,13 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import useResponsiveLayout from '../hooks/useResponsiveLayout';
 import BrandLogo from './BrandLogo';
+
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 export default function DynamicHeader({ title, showBack = false }) {
   const { userData } = useAuth();
@@ -19,33 +22,37 @@ export default function DynamicHeader({ title, showBack = false }) {
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 320,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.spring(slideAnim, {
         toValue: 0,
         friction: 8,
         tension: 55,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
     ]).start();
   }, [fadeAnim, slideAnim]);
 
   const pulseBell = () => {
+    Haptics.selectionAsync();
     Animated.sequence([
-      Animated.spring(bellScale, { toValue: 0.9, useNativeDriver: true }),
-      Animated.spring(bellScale, { toValue: 1, friction: 5, useNativeDriver: true }),
+      Animated.spring(bellScale, { toValue: 0.9, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.spring(bellScale, { toValue: 1, friction: 5, useNativeDriver: USE_NATIVE_DRIVER }),
     ]).start();
   };
 
   // Fallback to placeholders if the institute hasn't configured them yet
   const instituteData = userData?.instituteData;
-  const instituteName = instituteData?.name || "Institute Portal";
+  const instituteName = instituteData?.name || "Shii Edu";
   const logoUrl = instituteData?.logoUrl || null; 
+  const logoSize = layout.isCompact ? 34 : 40;
 
   return (
     <Animated.View
       style={[
         styles.headerContainer,
+        layout.isMobile && styles.headerContainerMobile,
+        layout.isWeb && layout.isMobile && styles.headerContainerMobileWeb,
         layout.isDesktop && styles.headerContainerDesktop,
         {
           opacity: fadeAnim,
@@ -56,36 +63,46 @@ export default function DynamicHeader({ title, showBack = false }) {
       <View style={[styles.headerContent, layout.isDesktop && { maxWidth: layout.maxContentWidth }]}>
         <View style={styles.leftSection}>
           {showBack ? (
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#2D3748" />
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.selectionAsync();
+                navigation.goBack();
+              }}
+              style={[styles.backButton, { minWidth: layout.touchTarget, minHeight: layout.touchTarget }]}
+            >
+              <Ionicons name="arrow-back" size={layout.isCompact ? 21 : 24} color="#2D3748" />
             </TouchableOpacity>
           ) : null}
 
           {/* Dynamic Logo */}
           {logoUrl ? (
-            <Image source={{ uri: logoUrl }} style={styles.logo} resizeMode="contain" />
+            <Image source={{ uri: logoUrl }} style={[styles.logo, layout.isCompact && styles.logoCompact]} resizeMode="contain" />
           ) : (
-            <View style={styles.placeholderLogo}>
-              <BrandLogo size={40} />
+            <View style={[styles.placeholderLogo, layout.isCompact && styles.placeholderLogoCompact]}>
+              <BrandLogo size={logoSize} />
             </View>
           )}
 
           {/* Dynamic Name or Page Title */}
           <View style={styles.textContainer}>
-            <Text style={styles.instituteName} numberOfLines={1}>
+            <Text style={[styles.instituteName, layout.isCompact && styles.instituteNameCompact]} numberOfLines={1}>
               {instituteName}
             </Text>
-            {title && <Text style={styles.pageTitle} numberOfLines={1}>{title}</Text>}
+            {title && <Text style={[styles.pageTitle, layout.isCompact && styles.pageTitleCompact]} numberOfLines={1}>{title}</Text>}
           </View>
         </View>
 
         {/* Notification Bell (Global feature for all 3 UIs) */}
         <TouchableOpacity
-          style={[styles.notificationButton, { minWidth: layout.touchTarget, minHeight: layout.touchTarget }]}
+          style={[
+            styles.notificationButton,
+            layout.isCompact && styles.notificationButtonCompact,
+            { minWidth: layout.touchTarget, minHeight: layout.touchTarget },
+          ]}
           onPress={pulseBell}
         >
           <Animated.View style={{ transform: [{ scale: bellScale }] }}>
-            <Ionicons name="notifications-outline" size={24} color="#2D3748" />
+            <Ionicons name="notifications-outline" size={layout.isCompact ? 21 : 24} color="#2D3748" />
           </Animated.View>
           {/* Optional: Add a red dot badge here if unread notifications exist */}
         </TouchableOpacity>
@@ -115,6 +132,13 @@ const styles = StyleSheet.create({
     paddingTop: 22,
     paddingHorizontal: 32,
   },
+  headerContainerMobile: {
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+  },
+  headerContainerMobileWeb: {
+    paddingTop: 16,
+  },
   headerContent: {
     width: '100%',
     alignSelf: 'center',
@@ -128,13 +152,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backButton: {
-    marginRight: 12,
+    marginRight: 8,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logo: {
     width: 40,
     height: 40,
     borderRadius: 8,
     marginRight: 12,
+  },
+  logoCompact: {
+    width: 34,
+    height: 34,
+    borderRadius: 7,
+    marginRight: 9,
   },
   placeholderLogo: {
     width: 40,
@@ -143,6 +176,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+  },
+  placeholderLogoCompact: {
+    width: 34,
+    height: 34,
+    borderRadius: 7,
+    marginRight: 9,
   },
   textContainer: {
     flex: 1,
@@ -153,10 +192,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#718096',
   },
+  instituteNameCompact: {
+    fontSize: 12,
+  },
   pageTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#2D3748',
+  },
+  pageTitleCompact: {
+    fontSize: 16,
   },
   notificationButton: {
     padding: 8,
@@ -164,5 +209,8 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  notificationButtonCompact: {
+    padding: 6,
   },
 });

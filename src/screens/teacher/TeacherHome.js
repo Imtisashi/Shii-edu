@@ -11,6 +11,8 @@ import { Ionicons } from '@expo/vector-icons';
 import PremiumActionCard from '../../components/ui/PremiumActionCard';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
+
 export default function TeacherHome() {
   const navigation = useNavigation();
   const { userData, logout } = useAuth();
@@ -21,7 +23,9 @@ export default function TeacherHome() {
 
   const teacherName = userData?.name || "Teacher";
   const initials = teacherName.charAt(0).toUpperCase();
-  const instituteName = userData?.instituteData?.name || "Edu-Hub Campus";
+  const instituteName = userData?.instituteData?.name || "Shii Edu";
+  const firstName = teacherName.split(' ')[0];
+  const compactCards = layout.isMobile;
   
   const instTypeStr = (userData?.instituteData?.type || 'school').toLowerCase();
   const isSchool = instTypeStr.includes('school');
@@ -50,19 +54,19 @@ export default function TeacherHome() {
       const p1 = isSchool ? `Class ${userData?.assignedClass || 'N/A'}` : (userData?.assignedDept || 'N/A');
       const p2 = isSchool ? `Sec ${userData?.assignedSection || 'N/A'}` : `Sem ${userData?.assignedSem || 'N/A'}`;
       return (
-        <View style={styles.pillContainer}>
-          <View style={[styles.pillBadge, {backgroundColor: 'rgba(16, 185, 129, 0.3)', borderColor: '#10B981'}]}>
+        <View style={[styles.pillContainer, layout.isMobile && styles.pillContainerMobile]}>
+          <View style={[styles.pillBadge, layout.isMobile && styles.pillBadgeMobile, {backgroundColor: 'rgba(16, 185, 129, 0.3)', borderColor: '#10B981'}]}>
              <Ionicons name="star" size={12} color="#fff" style={{marginRight: 4}} />
-             <Text style={styles.pillText}>Advisor</Text>
+             <Text style={[styles.pillText, layout.isMobile && styles.pillTextMobile]} numberOfLines={1}>Advisor</Text>
           </View>
-          <View style={styles.pillBadge}><Text style={styles.pillText}>{p1}</Text></View>
-          <View style={styles.pillBadge}><Text style={styles.pillText}>{p2}</Text></View>
+          <View style={[styles.pillBadge, layout.isMobile && styles.pillBadgeMobile]}><Text style={[styles.pillText, layout.isMobile && styles.pillTextMobile]} numberOfLines={1}>{p1}</Text></View>
+          <View style={[styles.pillBadge, layout.isMobile && styles.pillBadgeMobile]}><Text style={[styles.pillText, layout.isMobile && styles.pillTextMobile]} numberOfLines={1}>{p2}</Text></View>
         </View>
       );
     } else {
       return (
-        <View style={styles.pillContainer}>
-          <View style={styles.pillBadge}><Text style={styles.pillText}>Subject Teacher</Text></View>
+        <View style={[styles.pillContainer, layout.isMobile && styles.pillContainerMobile]}>
+          <View style={[styles.pillBadge, layout.isMobile && styles.pillBadgeMobile]}><Text style={[styles.pillText, layout.isMobile && styles.pillTextMobile]} numberOfLines={1}>Subject Teacher</Text></View>
         </View>
       );
     }
@@ -89,7 +93,7 @@ export default function TeacherHome() {
 
       <Animated.ScrollView 
         showsVerticalScrollIndicator={false} 
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: USE_NATIVE_DRIVER })}
         scrollEventThrottle={16}
         contentContainerStyle={[styles.scrollContent, layout.isDesktop && styles.scrollContentDesktop]}
       >
@@ -106,17 +110,17 @@ export default function TeacherHome() {
            <ImageBackground 
             source={{ uri: userData?.instituteData?.heroImage || 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1000&auto=format&fit=crop' }}             style={styles.heroImage}
            >
-             <View style={[styles.heroGradient, layout.isDesktop && styles.heroGradientDesktop, { backgroundColor: 'rgba(76, 29, 149, 0.65)' }]}>
-               <Text style={styles.instituteHeading}>{instituteName}</Text>
-               <View style={styles.profileRow}>
+             <View style={[styles.heroGradient, layout.isMobile && styles.heroGradientMobile, layout.isDesktop && styles.heroGradientDesktop, { backgroundColor: 'rgba(76, 29, 149, 0.65)' }]}>
+               <Text style={[styles.instituteHeading, layout.isMobile && styles.instituteHeadingMobile]} numberOfLines={1}>{instituteName}</Text>
+               <View style={[styles.profileRow, layout.isMobile && styles.profileRowMobile]}>
                   {userData?.profilePic ? (
-                    <Image source={{ uri: userData.profilePic }} style={styles.avatarImage} />
+                    <Image source={{ uri: userData.profilePic }} style={[styles.avatarImage, layout.isMobile && styles.avatarImageMobile]} />
                   ) : (
-                    <View style={styles.avatarFallback}><Text style={styles.avatarInitials}>{initials}</Text></View>
+                    <View style={[styles.avatarFallback, layout.isMobile && styles.avatarFallbackMobile]}><Text style={[styles.avatarInitials, layout.isMobile && styles.avatarInitialsMobile]}>{initials}</Text></View>
                   )}
                   <View style={styles.greetingBlock}>
-                    <Text style={styles.greeting}>Faculty Portal,</Text>
-                    <Text style={styles.greetingName}>{teacherName.split(' ')[0]}</Text>
+                    <Text style={[styles.greeting, layout.isMobile && styles.greetingMobile]}>Faculty Portal,</Text>
+                    <Text style={[styles.greetingName, layout.isMobile && styles.greetingNameMobile]} numberOfLines={1}>{firstName}</Text>
                   </View>
                </View>
                {renderBadges()}
@@ -124,19 +128,19 @@ export default function TeacherHome() {
            </ImageBackground>
         </Animated.View>
 
-        <View style={[styles.bodyContent, layout.isDesktop && styles.bodyContentDesktop, layout.isDesktop && { maxWidth: layout.maxContentWidth }]}>
-          <Text style={styles.sectionTitle}>Command Center</Text>
+        <View style={[styles.bodyContent, layout.isMobile && styles.bodyContentMobile, layout.isDesktop && styles.bodyContentDesktop, layout.isDesktop && { maxWidth: layout.maxContentWidth }]}>
+          <Text style={[styles.sectionTitle, layout.isMobile && styles.sectionTitleMobile]}>Command Center</Text>
           
           <View style={[styles.gridContainer, layout.isDesktop && styles.gridContainerDesktop]}>
-            <PremiumActionCard columns={layout.dashboardColumns} compact={layout.isCompact} title="Attendance" icon="checkmark-done-circle" color="#10B981" bgColor="#ECFDF5" delay={100} onPress={() => navigation.navigate('Attendance')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={layout.isCompact} title="Notices" icon="megaphone" color="#3B82F6" bgColor="#EFF6FF" delay={200} onPress={() => navigation.navigate('TeacherNotifs')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={layout.isCompact} title="Directory" icon="people" color="#8B5CF6" bgColor="#F5F3FF" delay={300} onPress={() => navigation.navigate('Students')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={layout.isCompact} title="Routine" icon="calendar" color="#E11D48" bgColor="#FFE4E6" delay={400} onPress={() => navigation.navigate('Routine')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={layout.isCompact} title="Assignments" icon="document-text" color="#F59E0B" bgColor="#FFFBEB" delay={500} onPress={() => navigation.navigate('Assignments')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={layout.isCompact} title="Gallery" icon="images" color="#F97316" bgColor="#FFF7ED" delay={600} onPress={() => navigation.navigate('GalleryView')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Attendance" icon="checkmark-done-circle" color="#10B981" bgColor="#ECFDF5" delay={100} onPress={() => navigation.navigate('Attendance')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Notices" icon="megaphone" color="#3B82F6" bgColor="#EFF6FF" delay={200} onPress={() => navigation.navigate('TeacherNotifs')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Directory" icon="people" color="#8B5CF6" bgColor="#F5F3FF" delay={300} onPress={() => navigation.navigate('Students')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Routine" icon="calendar" color="#E11D48" bgColor="#FFE4E6" delay={400} onPress={() => navigation.navigate('Routine')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title={layout.isMobile ? 'Tasks' : 'Assignments'} icon="document-text" color="#F59E0B" bgColor="#FFFBEB" delay={500} onPress={() => navigation.navigate('Assignments')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Gallery" icon="images" color="#F97316" bgColor="#FFF7ED" delay={600} onPress={() => navigation.navigate('GalleryView')} />
           </View>
 
-          <TouchableOpacity style={styles.logoutBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); logout(); }}>
+          <TouchableOpacity style={[styles.logoutBtn, layout.isMobile && styles.logoutBtnMobile]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); logout(); }}>
             <Ionicons name="log-out-outline" size={20} color="#EF4444" />
             <Text style={styles.logoutBtnText}>Secure Sign Out</Text>
           </TouchableOpacity>
@@ -160,22 +164,36 @@ const styles = StyleSheet.create({
   heroImage: { width: '100%', height: '100%', justifyContent: 'flex-end' },
   heroGradient: { width: '100%', height: '100%', padding: 24, justifyContent: 'flex-end' },
   heroGradientDesktop: { padding: 36 },
+  heroGradientMobile: { padding: 18 },
   instituteHeading: { fontSize: 16, fontWeight: '700', color: '#DDD6FE', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 20 },
+  instituteHeadingMobile: { fontSize: 12, lineHeight: 16, marginBottom: 14, letterSpacing: 1 },
   profileRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  profileRowMobile: { marginBottom: 12 },
   greetingBlock: { marginLeft: 16, flex: 1, minWidth: 0 },
   avatarFallback: { width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)' },
+  avatarFallbackMobile: { width: 56, height: 56, borderRadius: 28 },
   avatarInitials: { fontSize: 28, fontWeight: 'bold', color: '#fff' },
+  avatarInitialsMobile: { fontSize: 22 },
   avatarImage: { width: 70, height: 70, borderRadius: 35, borderWidth: 2, borderColor: '#fff' },
+  avatarImageMobile: { width: 56, height: 56, borderRadius: 28 },
   greeting: { fontSize: 16, color: '#E2E8F0', fontWeight: '500' },
+  greetingMobile: { fontSize: 13 },
   greetingName: { fontSize: 32, fontWeight: '900', color: '#FFFFFF', marginTop: 2, letterSpacing: 0 },
-  pillContainer: { flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center' },
+  greetingNameMobile: { fontSize: 25, lineHeight: 30 },
+  pillContainer: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
+  pillContainerMobile: { marginTop: 2 },
   pillBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', marginRight: 10 },
+  pillBadgeMobile: { paddingHorizontal: 10, paddingVertical: 6, marginRight: 8, marginBottom: 8 },
   pillText: { color: '#ffffff', fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
+  pillTextMobile: { fontSize: 12, letterSpacing: 0.2 },
   bodyContent: { padding: 20, marginTop: -20, backgroundColor: '#F4F4F5', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+  bodyContentMobile: { paddingHorizontal: 16, paddingTop: 18 },
   bodyContentDesktop: { width: '100%', alignSelf: 'center', marginTop: 18, borderRadius: 0, paddingHorizontal: 0 },
   sectionTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', marginBottom: 16, marginTop: 10, letterSpacing: 0 },
+  sectionTitleMobile: { fontSize: 18, marginBottom: 12 },
   gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 },
   gridContainerDesktop: { alignContent: 'flex-start' },
   logoutBtn: { backgroundColor: '#fff', flexDirection: 'row', padding: 20, borderRadius: 20, alignItems: 'center', justifyContent: 'center', shadowColor: '#EF4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 2, marginTop: 10 },
+  logoutBtnMobile: { padding: 16, borderRadius: 17 },
   logoutBtnText: { color: '#EF4444', fontWeight: 'bold', fontSize: 16, marginLeft: 10 },
 });

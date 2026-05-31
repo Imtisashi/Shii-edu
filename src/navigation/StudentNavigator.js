@@ -3,6 +3,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { sharedStackScreenOptions, sharedTabScreenOptions } from './animatedScreenOptions';
+import useResponsiveLayout from '../hooks/useResponsiveLayout';
 
 // Import all Student Screens
 import StudentHome from '../screens/student/StudentHome';
@@ -21,20 +22,22 @@ const Tab = createBottomTabNavigator();
 
 // --- THE NEW BOTTOM BAR ---
 function BottomTabNavigator() {
+  const layout = useResponsiveLayout();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         ...sharedTabScreenOptions,
         headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, color }) => {
           let iconName;
           if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
           else if (route.name === 'Tasks') iconName = focused ? 'book' : 'book-outline';
           else if (route.name === 'Notices') iconName = focused ? 'megaphone' : 'megaphone-outline';
           else if (route.name === 'Faculty') iconName = focused ? 'people' : 'people-outline';
           
-          // Make the active icon slightly larger for a premium feel
-          return <Ionicons name={iconName} size={focused ? 28 : 24} color={color} />;
+          const iconSize = layout.isMobile ? (focused ? 23 : 21) : (focused ? 28 : 24);
+          return <Ionicons name={iconName} size={iconSize} color={color} />;
         },
         tabBarActiveTintColor: '#4A90E2',
         tabBarInactiveTintColor: '#94A3B8',
@@ -42,18 +45,19 @@ function BottomTabNavigator() {
           backgroundColor: '#ffffff',
           borderTopWidth: 1,
           borderTopColor: '#F1F5F9',
-          height: 65,
-          paddingBottom: 10,
-          paddingTop: 10,
+          height: layout.isMobile ? 62 : 65,
+          paddingBottom: layout.isMobile ? 7 : 10,
+          paddingTop: layout.isMobile ? 7 : 10,
           elevation: 10,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -4 },
           shadowOpacity: 0.05,
           shadowRadius: 10,
         },
+        tabBarItemStyle: layout.isMobile ? { paddingHorizontal: 0 } : undefined,
         tabBarLabelStyle: {
           fontWeight: 'bold',
-          fontSize: 11,
+          fontSize: layout.isMobile ? 10 : 11,
         }
       })}
     >

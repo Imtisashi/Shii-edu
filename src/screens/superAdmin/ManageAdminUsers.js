@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 import { collection, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
@@ -73,6 +74,7 @@ export default function ManageAdminUsers() {
   }, []);
 
   const handleEditAdmin = (admin) => {
+    Haptics.selectionAsync();
     setEditAdminId(admin.id);
     setEditName(admin.name || '');
     setEditEmail(admin.email || '');
@@ -118,6 +120,7 @@ export default function ManageAdminUsers() {
   };
 
   const handleDeleteAdmin = async (adminId) => {
+    Haptics.selectionAsync();
     Alert.alert(
       'Delete Administrator',
       'Are you sure you want to delete this administrator profile? The Firebase Auth account may still need to be removed separately.',
@@ -147,8 +150,8 @@ export default function ManageAdminUsers() {
   };
 
   const renderAdmin = ({ item }) => (
-    <View style={[styles.adminCard, layout.listColumns > 1 && styles.adminCardDesktop]}>
-      <View style={styles.avatar}>
+    <View style={[styles.adminCard, layout.isMobile && styles.adminCardMobile, layout.listColumns > 1 && styles.adminCardDesktop]}>
+      <View style={[styles.avatar, layout.isMobile && styles.avatarMobile]}>
         <Text style={styles.avatarText}>{(item.name || item.email || 'A').charAt(0).toUpperCase()}</Text>
       </View>
 
@@ -167,11 +170,11 @@ export default function ManageAdminUsers() {
         </View>
       </View>
 
-      <View style={styles.actionButtons}>
-        <TouchableOpacity style={styles.editButton} onPress={() => handleEditAdmin(item)}>
+      <View style={[styles.actionButtons, layout.isMobile && styles.actionButtonsMobile]}>
+        <TouchableOpacity style={[styles.editButton, layout.isMobile && styles.smallActionButtonMobile]} onPress={() => handleEditAdmin(item)}>
           <Ionicons name="create-outline" size={20} color="#2563EB" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteAdmin(item.id)}>
+        <TouchableOpacity style={[styles.deleteButton, layout.isMobile && styles.smallActionButtonMobile]} onPress={() => handleDeleteAdmin(item.id)}>
           <Ionicons name="trash-outline" size={20} color="#EF4444" />
         </TouchableOpacity>
       </View>
@@ -206,15 +209,15 @@ export default function ManageAdminUsers() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <>
-            <View style={[styles.header, layout.isDesktop && styles.headerDesktop]}>
+            <View style={[styles.header, layout.isMobile && styles.headerMobile, layout.isDesktop && styles.headerDesktop]}>
               <Text style={styles.eyebrow}>Administrators</Text>
-              <Text style={styles.title}>Institute Admins</Text>
-              <Text style={styles.subtitle}>Review ownership, update contact details, and clean up admin profiles.</Text>
+              <Text style={[styles.title, layout.isMobile && styles.titleMobile]}>Institute Admins</Text>
+              <Text style={[styles.subtitle, layout.isMobile && styles.subtitleMobile]}>Review ownership, update contact details, and clean up admin profiles.</Text>
             </View>
 
-            <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('SuperAdminHome')}>
+            <TouchableOpacity style={[styles.addButton, layout.isMobile && styles.addButtonMobile]} onPress={() => { Haptics.selectionAsync(); navigation.navigate('SuperAdminHome'); }}>
               <Ionicons name="add-circle" size={22} color="#fff" />
-              <Text style={styles.buttonText}>Create Admin With New Institute</Text>
+              <Text style={styles.buttonText} numberOfLines={1}>Create Admin With New Institute</Text>
             </TouchableOpacity>
           </>
         }
@@ -236,7 +239,7 @@ export default function ManageAdminUsers() {
                   <Ionicons name="person" size={26} color="#2563EB" />
                 </View>
                 <Text style={styles.modalTitle}>Edit Administrator</Text>
-                <Text style={styles.modalSubtitle}>This updates the Firestore profile shown throughout Edu-Hub.</Text>
+                <Text style={styles.modalSubtitle}>This updates the Firestore profile shown throughout Shii Edu.</Text>
               </View>
 
               <View style={styles.inputContainer}>
@@ -287,10 +290,13 @@ const styles = StyleSheet.create({
   listContent: { paddingVertical: 16, paddingBottom: 32 },
   listContentDesktop: { width: '100%', alignSelf: 'center', paddingTop: 24 },
   header: { backgroundColor: '#0F172A', borderRadius: 22, padding: 22, marginBottom: 14 },
+  headerMobile: { padding: 18, borderRadius: 20 },
   headerDesktop: { padding: 30 },
   eyebrow: { color: '#93C5FD', fontSize: 12, fontWeight: '900', letterSpacing: 1.2, textTransform: 'uppercase' },
   title: { fontSize: 28, fontWeight: '900', color: '#FFFFFF', marginTop: 8 },
+  titleMobile: { fontSize: 24, lineHeight: 29 },
   subtitle: { fontSize: 14, color: '#CBD5E1', marginTop: 8, lineHeight: 21 },
+  subtitleMobile: { fontSize: 13, lineHeight: 19 },
   addButton: {
     backgroundColor: '#2563EB',
     paddingVertical: 14,
@@ -300,7 +306,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
-  buttonText: { color: '#fff', fontWeight: '900', fontSize: 15, marginLeft: 8 },
+  addButtonMobile: { paddingHorizontal: 12, paddingVertical: 13, borderRadius: 15 },
+  buttonText: { flexShrink: 1, color: '#fff', fontWeight: '900', fontSize: 15, marginLeft: 8 },
   adminCard: {
     backgroundColor: '#fff',
     borderRadius: 18,
@@ -316,9 +323,11 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 2,
   },
+  adminCardMobile: { padding: 13, borderRadius: 16, alignItems: 'flex-start' },
   columnWrapper: { gap: 12 },
   adminCardDesktop: { flex: 1 },
   avatar: { width: 48, height: 48, borderRadius: 15, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginRight: 14 },
+  avatarMobile: { width: 40, height: 40, borderRadius: 12, marginRight: 10 },
   avatarText: { color: '#2563EB', fontSize: 18, fontWeight: '900' },
   adminInfo: { flex: 1, minWidth: 0 },
   adminName: { fontSize: 17, fontWeight: '900', color: '#0F172A' },
@@ -336,6 +345,7 @@ const styles = StyleSheet.create({
   },
   adminInstitute: { fontSize: 12, color: '#2563EB', fontWeight: '800', marginLeft: 5 },
   actionButtons: { flexDirection: 'row', marginLeft: 10 },
+  actionButtonsMobile: { marginLeft: 8 },
   editButton: {
     width: 40,
     height: 40,
@@ -353,6 +363,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  smallActionButtonMobile: { width: 38, height: 38, borderRadius: 12 },
   emptyState: { alignItems: 'center', justifyContent: 'center', padding: 34, backgroundColor: '#fff', borderRadius: 20 },
   emptyTitle: { fontSize: 20, color: '#0F172A', fontWeight: '900', marginTop: 14 },
   emptyText: { fontSize: 14, color: '#64748B', textAlign: 'center', marginTop: 8, lineHeight: 21 },

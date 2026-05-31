@@ -3,6 +3,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { sharedStackScreenOptions, sharedTabScreenOptions } from './animatedScreenOptions';
+import useResponsiveLayout from '../hooks/useResponsiveLayout';
 
 // Import Admin Screens
 import AdminHome from '../screens/admin/AdminHome';
@@ -20,6 +21,8 @@ const Tab = createBottomTabNavigator();
 
 // --- THE ADMIN BOTTOM BAR ---
 function AdminBottomTabs() {
+  const layout = useResponsiveLayout();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -32,7 +35,8 @@ function AdminBottomTabs() {
           else if (route.name === 'Ledger') iconName = focused ? 'wallet' : 'wallet-outline';
           else if (route.name === 'Broadcasts') iconName = focused ? 'megaphone' : 'megaphone-outline';
           
-          return <Ionicons name={iconName} size={focused ? 28 : 24} color={color} />;
+          const iconSize = layout.isMobile ? (focused ? 23 : 21) : (focused ? 28 : 24);
+          return <Ionicons name={iconName} size={iconSize} color={color} />;
         },
         tabBarActiveTintColor: '#3B82F6', // Admin Theme Color (Blue)
         tabBarInactiveTintColor: '#94A3B8',
@@ -40,12 +44,13 @@ function AdminBottomTabs() {
           backgroundColor: '#ffffff',
           borderTopWidth: 1,
           borderTopColor: '#F1F5F9',
-          height: 65,
-          paddingBottom: 10,
-          paddingTop: 10,
+          height: layout.isMobile ? 62 : 65,
+          paddingBottom: layout.isMobile ? 7 : 10,
+          paddingTop: layout.isMobile ? 7 : 10,
           elevation: 10,
         },
-        tabBarLabelStyle: { fontWeight: 'bold', fontSize: 11 }
+        tabBarItemStyle: layout.isMobile ? { paddingHorizontal: 0 } : undefined,
+        tabBarLabelStyle: { fontWeight: 'bold', fontSize: layout.isMobile ? 10 : 11 }
       })}
     >
       <Tab.Screen name="Dashboard" component={AdminHome} />

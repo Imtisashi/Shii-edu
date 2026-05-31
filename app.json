@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "educational-saas-app",
-    "slug": "educational-saas-app",
+    "name": "Shii Edu",
+    "slug": "shii-edu",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "educationalsaasapp",
+    "scheme": "shiiedu",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

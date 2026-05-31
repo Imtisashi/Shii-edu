@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { PieChart } from 'react-native-chart-kit';
 import { useNavigation } from '@react-navigation/native';
 import { collection, getDocs } from 'firebase/firestore';
@@ -22,6 +23,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { createInstituteAndAdmin, deleteInstituteAsSuperAdmin, getInstituteStats } from '../../services/firebaseAdminService';
 import { db } from '../../../firebaseConfig';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
+
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 export default function SuperAdminHome() {
   const navigation = useNavigation();
@@ -46,13 +49,13 @@ export default function SuperAdminHome() {
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 450,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.spring(slideAnim, {
         toValue: 0,
         friction: 8,
         tension: 45,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
     ]).start();
   }, [fadeAnim, slideAnim]);
@@ -107,6 +110,11 @@ export default function SuperAdminHome() {
       totalUsers,
     };
   }, [institutes]);
+
+  const pieWidth = Math.max(
+    260,
+    Math.min(layout.availableWidth - (layout.isMobile ? 32 : 0), layout.isDesktop ? 560 : 520)
+  );
 
   const userMixData = useMemo(() => {
     const data = [
@@ -218,6 +226,7 @@ export default function SuperAdminHome() {
   };
 
   const handleDeleteInstitute = (institute) => {
+    Haptics.selectionAsync();
     const message = `Delete ${institute.name || 'this institute'} and all linked users, attendance, payments, notices, routines, assignments, grades, gallery items, and papers? This cannot be undone.`;
 
     if (Platform.OS === 'web') {
@@ -250,6 +259,7 @@ export default function SuperAdminHome() {
     <Animated.View
       style={[
         styles.instituteCard,
+        layout.isMobile && styles.instituteCardMobile,
         layout.listColumns > 1 && styles.instituteCardDesktop,
         {
           opacity: fadeAnim,
@@ -264,7 +274,7 @@ export default function SuperAdminHome() {
         },
       ]}
     >
-      <View style={styles.instituteIcon}>
+      <View style={[styles.instituteIcon, layout.isMobile && styles.instituteIconMobile]}>
         <Ionicons name="school" size={22} color="#2563EB" />
       </View>
 
@@ -272,7 +282,7 @@ export default function SuperAdminHome() {
         <Text style={styles.instituteName} numberOfLines={1}>
           {item.name || 'Unnamed Institute'}
         </Text>
-        <Text style={styles.instituteId}>ID: {item.instituteId}</Text>
+        <Text style={styles.instituteId} numberOfLines={1}>ID: {item.instituteId}</Text>
 
         <View style={styles.instituteStats}>
           <View style={styles.miniStat}>
@@ -291,7 +301,7 @@ export default function SuperAdminHome() {
       </View>
 
       <TouchableOpacity
-        style={[styles.deleteButton, deletingInstituteId === item.id && styles.disabledButton]}
+        style={[styles.deleteButton, layout.isMobile && styles.deleteButtonMobile, deletingInstituteId === item.id && styles.disabledButton]}
         onPress={() => handleDeleteInstitute(item)}
         accessibilityLabel={`Delete ${item.name || 'institute'}`}
         disabled={deletingInstituteId === item.id}
@@ -333,16 +343,16 @@ export default function SuperAdminHome() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshList} tintColor="#2563EB" />}
         ListHeaderComponent={
           <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-            <View style={[styles.hero, layout.isDesktop && styles.heroDesktop]}>
+            <View style={[styles.hero, layout.isMobile && styles.heroMobile, layout.isDesktop && styles.heroDesktop]}>
               <View>
                 <Text style={styles.eyebrow}>Super Admin</Text>
-                <Text style={styles.heroTitle}>Platform Command Center</Text>
-                <Text style={styles.heroSubtitle}>
+                <Text style={[styles.heroTitle, layout.isMobile && styles.heroTitleMobile]}>Platform Command Center</Text>
+                <Text style={[styles.heroSubtitle, layout.isMobile && styles.heroSubtitleMobile]}>
                   Welcome, {userData?.name || 'Admin'}. Monitor institutes, admins, and active campus users from one clean view.
                 </Text>
               </View>
 
-              <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+              <TouchableOpacity style={styles.logoutButton} onPress={() => { Haptics.selectionAsync(); logout(); }}>
                 <Ionicons name="log-out-outline" size={18} color="#F8FAFC" />
                 <Text style={styles.logoutText}>Sign out</Text>
               </TouchableOpacity>
@@ -376,26 +386,26 @@ export default function SuperAdminHome() {
 
                 <PieChart
                   data={userMixData}
-                  width={layout.chartWidth(layout.isDesktop ? 560 : 520)}
-                  height={190}
+                  width={pieWidth}
+                  height={layout.isMobile ? 176 : 190}
                   chartConfig={{ color: (opacity = 1) => `rgba(15, 23, 42, ${opacity})` }}
                   accessor="population"
                   backgroundColor="transparent"
-                  paddingLeft="8"
+                  paddingLeft={layout.isMobile ? "0" : "8"}
                   absolute
                 />
               </View>
 
               <View style={[styles.actionGrid, layout.isDesktop && styles.actionPanelDesktop]}>
-                <TouchableOpacity style={styles.primaryAction} onPress={() => setShowAddInstituteModal(true)}>
+                <TouchableOpacity style={[styles.primaryAction, layout.isMobile && styles.actionButtonMobile]} onPress={() => { Haptics.selectionAsync(); setShowAddInstituteModal(true); }}>
                   <Ionicons name="add-circle" size={22} color="#FFFFFF" />
                   <Text style={styles.primaryActionText}>Add Institute</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.secondaryAction} onPress={() => navigation.navigate('ManageInstitutes')}>
+                <TouchableOpacity style={[styles.secondaryAction, layout.isMobile && styles.actionButtonMobile]} onPress={() => { Haptics.selectionAsync(); navigation.navigate('ManageInstitutes'); }}>
                   <Ionicons name="business-outline" size={22} color="#2563EB" />
                   <Text style={styles.secondaryActionText}>Manage Institutes</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.secondaryAction} onPress={() => navigation.navigate('ManageAdminUsers')}>
+                <TouchableOpacity style={[styles.secondaryAction, layout.isMobile && styles.actionButtonMobile]} onPress={() => { Haptics.selectionAsync(); navigation.navigate('ManageAdminUsers'); }}>
                   <Ionicons name="people-outline" size={22} color="#2563EB" />
                   <Text style={styles.secondaryActionText}>Manage Admins</Text>
                 </TouchableOpacity>
@@ -547,9 +557,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 30,
   },
+  heroMobile: { padding: 18, borderRadius: 20 },
   eyebrow: { color: '#93C5FD', fontSize: 12, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase' },
   heroTitle: { color: '#FFFFFF', fontSize: 28, fontWeight: '900', marginTop: 8, lineHeight: 34 },
+  heroTitleMobile: { fontSize: 24, lineHeight: 29 },
   heroSubtitle: { color: '#CBD5E1', fontSize: 14, lineHeight: 21, marginTop: 10, maxWidth: 560 },
+  heroSubtitleMobile: { fontSize: 13, lineHeight: 19 },
   logoutButton: {
     alignSelf: 'flex-start',
     marginTop: 18,
@@ -621,6 +634,7 @@ const styles = StyleSheet.create({
     minWidth: 160,
     flexGrow: 1,
   },
+  actionButtonMobile: { minWidth: 145, paddingHorizontal: 12, paddingVertical: 13 },
   primaryActionText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900', marginLeft: 8 },
   secondaryAction: {
     flexDirection: 'row',
@@ -651,6 +665,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 2,
   },
+  instituteCardMobile: { padding: 13, borderRadius: 16, alignItems: 'flex-start' },
   instituteColumnWrapper: { gap: 12 },
   instituteCardDesktop: { flex: 1 },
   instituteIcon: {
@@ -662,6 +677,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 14,
   },
+  instituteIconMobile: { width: 40, height: 40, borderRadius: 12, marginRight: 10 },
   instituteInfo: { flex: 1, minWidth: 0 },
   instituteName: { fontSize: 17, fontWeight: '900', color: '#0F172A' },
   instituteId: { fontSize: 12, color: '#64748B', marginTop: 3, fontWeight: '600' },
@@ -678,6 +694,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 12,
   },
+  deleteButtonMobile: { width: 38, height: 38, borderRadius: 12, marginLeft: 8 },
   emptyState: { alignItems: 'center', justifyContent: 'center', padding: 30, backgroundColor: '#FFFFFF', borderRadius: 20 },
   emptyIcon: { width: 78, height: 78, borderRadius: 24, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' },
   emptyTitle: { color: '#0F172A', fontSize: 20, fontWeight: '900', marginTop: 16 },

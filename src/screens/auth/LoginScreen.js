@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Alert
+  ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Alert, Animated
 } from 'react-native';
 import { auth, db } from '../../../firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 import BrandLogo from '../../components/BrandLogo';
+
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 const showLoginAlert = (message) => {
   if (Platform.OS === 'web') {
@@ -21,6 +24,7 @@ const showLoginAlert = (message) => {
 
 export default function Login() {
   const layout = useResponsiveLayout();
+  const introAnim = useRef(new Animated.Value(0)).current;
   const [identifier, setIdentifier] = useState(''); // Can be Email OR Student ID
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -48,7 +52,35 @@ export default function Login() {
     loadSavedCredentials();
   }, []);
 
+  useEffect(() => {
+    Animated.spring(introAnim, {
+      toValue: 1,
+      friction: 8,
+      tension: 42,
+      useNativeDriver: USE_NATIVE_DRIVER,
+    }).start();
+  }, [introAnim]);
+
+  const introStyle = {
+    opacity: introAnim,
+    transform: [
+      {
+        translateY: introAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [18, 0],
+        }),
+      },
+      {
+        scale: introAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.98, 1],
+        }),
+      },
+    ],
+  };
+
   const handleLogin = async () => {
+    Haptics.selectionAsync();
     if (!identifier || !password) {
       showLoginAlert('Please enter your ID/Email and Password.');
       return;
@@ -101,6 +133,7 @@ export default function Login() {
   };
 
   const handleSendResetLink = async () => {
+    Haptics.selectionAsync();
     if (!resetEmail) {
       setResetMessage('Please enter your email address.');
       setResetMessageType('error');
@@ -138,11 +171,11 @@ export default function Login() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {layout.isDesktop ? (
-        <View style={styles.desktopBrandPanel}>
+        <Animated.View style={[styles.desktopBrandPanel, introStyle]}>
           <BrandLogo size={68} variant="light" style={styles.brandIcon} />
-          <Text style={styles.brandTitle}>Edu-Hub</Text>
+          <Text style={styles.brandTitle}>Shii Edu</Text>
           <Text style={styles.brandCopy}>
-            A responsive campus command center for superadmins, admins, teachers, and students.
+            A polished education SaaS workspace for superadmins, admins, teachers, and students.
           </Text>
           <View style={styles.brandFeatureRow}>
             <Ionicons name="shield-checkmark" size={18} color="#C4B5FD" />
@@ -152,16 +185,16 @@ export default function Login() {
             <Ionicons name="pie-chart" size={18} color="#C4B5FD" />
             <Text style={styles.brandFeatureText}>Desktop analytics and mobile workflows</Text>
           </View>
-        </View>
+        </Animated.View>
       ) : null}
 
-      <View style={[styles.card, layout.isDesktop && styles.cardDesktop, layout.isCompact && styles.cardCompact]}>
-        <View style={styles.header}>
-          <View style={styles.logoCage}>
+      <Animated.View style={[styles.card, layout.isMobile && styles.cardMobile, layout.isDesktop && styles.cardDesktop, layout.isCompact && styles.cardCompact, introStyle]}>
+        <View style={[styles.header, layout.isMobile && styles.headerMobile]}>
+          <View style={[styles.logoCage, layout.isMobile && styles.logoCageMobile]}>
             <BrandLogo size={58} />
           </View>
-          <Text style={styles.title}>Edu-Hub</Text>
-          <Text style={styles.subtitle}>Enter your Campus ID or Email to continue</Text>
+          <Text style={[styles.title, layout.isMobile && styles.titleMobile]}>Shii Edu</Text>
+          <Text style={styles.subtitle}>Sign in with your campus ID or email</Text>
         </View>
 
         <View style={styles.form}>
@@ -170,7 +203,7 @@ export default function Login() {
             <Ionicons name="person-outline" size={20} color="#94A3B8" style={styles.icon} />
             <TextInput
               style={styles.input}
-              placeholder="e.g. STU-1024 or admin@college.edu"
+              placeholder={layout.isMobile ? 'ID or email' : 'e.g. STU-1024 or admin@college.edu'}
               value={identifier}
               onChangeText={setIdentifier}
               autoCapitalize="none"
@@ -196,10 +229,13 @@ export default function Login() {
           </View>
 
           {/* REMEMBER ME & FORGOT PASSWORD ROW */}
-          <View style={[styles.optionsRow, layout.isCompact && styles.optionsRowCompact]}>
+          <View style={[styles.optionsRow, layout.isMobile && styles.optionsRowMobile, layout.isCompact && styles.optionsRowCompact]}>
             <TouchableOpacity
               style={styles.rememberRow}
-              onPress={() => setRememberMe(!rememberMe)}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setRememberMe(!rememberMe);
+              }}
               activeOpacity={0.8}
             >
               <View style={[styles.checkbox, rememberMe && styles.checkboxActive]} >
@@ -208,7 +244,10 @@ export default function Login() {
               <Text style={styles.rememberText}>Remember Me</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => setShowResetModal(true)}>
+            <TouchableOpacity onPress={() => {
+              Haptics.selectionAsync();
+              setShowResetModal(true);
+            }}>
               <Text style={styles.forgotText}>Forgot Password?</Text>
             </TouchableOpacity>
           </View>
@@ -229,7 +268,7 @@ export default function Login() {
             Access is managed by your campus administrator.
           </Text>
         </View>
-      </View>
+      </Animated.View>
 
       {/* Password Reset Modal */}
       <Modal
@@ -321,10 +360,14 @@ const styles = StyleSheet.create({
   brandFeatureText: { color: '#EDE9FE', marginLeft: 10, fontSize: 15, fontWeight: '700' },
   card: { backgroundColor: '#ffffff', width: '100%', maxWidth: 450, borderRadius: 30, padding: 30, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 20 },
   cardDesktop: { maxWidth: 440 },
+  cardMobile: { borderRadius: 26, padding: 24 },
   cardCompact: { padding: 22, borderRadius: 24 },
   header: { alignItems: 'center', marginBottom: 35 },
+  headerMobile: { marginBottom: 26 },
   logoCage: { backgroundColor: '#F5F3FF', padding: 10, borderRadius: 22, marginBottom: 15 },
+  logoCageMobile: { padding: 8, borderRadius: 20, marginBottom: 12 },
   title: { fontSize: 28, fontWeight: '900', color: '#1E293B', marginBottom: 5 },
+  titleMobile: { fontSize: 26 },
   subtitle: { fontSize: 14, color: '#64748B', textAlign: 'center' },
 
   form: { marginBottom: 20 },
@@ -335,6 +378,7 @@ const styles = StyleSheet.create({
   eyeIcon: { paddingHorizontal: 15 },
 
   optionsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 },
+  optionsRowMobile: { alignItems: 'flex-start', gap: 10 },
   optionsRowCompact: { flexWrap: 'wrap', gap: 12 },
   rememberRow: { flexDirection: 'row', alignItems: 'center' },
   checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: '#CBD5E0', justifyContent: 'center', alignItems: 'center', marginRight: 8 },
@@ -346,7 +390,7 @@ const styles = StyleSheet.create({
   loginBtnText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
 
   footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10, paddingTop: 20, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
-  footerText: { fontSize: 12, color: '#94A3B8', marginLeft: 6, fontWeight: '500' },
+  footerText: { flex: 1, fontSize: 12, color: '#94A3B8', marginLeft: 6, fontWeight: '500' },
   modalContainer: { flex: 1, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { width: '100%', maxWidth: 430, backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24, shadowColor: '#0F172A', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.12, shadowRadius: 22, elevation: 8 },
   modalContentDesktop: { maxWidth: 460 },
