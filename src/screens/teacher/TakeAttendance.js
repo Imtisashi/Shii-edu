@@ -7,6 +7,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { createUnifiedNotification } from '../../services/unifiedNotificationService';
 
+const resolveStudentUid = (student) => student.uid || student.authUid || student.id;
+
 export default function TakeAttendance({ navigation }) {
   const { userData } = useAuth();
   const [students, setStudents] = useState([]);
@@ -27,6 +29,11 @@ export default function TakeAttendance({ navigation }) {
 
   useEffect(() => {
     const fetchStudents = async () => {
+      if (!userData?.instituteId) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const q = query(
           collection(db, "users"),
@@ -48,7 +55,7 @@ export default function TakeAttendance({ navigation }) {
       }
     };
     fetchStudents();
-  }, [userData.instituteId]);
+  }, [userData?.instituteId]);
 
   const submitAttendance = async () => {
     if (instType === 'college' && !selectedSubject) {
@@ -60,12 +67,17 @@ export default function TakeAttendance({ navigation }) {
       const batch = writeBatch(db);
       students.forEach((student) => {
         const isPresent = Boolean(attendance[student.id]);
+        const studentUid = resolveStudentUid(student);
         batch.set(doc(collection(db, "attendance")), {
           date: new Date().toISOString().split('T')[0],
           timestamp: serverTimestamp(),
           teacherId: userData.uid,
           teacherName: userData.name || '',
-          studentId: student.id,
+          studentId: studentUid,
+          studentUid,
+          studentDocId: student.id,
+          studentUniqueId: student.uniqueId || null,
+          studentEmail: student.email || '',
           studentName: student.name || '',
           instituteId: userData.instituteId,
           status: isPresent ? 'present' : 'absent',

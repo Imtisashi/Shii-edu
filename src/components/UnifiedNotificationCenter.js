@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList, Modal,
-  ActivityIndicator, Platform
+  ActivityIndicator, Platform, ScrollView
 } from 'react-native';
 import { useUnifiedNotifications } from '../services/unifiedNotificationService';
 import { useAuth } from '../contexts/AuthContext';
@@ -220,7 +220,7 @@ export default function UnifiedNotificationCenter() {
 
             {selectedNotification && (
               <>
-                <View style={styles.modalBody}>
+                <ScrollView style={styles.modalBody} contentContainerStyle={styles.modalBodyContent}>
                   <View style={styles.modalSection}>
                     <Text style={styles.modalSectionTitle}>Message</Text>
                     <Text style={styles.modalText}>{selectedNotification.message}</Text>
@@ -266,7 +266,7 @@ export default function UnifiedNotificationCenter() {
                       </View>
                     )}
                   </View>
-                </View>
+                </ScrollView>
 
                 <View style={styles.modalActions}>
                   {!isRead(selectedNotification) && (
@@ -521,6 +521,10 @@ const styles = StyleSheet.create({
   },
 
   modalBody: {
+    maxHeight: 420,
+  },
+
+  modalBodyContent: {
     padding: Spacing.lg,
   },
 

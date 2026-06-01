@@ -1,10 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform, Keyboard, FlatList } from 'react-native';
 import { SmoothSpinner } from '../../components/ui/LoadingState';
-import { collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig'; 
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { createUnifiedNotification } from '../../services/unifiedNotificationService';
+
+const createdAtToMillis = (createdAt) => {
+  if (!createdAt) return 0;
+  if (typeof createdAt.toMillis === 'function') return createdAt.toMillis();
+  if (createdAt.seconds) return createdAt.seconds * 1000;
+  const parsed = new Date(createdAt).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const isCampusBroadcast = (notice) => {
+  const originalType = notice?.data?.originalType;
+  return (
+    notice?.type === 'announcement' ||
+    notice?.relatedType === 'notice' ||
+    notice?.relatedType === 'broadcast' ||
+    originalType === 'admin_notice' ||
+    originalType === 'campus_broadcast'
+  );
+};
 
 export default function ManageNotices() {
   const { userData } = useAuth();
@@ -22,13 +42,15 @@ export default function ManageNotices() {
     if (!userData?.instituteId) return;
 
     const q = query(
-      collection(db, "notices"),
-      where("instituteId", "==", userData.instituteId),
-      orderBy("createdAt", "desc")
+      collection(db, "notifications"),
+      where("instituteId", "==", userData.instituteId)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const noticeList = snapshot.docs.map(document => ({ id: document.id, ...document.data() }));
+      const noticeList = snapshot.docs
+        .map(document => ({ id: document.id, ...document.data() }))
+        .filter(isCampusBroadcast)
+        .sort((a, b) => createdAtToMillis(b.createdAt) - createdAtToMillis(a.createdAt));
       setNotices(noticeList);
       setLoadingList(false);
     });
@@ -52,12 +74,22 @@ export default function ManageNotices() {
     setIsSubmitting(true);
     
     try {
-      await addDoc(collection(db, "notices"), {
+      await createUnifiedNotification({
         title: title.trim(),
         message: message.trim(),
+        type: 'announcement',
+        targetRoles: ['student', 'teacher', 'admin'],
         instituteId: userData.instituteId,
-        author: userData.name,
-        createdAt: serverTimestamp(),
+        author: {
+          uid: userData.uid,
+          name: userData.name || 'Admin',
+          role: userData.role || 'admin',
+        },
+        relatedId: 'campus-broadcast',
+        relatedType: 'broadcast',
+        data: {
+          originalType: 'campus_broadcast'
+        }
       });
 
       setTitle(''); 
@@ -79,12 +111,12 @@ export default function ManageNotices() {
   const handleDelete = (noticeId) => {
     if (Platform.OS === 'web') {
       if (window.confirm("Delete this broadcast permanently?")) {
-        deleteDoc(doc(db, "notices", noticeId));
+        deleteDoc(doc(db, "notifications", noticeId));
       }
     } else {
       Alert.alert("Confirm Delete", "Delete this broadcast permanently?", [
         { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: () => deleteDoc(doc(db, "notices", noticeId)) }
+        { text: "Delete", style: "destructive", onPress: () => deleteDoc(doc(db, "notifications", noticeId)) }
       ]);
     }
   };
@@ -116,7 +148,7 @@ export default function ManageNotices() {
                 <View style={styles.noticeInfo}>
                   <Text style={styles.noticeTitle}>{item.title}</Text>
                   <Text style={styles.noticeMessage}>{item.message}</Text>
-                  <Text style={styles.noticeMeta}>Posted by {item.author}</Text>
+                  <Text style={styles.noticeMeta}>Posted by {typeof item.author === 'string' ? item.author : item.author?.name || 'Admin'}</Text>
                 </View>
                 <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}>
                   <Ionicons name="trash-outline" size={20} color="#E53E3E" />

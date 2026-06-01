@@ -1,9 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { auth, db } from '../../firebaseConfig';
 
 const AuthContext = createContext();
+
+const createdAtToMillis = (createdAt) => {
+  if (!createdAt) return 0;
+  if (typeof createdAt.toMillis === 'function') return createdAt.toMillis();
+  if (createdAt.seconds) return createdAt.seconds * 1000;
+  const parsed = new Date(createdAt).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
 
 export function useAuth() {
   return useContext(AuthContext);
@@ -144,41 +152,33 @@ export function AuthProvider({ children }) {
     setNotificationsLoading(true);
     setNotificationsError(null);
 
-    // Base query for institute-specific notifications
-    const baseQuery = query(
+    const notificationsQuery = query(
       collection(db, "notifications"),
-      where("instituteId", "==", userData.instituteId),
-      orderBy("createdAt", "desc")
+      where("instituteId", "==", userData.instituteId)
     );
 
-    cleanupNotifications();
-
-    // Role-specific filters
-    let notificationsQuery;
     const notificationRole = ['student', 'teacher', 'admin'].includes(userData.role)
       ? userData.role
       : 'student';
 
-    if (userData.role === 'superadmin') {
-      notificationsQuery = baseQuery;
-    } else {
-      notificationsQuery = query(
-        baseQuery,
-        where("targetRoles", "array-contains-any", [notificationRole, "all"])
-      );
-    }
-
-    // Limit to 50 most recent notifications
-    const finalQuery = query(notificationsQuery, limit(50));
+    cleanupNotifications();
 
     // Set up real-time listener
     const unsubscribe = onSnapshot(
-      finalQuery,
+      notificationsQuery,
       (snapshot) => {
-        const newNotifications = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        const newNotifications = snapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }))
+          .filter((notification) => {
+            if (userData.role === 'superadmin') return true;
+            const targets = notification.targetRoles || [];
+            return targets.includes(notificationRole) || targets.includes('all');
+          })
+          .sort((a, b) => createdAtToMillis(b.createdAt) - createdAtToMillis(a.createdAt))
+          .slice(0, 50);
         setNotifications(newNotifications);
         setNotificationsLoading(false);
         setNotificationsError(null);

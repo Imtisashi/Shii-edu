@@ -109,9 +109,9 @@ export default function FeePayment() {
     } catch (e) {
       console.error(e);
       if (Platform.OS === 'web') {
-        window.alert("Could not connect to payment server. Is your backend running?");
+        window.alert("Payment service is currently unavailable. Please try again later or contact your campus office.");
       } else {
-        Alert.alert("Server Error", "Could not connect to payment server.");
+        Alert.alert("Payment Unavailable", "Please try again later or contact your campus office.");
       }
     } finally {
       setIsPaying(false);
@@ -127,7 +127,7 @@ export default function FeePayment() {
   const breakdown = feeData.feeBreakdown || [];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 96 }} showsVerticalScrollIndicator={false}>
       
       {/* FINANCIAL OVERVIEW CARD */}
       <View style={styles.card}>

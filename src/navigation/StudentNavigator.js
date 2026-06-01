@@ -17,6 +17,7 @@ import Grades from '../screens/student/Grades';
 import Notices from '../screens/student/Notices';
 import Routine from '../screens/student/Routine';
 import StudentNotifications from '../screens/student/StudentNotifications';
+import CoursePlayerScreen from '../screens/student/CoursePlayerScreen';
 
 const Drawer = createDrawerNavigator();
 const Tab = createBottomTabNavigator();
@@ -104,6 +105,13 @@ export default function StudentNavigator() {
         drawerLabel: 'Attendance',
         drawerIcon: ({ focused, color }) => (
           <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} size={24} color={color} />
+        )
+      }} />
+
+      <Drawer.Screen name="Courses" component={CoursePlayerScreen} options={{
+        drawerLabel: 'Courses',
+        drawerIcon: ({ focused, color }) => (
+          <Ionicons name={focused ? 'play-circle' : 'play-circle-outline'} size={24} color={color} />
         )
       }} />
 

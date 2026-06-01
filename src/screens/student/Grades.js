@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList } from 'react-native';
 import { SmoothSpinner } from '../../components/ui/LoadingState';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+
+const timestampToMillis = (timestamp) => {
+  if (!timestamp) return 0;
+  if (typeof timestamp.toMillis === 'function') return timestamp.toMillis();
+  if (timestamp.seconds) return timestamp.seconds * 1000;
+  const parsed = new Date(timestamp).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
 
 export default function Grades() {
   const { userData } = useAuth();
@@ -18,15 +26,16 @@ export default function Grades() {
     // Listen for grades belonging ONLY to this student
     const q = query(
       collection(db, "grades"),
-      where("studentId", "==", userData.uid),
-      orderBy("timestamp", "desc")
+      where("studentId", "==", userData.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const gradeList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const gradeList = snapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        .sort((a, b) => timestampToMillis(b.timestamp) - timestampToMillis(a.timestamp));
 
       // Calculate simple stats
       if (gradeList.length > 0) {
@@ -35,9 +44,16 @@ export default function Grades() {
           average: (sum / gradeList.length).toFixed(1),
           totalExams: gradeList.length
         });
+      } else {
+        setStats({ average: 0, totalExams: 0 });
       }
 
       setGrades(gradeList);
+      setLoading(false);
+    }, (error) => {
+      console.error('Grades query failed:', error);
+      setGrades([]);
+      setStats({ average: 0, totalExams: 0 });
       setLoading(false);
     });
 
@@ -50,7 +66,7 @@ export default function Grades() {
         <Text style={styles.subjectText}>{item.subject}</Text>
         <Text style={styles.examTypeText}>{item.examType}</Text>
         <Text style={styles.dateText}>
-          {item.timestamp?.toDate().toLocaleDateString()} - {item.teacherName}
+          {item.timestamp?.toDate ? item.timestamp.toDate().toLocaleDateString() : 'Date pending'} - {item.teacherName || 'Faculty'}
         </Text>
       </View>
       <View style={styles.cardRight}>
@@ -99,7 +115,7 @@ export default function Grades() {
         data={grades}
         keyExtractor={(item) => item.id}
         renderItem={renderGradeItem}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="school-outline" size={50} color="#CBD5E0" />
@@ -114,6 +130,7 @@ export default function Grades() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC', padding: 16 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  listContent: { paddingBottom: 80 },
   summaryHeader: { 
     backgroundColor: '#1E293B', 
     padding: 20, 

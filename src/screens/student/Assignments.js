@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList } from 'react-native';
 import { SmoothSpinner } from '../../components/ui/LoadingState';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import DynamicHeader from '../../components/DynamicHeader';
+
+const createdAtToMillis = (createdAt) => {
+  if (!createdAt) return 0;
+  if (typeof createdAt.toMillis === 'function') return createdAt.toMillis();
+  if (createdAt.seconds) return createdAt.seconds * 1000;
+  const parsed = new Date(createdAt).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
 
 export default function Assignments() {
   const { userData } = useAuth();
@@ -18,12 +26,18 @@ export default function Assignments() {
     // Grabs ALL assignments posted for this campus
     const q = query(
       collection(db, "assignments"),
-      where("instituteId", "==", userData.instituteId),
-      orderBy("createdAt", "desc")
+      where("instituteId", "==", userData.instituteId)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const nextTasks = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .sort((a, b) => createdAtToMillis(b.createdAt) - createdAtToMillis(a.createdAt));
+      setTasks(nextTasks);
+      setLoading(false);
+    }, (error) => {
+      console.error('Assignments query failed:', error);
+      setTasks([]);
       setLoading(false);
     });
 
@@ -38,7 +52,7 @@ export default function Assignments() {
       <FlatList
         data={tasks}
         keyExtractor={item => item.id}
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={styles.headerRow}>
@@ -69,6 +83,7 @@ export default function Assignments() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
+  listContent: { padding: 16, paddingBottom: 100 },
   card: { backgroundColor: '#fff', padding: 20, borderRadius: 16, marginBottom: 15, elevation: 3 },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   iconBox: { backgroundColor: '#FFF3E0', padding: 10, borderRadius: 10, marginRight: 15 },

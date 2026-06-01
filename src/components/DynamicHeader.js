@@ -9,17 +9,20 @@ import BrandLogo from './BrandLogo';
 import { Colors, Fonts, Radius, Spacing } from '../constants/theme';
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
+const ENABLE_HEADER_MOTION = Platform.OS !== 'web';
 
 export default function DynamicHeader({ title, showBack = false }) {
   const { userData } = useAuth();
   const navigation = useNavigation();
   const layout = useResponsiveLayout();
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(-12)).current;
+  const fadeAnim = useRef(new Animated.Value(ENABLE_HEADER_MOTION ? 0 : 1)).current;
+  const slideAnim = useRef(new Animated.Value(ENABLE_HEADER_MOTION ? -12 : 0)).current;
   const bellScale = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+    if (!ENABLE_HEADER_MOTION) return;
+
     // Luxury staggered entrance with enhanced easing
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -47,13 +50,15 @@ export default function DynamicHeader({ title, showBack = false }) {
 
   const handleBellPress = () => {
     Haptics.selectionAsync();
-    // Luxury bell animation with overshoot
-    Animated.sequence([
-      Animated.spring(bellScale, { toValue: 0.85, friction: 4, tension: 60, useNativeDriver: USE_NATIVE_DRIVER }),
-      Animated.spring(bellScale, { toValue: 1.1, friction: 4, tension: 60, useNativeDriver: USE_NATIVE_DRIVER }),
-      Animated.spring(bellScale, { toValue: 0.95, friction: 4, tension: 60, useNativeDriver: USE_NATIVE_DRIVER }),
-      Animated.spring(bellScale, { toValue: 1, friction: 4, tension: 60, useNativeDriver: USE_NATIVE_DRIVER }),
-    ]).start();
+    if (ENABLE_HEADER_MOTION) {
+      // Luxury bell animation with overshoot
+      Animated.sequence([
+        Animated.spring(bellScale, { toValue: 0.85, friction: 4, tension: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.spring(bellScale, { toValue: 1.1, friction: 4, tension: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.spring(bellScale, { toValue: 0.95, friction: 4, tension: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.spring(bellScale, { toValue: 1, friction: 4, tension: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      ]).start();
+    }
 
     const role = userData?.role?.trim().toLowerCase();
     try {
@@ -265,7 +270,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: Colors.textPrimary,
-    letterSpacing: -0.25,
+    letterSpacing: 0,
     fontFamily: Fonts.heading,
   },
   luxuryInstituteNameCompact: {
@@ -275,7 +280,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     color: Colors.textPrimary,
-    letterSpacing: -0.5,
+    letterSpacing: 0,
     fontFamily: Fonts.heading,
   },
   luxuryPageTitleCompact: {

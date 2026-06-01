@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useMemo, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ImageBackground, Animated, Platform, Image, StatusBar
@@ -7,8 +7,6 @@ import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
-import { db } from '../../../firebaseConfig';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import PremiumActionCard from '../../components/ui/PremiumActionCard';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
@@ -17,38 +15,59 @@ import { Colors } from '../../constants/theme';
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 const ENABLE_SCROLL_MOTION = Platform.OS !== 'web';
 
+const isTargetedToStudent = (notification) => {
+  const targets = notification?.targetRoles || [];
+  return targets.includes('student') || targets.includes('all');
+};
+
+const isBroadcast = (notification) => {
+  const originalType = notification?.data?.originalType;
+  return (
+    notification?.type === 'announcement' ||
+    notification?.relatedType === 'notice' ||
+    notification?.relatedType === 'broadcast' ||
+    originalType === 'admin_notice' ||
+    originalType === 'campus_broadcast'
+  );
+};
+
+const getAuthorName = (author) => {
+  if (!author) return 'Campus';
+  if (typeof author === 'string') return author;
+  return author.name || author.email || 'Campus';
+};
+
+const formatNotificationDate = (createdAt) => {
+  if (!createdAt) return 'Just now';
+  if (typeof createdAt.toDate === 'function') return createdAt.toDate().toLocaleDateString();
+  if (createdAt.seconds) return new Date(createdAt.seconds * 1000).toLocaleDateString();
+  const parsed = new Date(createdAt);
+  return Number.isNaN(parsed.getTime()) ? 'Just now' : parsed.toLocaleDateString();
+};
+
 export default function StudentHome() {
   const navigation = useNavigation();
   const { userData, logout, notifications } = useAuth();
   const layout = useResponsiveLayout();
-  const [notices, setNotices] = useState([]);
 
   // Calculate unread notification count for students
   const unreadCount = userData?.role === 'student' && notifications
     ? notifications.filter(notif =>
         !(notif.readBy?.includes(userData.uid) || notif.isRead === true) &&
-        (notif.targetRoles?.includes('student') || notif.targetRoles?.includes('all'))
+        isTargetedToStudent(notif)
       ).length
     : 0;
 
-  const openNotifications = () => {
+  const openStudentScreen = (screen, params) => {
     const parentNavigation = navigation.getParent?.();
-    if (parentNavigation) {
-      parentNavigation.navigate('Notifications');
-      return;
-    }
-    navigation.navigate('Notifications');
+    const targetNavigation = parentNavigation || navigation;
+    targetNavigation.navigate(screen, params);
   };
+
+  const openNotifications = () => openStudentScreen('Notifications');
 
   // Luxury Scroll Animation Values
   const scrollY = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (!userData?.instituteId) return;
-    const q = query(collection(db, "notices"), where("instituteId", "==", userData.instituteId), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => setNotices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
-    return () => unsubscribe();
-  }, [userData]);
 
   const studentName = userData?.name || "Student";
   const initials = studentName.charAt(0).toUpperCase();
@@ -59,7 +78,10 @@ export default function StudentHome() {
   const isSchool = instTypeStr.includes('school');
   const p1 = isSchool ? `Class ${userData?.class || 'N/A'}` : (userData?.dept || 'N/A');
   const p2 = isSchool ? `Sec ${userData?.section || 'N/A'}` : `Sem ${userData?.sem || 'N/A'}`;
-  const recentNotices = notices.slice(0, 3);
+  const recentBroadcasts = useMemo(
+    () => (notifications || []).filter((item) => isTargetedToStudent(item) && isBroadcast(item)).slice(0, 3),
+    [notifications]
+  );
 
   // Interpolations for Luxury Parallax & Glass Header
   const headerOpacity = ENABLE_SCROLL_MOTION ? scrollY.interpolate({
@@ -159,26 +181,27 @@ export default function StudentHome() {
           <Text style={[styles.luxurySectionTitle, layout.isMobile && styles.luxurySectionTitleMobile]}>Dashboard</Text>
 
           <View style={[styles.luxuryGridContainer, layout.isDesktop && styles.luxuryGridContainerDesktop]}>
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Grades" icon="school" color={Colors.accent} bgColor={Colors.surface} delay={100} onPress={() => navigation.navigate('Grades')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Attendance" icon="bar-chart" color={Colors.success} bgColor={Colors.surface} delay={200} onPress={() => navigation.navigate('AttendanceView')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title={layout.isMobile ? 'Fees' : 'Fee Ledger'} icon="wallet" color={Colors.warning} bgColor={Colors.surface} delay={300} onPress={() => navigation.navigate('FeePayment')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Routine" icon="calendar" color={Colors.secondary} bgColor={Colors.surface} delay={400} onPress={() => navigation.navigate('Routine')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="PYQs" icon="document-text" color={Colors.primaryVariant} bgColor={Colors.surface} delay={500} onPress={() => navigation.navigate('PYQView')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Gallery" icon="images" color={Colors.accentVariant} bgColor={Colors.surface} delay={600} onPress={() => navigation.navigate('GalleryView')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Grades" icon="school" color={Colors.accent} bgColor={Colors.surface} delay={100} onPress={() => openStudentScreen('Grades')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Attendance" icon="bar-chart" color={Colors.success} bgColor={Colors.surface} delay={200} onPress={() => openStudentScreen('Attendance')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Courses" icon="play-circle" color={Colors.primary} bgColor={Colors.surface} delay={300} onPress={() => openStudentScreen('Courses')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title={layout.isMobile ? 'Fees' : 'Fee Ledger'} icon="wallet" color={Colors.warning} bgColor={Colors.surface} delay={400} onPress={() => openStudentScreen('Fee Payment')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Routine" icon="calendar" color={Colors.secondary} bgColor={Colors.surface} delay={500} onPress={() => openStudentScreen('Routine')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="PYQs" icon="document-text" color={Colors.primaryVariant} bgColor={Colors.surface} delay={600} onPress={() => openStudentScreen('PYQs')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Gallery" icon="images" color={Colors.accentVariant} bgColor={Colors.surface} delay={700} onPress={() => openStudentScreen('Gallery')} />
           </View>
 
           <Text style={[styles.luxurySectionTitle, layout.isMobile && styles.luxurySectionTitleMobile]}>Recent Broadcasts</Text>
           <View style={[styles.luxuryNoticeContainer, layout.isMobile && styles.luxuryNoticeContainerMobile]}>
-            {notices.length === 0 ? (
+            {recentBroadcasts.length === 0 ? (
               <Text style={styles.luxuryEmptyNotices}>No recent announcements.</Text>
             ) : (
-              recentNotices.map((item, index) => (
+              recentBroadcasts.map((item, index) => (
                 <TouchableOpacity
                   key={item.id}
-                  style={[styles.luxuryMiniNotice, index === recentNotices.length - 1 && { borderBottomWidth: 0 }]}
+                  style={[styles.luxuryMiniNotice, index === recentBroadcasts.length - 1 && { borderBottomWidth: 0 }]}
                   onPress={() => {
                     Haptics.selectionAsync();
-                    navigation.navigate('MainTabs', { screen: 'Notices' });
+                    openNotifications();
                   }}
                   accessibilityLabel={`Open notice ${item.title || 'details'}`}
                 >
@@ -186,8 +209,8 @@ export default function StudentHome() {
                     <Ionicons name="notifications" size={16} color={Colors.accent} />
                   </View>
                   <View style={styles.luxuryNoticeTextBlock}>
-                    <Text style={styles.luxuryMiniNoticeTitle} numberOfLines={1}>{item.title}</Text>
-                    <Text style={styles.luxuryMiniNoticeMeta}>{item.author || 'Campus'} - {item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString() : 'Just now'}</Text>
+                    <Text style={styles.luxuryMiniNoticeTitle} numberOfLines={1}>{item.title || 'Campus broadcast'}</Text>
+                    <Text style={styles.luxuryMiniNoticeMeta}>{getAuthorName(item.author)} - {formatNotificationDate(item.createdAt)}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={Colors.border} />
                 </TouchableOpacity>

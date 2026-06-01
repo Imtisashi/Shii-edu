@@ -1,12 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   addDoc,
   collection,
   query,
   where,
   onSnapshot,
-  orderBy,
-  limit as limitQuery,
   doc,
   updateDoc,
   arrayUnion,
@@ -16,6 +14,14 @@ import {
 } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../../firebaseConfig';
+
+const createdAtToMillis = (createdAt) => {
+  if (!createdAt) return 0;
+  if (typeof createdAt.toMillis === 'function') return createdAt.toMillis();
+  if (createdAt.seconds) return createdAt.seconds * 1000;
+  const parsed = new Date(createdAt).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
 
 /**
  * Notification types
@@ -43,50 +49,52 @@ export const useUnifiedNotifications = ({ limit: limitCount = 50, onNotification
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const unsubscribeRef = useRef(null);
 
   // Fetch notifications based on user role
   const fetchNotifications = useCallback(() => {
     if (!currentUser?.uid || !userData?.instituteId) {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
       setLoading(false);
       return;
+    }
+
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
     }
 
     setLoading(true);
     setError(null);
 
-    // Base query for institute-specific notifications
-    const baseQuery = query(
+    const notificationsQuery = query(
       collection(db, "notifications"),
-      where("instituteId", "==", userData.instituteId),
-      orderBy("createdAt", "desc")
+      where("instituteId", "==", userData.instituteId)
     );
 
-    // Role-specific filters
-    let notificationsQuery;
     const notificationRole = ['student', 'teacher', 'admin'].includes(userData.role)
       ? userData.role
       : 'student';
 
-    if (userData.role === 'superadmin') {
-      notificationsQuery = baseQuery;
-    } else {
-      notificationsQuery = query(
-        baseQuery,
-        where("targetRoles", "array-contains-any", [notificationRole, "all"])
-      );
-    }
-
-    // Apply limit if specified
-    const finalQuery = limitCount ? query(notificationsQuery, limitQuery(limitCount)) : notificationsQuery;
-
     // Set up real-time listener
     const unsubscribe = onSnapshot(
-      finalQuery,
+      notificationsQuery,
       (snapshot) => {
-        const newNotifications = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        const newNotifications = snapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }))
+          .filter((notification) => {
+            if (userData.role === 'superadmin') return true;
+            const targets = notification.targetRoles || [];
+            return targets.includes(notificationRole) || targets.includes('all');
+          })
+          .sort((a, b) => createdAtToMillis(b.createdAt) - createdAtToMillis(a.createdAt))
+          .slice(0, limitCount || undefined);
 
         setNotifications(newNotifications);
         setLoading(false);
@@ -105,8 +113,14 @@ export const useUnifiedNotifications = ({ limit: limitCount = 50, onNotification
       }
     );
 
-    // Return cleanup function
-    return () => unsubscribe();
+    unsubscribeRef.current = unsubscribe;
+
+    return () => {
+      unsubscribe();
+      if (unsubscribeRef.current === unsubscribe) {
+        unsubscribeRef.current = null;
+      }
+    };
   }, [currentUser, userData, limitCount, onNotification, onError]);
 
   // Mark notification as read

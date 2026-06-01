@@ -61,7 +61,7 @@ export default function GalleryView() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  galleryContent: { paddingVertical: 16 },
+  galleryContent: { paddingTop: 16, paddingBottom: 96 },
   galleryContentDesktop: { width: '100%', alignSelf: 'center', paddingTop: 24 },
   image: { borderRadius: 8, backgroundColor: '#E2E8F0' },
   empty: { flex: 1, alignItems: 'center', marginTop: 100 },

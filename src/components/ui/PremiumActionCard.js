@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     fontWeight: '800',
     fontSize: 16,
-    letterSpacing: -0.25,
+    letterSpacing: 0,
     textAlign: 'center',
     // Luxury typography
     fontFamily: Fonts.heading,

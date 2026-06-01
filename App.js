@@ -8,6 +8,7 @@ import { AuthProvider } from './src/contexts/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { installWebPerformanceTuning } from './src/utils/webPerformanceTuning';
 import { installWebScrollFix } from './src/utils/webScrollFix';
+import { installFirestoreOfflinePersistence } from './src/services/offlinePersistence';
 import { Colors } from './src/constants/theme';
 
 const linking = {
@@ -28,6 +29,7 @@ export default function App() {
   React.useEffect(() => {
     installWebPerformanceTuning();
     installWebScrollFix();
+    installFirestoreOfflinePersistence();
 
     let mounted = true;
     Font.loadAsync(Ionicons.font)

@@ -19,7 +19,14 @@ export default function AttendanceView() {
   });
 
   useEffect(() => {
-    if (!currentUser?.uid || !userData?.instituteId) {
+    const studentIdentifiers = Array.from(new Set([
+      currentUser?.uid,
+      userData?.uid,
+      userData?.uniqueId,
+      userData?.email,
+    ].filter(Boolean).map(String)));
+
+    if (!studentIdentifiers.length || !userData?.instituteId) {
       setLoading(false);
       return;
     }
@@ -29,7 +36,11 @@ export default function AttendanceView() {
     const attendanceQuery = query(
       collection(db, 'attendance'),
       where('instituteId', '==', userData.instituteId),
-      where('studentId', '==', currentUser.uid)
+      where(
+        'studentId',
+        studentIdentifiers.length === 1 ? '==' : 'in',
+        studentIdentifiers.length === 1 ? studentIdentifiers[0] : studentIdentifiers
+      )
     );
 
     const unsubscribe = onSnapshot(attendanceQuery, (querySnapshot) => {
@@ -55,7 +66,7 @@ export default function AttendanceView() {
 
     // Cleanup function to unsubscribe from the listener
     return () => unsubscribe();
-  }, [currentUser?.uid, userData]);
+  }, [currentUser?.uid, userData?.uid, userData?.uniqueId, userData?.email, userData?.instituteId]);
 
   const totalClasses = attendanceStats.present + attendanceStats.absent + attendanceStats.notMarked;
   const presentPercentage = totalClasses ? Math.round((attendanceStats.present / totalClasses) * 100) : 0;
@@ -173,7 +184,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { color: '#64748B', fontWeight: '700', marginTop: 12 },
-  content: { paddingVertical: 16, paddingBottom: 34 },
+  content: { paddingTop: 16, paddingBottom: 96 },
   contentDesktop: { width: '100%', alignSelf: 'center', paddingTop: 24 },
   heroCard: {
     backgroundColor: '#0F172A',

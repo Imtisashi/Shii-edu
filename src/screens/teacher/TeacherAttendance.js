@@ -10,6 +10,8 @@ import DynamicHeader from '../../components/DynamicHeader';
 
 const screenWidth = Dimensions.get('window').width;
 
+const resolveStudentUid = (student) => student.uid || student.authUid || student.id;
+
 export default function TeacherAttendance() {
   const { userData } = useAuth();
   const [students, setStudents] = useState([]);
@@ -113,19 +115,26 @@ export default function TeacherAttendance() {
 
     try {
       const batch = writeBatch(db);
+      const today = new Date().toISOString().split('T')[0];
       students.forEach((student) => {
         const isPresent = Boolean(attendanceRecord[student.id]);
+        const studentUid = resolveStudentUid(student);
         batch.set(doc(collection(db, "attendance")), {
           instituteId: userData.instituteId,
           teacherId: userData.uid,
           teacherName: userData.name,
-          studentId: student.id,
+          studentId: studentUid,
+          studentUid,
+          studentDocId: student.id,
+          studentUniqueId: student.uniqueId || null,
+          studentEmail: student.email || '',
           studentName: student.name || '',
           targetPrimary: isSchool ? userData.assignedClass : userData.assignedDept,
           targetSecondary: isSchool ? userData.assignedSection : userData.assignedSem,
           status: isPresent ? 'present' : 'absent',
           isPresent,
-          date: serverTimestamp()
+          date: today,
+          timestamp: serverTimestamp()
         });
       });
       await batch.commit();
