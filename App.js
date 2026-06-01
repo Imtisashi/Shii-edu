@@ -2,10 +2,11 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Font from 'expo-font';
-import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './src/contexts/AuthContext';
+import { InstitutionProvider } from './src/contexts/InstitutionContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import RootLayout from './src/components/RootLayout';
 import { installWebPerformanceTuning } from './src/utils/webPerformanceTuning';
 import { installWebScrollFix } from './src/utils/webScrollFix';
 import { installFirestoreOfflinePersistence } from './src/services/offlinePersistence';
@@ -50,11 +51,13 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.background }}>
       <AuthProvider>
-        <NavigationContainer linking={linking} documentTitle={documentTitle}>
-          <View style={{ flex: 1, backgroundColor: Colors.background }}>
-            <AppNavigator />
-          </View>
-        </NavigationContainer>
+        <InstitutionProvider>
+          <NavigationContainer linking={linking} documentTitle={documentTitle}>
+            <RootLayout>
+              <AppNavigator />
+            </RootLayout>
+          </NavigationContainer>
+        </InstitutionProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );

@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import DynamicHeader from '../DynamicHeader';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 import { Colors, Radius, Spacing } from '../../constants/theme';
-import { getInstitutionProfile } from '../../services/institutionalProfile';
+import { useInstitution } from '../../contexts/InstitutionContext';
 
 export default function InstitutionalLayout({
   userData,
@@ -16,7 +16,9 @@ export default function InstitutionalLayout({
   showBack = true,
 }) {
   const layout = useResponsiveLayout();
-  const profile = getInstitutionProfile(userData);
+  const institution = useInstitution();
+  const profile = userData ? institution.profile : institution.profile;
+  const workflow = institution.workflow;
   const Body = scroll ? ScrollView : View;
   const bodyProps = scroll
     ? {
@@ -58,6 +60,12 @@ export default function InstitutionalLayout({
               <View style={styles.scopePill}>
                 <Text style={styles.scopeLabel}>Assessment</Text>
                 <Text style={styles.scopeValue}>{profile.gradingLabel}</Text>
+              </View>
+              <View style={styles.scopePill}>
+                <Text style={styles.scopeLabel}>{profile.isCollege ? 'GPA Scale' : 'Attendance'}</Text>
+                <Text style={styles.scopeValue}>
+                  {profile.isCollege ? `${workflow.gpa.scale}-point` : 'Daily required'}
+                </Text>
               </View>
             </View>
           </View>

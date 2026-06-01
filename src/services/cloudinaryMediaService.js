@@ -12,6 +12,9 @@ export const requestCloudinaryUploadSignature = async ({
   currentUser,
   folder,
   resourceType = 'video',
+  deliveryType,
+  mimeType,
+  fileName,
   context = {},
 }) => authenticatedFetch('/api/cloudinary/signature', currentUser, {
   method: 'POST',
@@ -19,6 +22,9 @@ export const requestCloudinaryUploadSignature = async ({
     action: 'upload',
     folder,
     resourceType: sanitizeResourceType(resourceType),
+    deliveryType,
+    mimeType,
+    fileName,
     context,
   },
 });
@@ -28,6 +34,7 @@ export const uploadSignedCloudinaryAsset = async ({
   asset,
   folder,
   resourceType = 'video',
+  deliveryType,
   context = {},
 }) => {
   const assetUri = typeof asset === 'string' ? asset : asset?.uri;
@@ -39,6 +46,9 @@ export const uploadSignedCloudinaryAsset = async ({
     currentUser,
     folder,
     resourceType,
+    deliveryType,
+    mimeType: asset?.mimeType || asset?.type || '',
+    fileName: asset?.name || asset?.fileName || '',
     context,
   });
 
@@ -54,12 +64,14 @@ export const uploadSignedCloudinaryAsset = async ({
   if (Platform.OS === 'web') {
     const response = await fetch(assetUri);
     const blob = await response.blob();
-    formData.append('file', blob);
+    const fileName = asset?.name || asset?.fileName || `upload-${Date.now()}`;
+    formData.append('file', blob, fileName);
   } else {
+    const fallbackExtension = resourceType === 'video' ? 'mp4' : resourceType === 'raw' ? 'pdf' : 'jpg';
     formData.append('file', {
       uri: assetUri,
-      type: asset?.mimeType || (resourceType === 'video' ? 'video/mp4' : 'image/jpeg'),
-      name: asset?.fileName || `${Date.now()}.${resourceType === 'video' ? 'mp4' : 'jpg'}`,
+      type: asset?.mimeType || asset?.type || (resourceType === 'video' ? 'video/mp4' : resourceType === 'raw' ? 'application/pdf' : 'image/jpeg'),
+      name: asset?.name || asset?.fileName || `${Date.now()}.${fallbackExtension}`,
     });
   }
 

@@ -5,7 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { collection, addDoc, serverTimestamp, query, where, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig'; 
 import { useAuth } from '../../contexts/AuthContext';
-import { uploadToCloudinary } from '../../services/cloudinaryService';
+import { uploadInstitutionAsset } from '../../services/cloudinaryService';
 import { Ionicons } from '@expo/vector-icons';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 
@@ -23,7 +23,7 @@ const createdAtToMillis = (createdAt) => {
 };
 
 export default function UploadGallery() {
-  const { userData } = useAuth();
+  const { currentUser, userData } = useAuth();
   const layout = useResponsiveLayout();
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -78,15 +78,39 @@ export default function UploadGallery() {
     if (!result.canceled) {
       setUploading(true);
       try {
-        const cloudinaryUrl = await uploadToCloudinary(result.assets[0], `institutions/${userData.instituteId}/gallery`);
-        if (!cloudinaryUrl) {
+        if (!currentUser?.uid) {
+          throw new Error('A signed-in admin is required to upload gallery media.');
+        }
+
+        const uploadResult = await uploadInstitutionAsset({
+          asset: result.assets[0],
+          folder: `institutions/${userData.instituteId}/gallery`,
+          resourceType: 'image',
+          deliveryType: 'upload',
+          context: {
+            module: 'gallery',
+            instituteId: userData.instituteId,
+            uploadedBy: currentUser.uid,
+          },
+        });
+
+        if (!uploadResult?.secureUrl) {
           throw new Error('Upload service did not return a file URL.');
         }
 
         await addDoc(collection(db, "gallery"), {
-          imageUrl: cloudinaryUrl,
+          imageUrl: uploadResult.secureUrl,
+          assetProvider: uploadResult.provider,
+          cloudinaryPublicId: uploadResult.publicId || null,
+          cloudinaryAssetId: uploadResult.assetId || null,
+          resourceType: uploadResult.resourceType || 'image',
+          mimeType: uploadResult.mimeType || result.assets[0]?.mimeType || 'image/jpeg',
+          fileSize: uploadResult.bytes || result.assets[0]?.fileSize || null,
+          width: uploadResult.width || result.assets[0]?.width || null,
+          height: uploadResult.height || result.assets[0]?.height || null,
           instituteId: userData.instituteId,
           uploadedBy: userData.name || userData.email || 'Admin',
+          uploadedByUid: currentUser.uid,
           createdAt: serverTimestamp(),
         });
       } catch (error) {

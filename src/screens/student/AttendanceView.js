@@ -7,11 +7,35 @@ import { useAuth } from '../../contexts/AuthContext';
 import DynamicHeader from '../../components/DynamicHeader';
 import { db } from '../../../firebaseConfig';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
+import { useInstitution } from '../../contexts/InstitutionContext';
+
+const timestampToMillis = (value) => {
+  if (!value) return 0;
+  if (typeof value.toMillis === 'function') return value.toMillis();
+  if (value.seconds) return value.seconds * 1000;
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const formatRecordDate = (record) => {
+  if (record.date) return record.date;
+  const millis = timestampToMillis(record.timestamp || record.createdAt);
+  return millis ? new Date(millis).toLocaleDateString() : 'Unscheduled';
+};
+
+const getRecordStatus = (record) => {
+  if (record.status === 'present' || record.isPresent === true) return 'Present';
+  if (record.status === 'absent' || record.isPresent === false) return 'Absent';
+  return 'Not marked';
+};
 
 export default function AttendanceView() {
   const { currentUser, userData } = useAuth();
   const layout = useResponsiveLayout();
+  const institution = useInstitution();
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [attendanceStats, setAttendanceStats] = useState({
     present: 0,
     absent: 0,
@@ -43,10 +67,13 @@ export default function AttendanceView() {
       });
 
       const nextStats = { present: 0, absent: 0, notMarked: 0 };
+      const nextRecords = [];
 
       recordsById.forEach((record) => {
         const data = record.data;
         if (data.instituteId && data.instituteId !== userData.instituteId) return;
+
+        nextRecords.push({ id: record.id, ...data });
 
         if (data.status === 'present' || data.isPresent === true) {
           nextStats.present += 1;
@@ -57,7 +84,15 @@ export default function AttendanceView() {
         }
       });
 
+      nextRecords.sort((a, b) => {
+        const dateCompare = String(b.date || '').localeCompare(String(a.date || ''));
+        if (dateCompare !== 0) return dateCompare;
+        return timestampToMillis(b.timestamp || b.createdAt) - timestampToMillis(a.timestamp || a.createdAt);
+      });
+
+      setAttendanceRecords(nextRecords);
       setAttendanceStats(nextStats);
+      setErrorMessage('');
       setLoading(false);
     };
 
@@ -82,6 +117,7 @@ export default function AttendanceView() {
       }, (error) => {
         console.warn(`Attendance listener failed for ${spec.field}:`, error);
         listenerBuckets.set(bucketKey, []);
+        setErrorMessage('Some attendance history could not be loaded. Showing every accessible record for your account.');
         computeStats();
       });
     });
@@ -93,6 +129,7 @@ export default function AttendanceView() {
 
   const totalClasses = attendanceStats.present + attendanceStats.absent + attendanceStats.notMarked;
   const presentPercentage = totalClasses ? Math.round((attendanceStats.present / totalClasses) * 100) : 0;
+  const latestRecords = attendanceRecords.slice(0, 8);
 
   const chartData = useMemo(() => {
     const data = [
@@ -153,14 +190,21 @@ export default function AttendanceView() {
         >
           <View style={[styles.heroCard, layout.isCompact && styles.heroCardCompact]}>
             <View>
-              <Text style={styles.heroLabel}>Attendance Rate</Text>
+              <Text style={styles.heroLabel}>{institution.labels.attendance}</Text>
               <Text style={styles.heroValue}>{presentPercentage}%</Text>
+              <Text style={styles.heroHint}>{institution.profile.scopeSummary}</Text>
             </View>
             <View style={styles.heroBadge}>
               <Text style={styles.heroBadgeValue}>{totalClasses}</Text>
               <Text style={styles.heroBadgeLabel}>Classes</Text>
             </View>
           </View>
+
+          {errorMessage ? (
+            <View style={styles.warningCard}>
+              <Text style={styles.warningText}>{errorMessage}</Text>
+            </View>
+          ) : null}
 
           <View style={[styles.detailGrid, layout.isDesktop && styles.detailGridDesktop]}>
             <View style={[styles.chartCard, layout.isDesktop && styles.chartCardDesktop]}>
@@ -197,6 +241,50 @@ export default function AttendanceView() {
               </View>
             </View>
           </View>
+
+          <View style={styles.historyCard}>
+            <View style={styles.historyHeader}>
+              <Text style={styles.summaryTitle}>Recent Attendance</Text>
+              <Text style={styles.historyCount}>{attendanceRecords.length} record{attendanceRecords.length === 1 ? '' : 's'}</Text>
+            </View>
+            {latestRecords.length ? (
+              latestRecords.map((record) => {
+                const statusLabel = getRecordStatus(record);
+                const isPresent = statusLabel === 'Present';
+                const isAbsent = statusLabel === 'Absent';
+
+                return (
+                  <View key={record.id} style={styles.historyRow}>
+                    <View style={[
+                      styles.statusMark,
+                      isPresent && styles.statusPresent,
+                      isAbsent && styles.statusAbsent,
+                    ]} />
+                    <View style={styles.historyTextBlock}>
+                      <Text style={styles.historyTitle}>
+                        {record.subject || record.targetPrimary || institution.labels.attendance}
+                      </Text>
+                      <Text style={styles.historyMeta}>
+                        {formatRecordDate(record)} {record.teacherName ? `- ${record.teacherName}` : ''}
+                      </Text>
+                    </View>
+                    <Text style={[
+                      styles.historyStatus,
+                      isPresent && styles.historyStatusPresent,
+                      isAbsent && styles.historyStatusAbsent,
+                    ]}>
+                      {statusLabel}
+                    </Text>
+                  </View>
+                );
+              })
+            ) : (
+              <View style={styles.noHistory}>
+                <Text style={styles.noHistoryTitle}>No attendance marked yet</Text>
+                <Text style={styles.noHistoryText}>Your records will appear here as soon as faculty submits attendance.</Text>
+              </View>
+            )}
+          </View>
         </ScrollView>
       )}
     </View>
@@ -221,6 +309,7 @@ const styles = StyleSheet.create({
   heroCardCompact: { flexDirection: 'column', alignItems: 'flex-start', gap: 16 },
   heroLabel: { color: '#93C5FD', fontSize: 13, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 },
   heroValue: { color: '#FFFFFF', fontSize: 44, fontWeight: '900', marginTop: 4 },
+  heroHint: { color: '#CBD5E1', fontSize: 13, fontWeight: '700', marginTop: 4 },
   heroBadge: { backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 18, paddingHorizontal: 18, paddingVertical: 14, alignItems: 'center' },
   heroBadgeValue: { color: '#FFFFFF', fontSize: 22, fontWeight: '900' },
   heroBadgeLabel: { color: '#CBD5E1', fontSize: 12, fontWeight: '700', marginTop: 2 },
@@ -242,6 +331,15 @@ const styles = StyleSheet.create({
   detailGridDesktop: { flexDirection: 'row', alignItems: 'stretch', gap: 16 },
   chartCardDesktop: { flex: 1.55, marginBottom: 0 },
   cardTitle: { fontSize: 18, fontWeight: '900', color: '#0F172A', marginBottom: 12, alignSelf: 'flex-start' },
+  warningCard: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    marginBottom: 16,
+  },
+  warningText: { color: '#92400E', fontSize: 13, fontWeight: '800', lineHeight: 19 },
   summaryCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
@@ -255,4 +353,33 @@ const styles = StyleSheet.create({
   dot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
   summaryLabel: { flex: 1, fontSize: 15, color: '#64748B', fontWeight: '700' },
   summaryValue: { fontSize: 16, fontWeight: '900', color: '#0F172A' },
+  historyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginTop: 16,
+  },
+  historyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  historyCount: { color: '#64748B', fontSize: 12, fontWeight: '800' },
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  statusMark: { width: 10, height: 34, borderRadius: 999, backgroundColor: '#F59E0B', marginRight: 12 },
+  statusPresent: { backgroundColor: '#10B981' },
+  statusAbsent: { backgroundColor: '#EF4444' },
+  historyTextBlock: { flex: 1, minWidth: 0 },
+  historyTitle: { color: '#0F172A', fontSize: 15, fontWeight: '900' },
+  historyMeta: { color: '#94A3B8', fontSize: 12, marginTop: 3 },
+  historyStatus: { color: '#92400E', fontSize: 13, fontWeight: '900', marginLeft: 10 },
+  historyStatusPresent: { color: '#059669' },
+  historyStatusAbsent: { color: '#DC2626' },
+  noHistory: { paddingVertical: 20, alignItems: 'center' },
+  noHistoryTitle: { color: '#0F172A', fontSize: 16, fontWeight: '900' },
+  noHistoryText: { color: '#94A3B8', fontSize: 13, textAlign: 'center', marginTop: 5, lineHeight: 19 },
 });

@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, where } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
-import { uploadToCloudinary } from '../../services/cloudinaryService';
+import { uploadInstitutionAsset } from '../../services/cloudinaryService';
 import { SmoothSpinner } from '../../components/ui/LoadingState';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 
@@ -50,7 +50,7 @@ const isPdfAsset = (asset) => {
 };
 
 export default function UploadPYQ() {
-  const { userData } = useAuth();
+  const { currentUser, userData } = useAuth();
   const layout = useResponsiveLayout();
   const [papers, setPapers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -124,8 +124,25 @@ export default function UploadPYQ() {
 
     setUploading(true);
     try {
-      const fileUrl = await uploadToCloudinary(asset, `institutions/${userData.instituteId}/pyqs`);
-      if (!fileUrl) {
+      if (!currentUser?.uid) {
+        throw new Error('A signed-in faculty user is required to upload PYQs.');
+      }
+
+      const uploadResult = await uploadInstitutionAsset({
+        asset,
+        folder: `institutions/${userData.instituteId}/pyqs`,
+        resourceType: 'raw',
+        deliveryType: 'upload',
+        context: {
+          module: 'pyqs',
+          subject: cleanedSubject,
+          year: cleanedYear,
+          instituteId: userData.instituteId,
+          uploadedBy: currentUser.uid,
+        },
+      });
+
+      if (!uploadResult?.secureUrl) {
         throw new Error('Upload service did not return a file URL.');
       }
 
@@ -133,14 +150,19 @@ export default function UploadPYQ() {
         title: cleanedTitle,
         subject: cleanedSubject,
         year: cleanedYear,
-        fileUrl,
+        fileUrl: uploadResult.secureUrl,
         fileName: asset.name || `${cleanedTitle}.pdf`,
-        fileSize: asset.size || null,
+        fileSize: uploadResult.bytes || asset.size || null,
         fileType: 'pdf',
         mimeType: asset.mimeType || 'application/pdf',
+        assetProvider: uploadResult.provider,
+        cloudinaryPublicId: uploadResult.publicId || null,
+        cloudinaryAssetId: uploadResult.assetId || null,
+        resourceType: uploadResult.resourceType || 'raw',
+        deliveryType: uploadResult.deliveryType || 'upload',
         instituteId: userData.instituteId,
         uploadedBy: userData.name || userData.email || 'Faculty',
-        uploadedByUid: userData.uid || null,
+        uploadedByUid: currentUser.uid,
         createdAt: serverTimestamp(),
       });
 

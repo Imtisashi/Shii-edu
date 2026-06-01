@@ -13,14 +13,16 @@ export const installWebScrollFix = () => {
     body {
       width: 100%;
       min-height: 100%;
+      height: auto;
       overflow-x: hidden;
-      overflow-y: auto;
+      overflow-y: auto !important;
       overscroll-behavior-y: auto;
       -webkit-overflow-scrolling: touch;
     }
 
     body {
       margin: 0;
+      min-height: 100vh;
       position: static !important;
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
@@ -30,8 +32,14 @@ export const installWebScrollFix = () => {
     #root > div {
       width: 100%;
       min-height: 100vh;
-      overflow: visible;
+      height: auto;
+      overflow: visible !important;
       isolation: isolate;
+    }
+
+    [style*="height: 100vh"],
+    [style*="height:100vh"] {
+      min-height: 100vh;
     }
 
     [role="button"],

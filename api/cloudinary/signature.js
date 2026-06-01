@@ -13,6 +13,9 @@ const PLAYBACK_ROLES = new Set(['student', 'teacher', 'professor', 'parent', 'ad
 const UPLOAD_ROLES = new Set(['teacher', 'professor', 'admin', 'superadmin']);
 const SAFE_RESOURCE_TYPES = new Set(['image', 'video', 'raw', 'auto']);
 const SAFE_DELIVERY_TYPES = new Set(['authenticated', 'private', 'upload']);
+const SAFE_UPLOAD_MIME_PREFIXES = ['image/'];
+const SAFE_UPLOAD_MIME_TYPES = new Set(['application/pdf']);
+const SAFE_UPLOAD_FOLDERS = new Set(['gallery', 'pyqs', 'profile-pictures', 'course-media', 'assignments']);
 const DEFAULT_PLAYBACK_TTL_SECONDS = 900;
 
 const getCloudinaryConfig = () => {
@@ -68,6 +71,40 @@ const sanitizeResourceType = (resourceType) => {
 const sanitizeDeliveryType = (deliveryType) => {
   const clean = String(deliveryType || 'authenticated').toLowerCase();
   return SAFE_DELIVERY_TYPES.has(clean) ? clean : 'authenticated';
+};
+
+const assertUploadMimeType = (mimeType, resourceType) => {
+  const cleanMimeType = String(mimeType || '').toLowerCase();
+  if (!cleanMimeType) return;
+
+  const isSafeImage = resourceType === 'image' && SAFE_UPLOAD_MIME_PREFIXES.some((prefix) => cleanMimeType.startsWith(prefix));
+  const isSafePdf = resourceType === 'raw' && SAFE_UPLOAD_MIME_TYPES.has(cleanMimeType);
+  const isSafeVideo = resourceType === 'video' && cleanMimeType.startsWith('video/');
+
+  if (!isSafeImage && !isSafePdf && !isSafeVideo) {
+    const error = new Error('This file type is not allowed for signed upload.');
+    error.statusCode = 400;
+    throw error;
+  }
+};
+
+const normalizeUploadFolder = ({ rawFolder, instituteId }) => {
+  const cleanInstituteId = sanitizePathPart(instituteId, 'platform');
+  const cleanFolder = sanitizePathPart(rawFolder, 'course-media');
+  const institutionPrefix = `institutions/${cleanInstituteId}`;
+
+  if (cleanFolder === institutionPrefix || cleanFolder.startsWith(`${institutionPrefix}/`)) {
+    return cleanFolder;
+  }
+
+  const folderHead = cleanFolder.split('/')[0];
+  if (!SAFE_UPLOAD_FOLDERS.has(folderHead)) {
+    const error = new Error('Upload folder is not allowed.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return `${institutionPrefix}/${cleanFolder}`;
 };
 
 const publicIdWithFormat = (publicId, format) => {
@@ -162,10 +199,12 @@ const createUploadSignature = ({ body, actor, config }) => {
   assertAllowedRole(actor.role, UPLOAD_ROLES);
 
   const resourceType = sanitizeResourceType(body.resourceType);
+  assertUploadMimeType(body.mimeType, resourceType);
+
   const instituteId = actor.profile?.instituteId || body.instituteId || 'platform';
-  const folderSuffix = sanitizePathPart(body.folder, 'course-media');
-  const folder = `institutions/${sanitizePathPart(instituteId, 'platform')}/${folderSuffix}`;
+  const folder = normalizeUploadFolder({ rawFolder: body.folder, instituteId });
   const timestamp = Math.floor(Date.now() / 1000);
+  const deliveryType = sanitizeDeliveryType(body.deliveryType || (resourceType === 'video' ? 'authenticated' : 'upload'));
   const contextEntries = Object.entries(body.context || {})
     .map(([key, value]) => `${sanitizePathPart(key, 'key')}=${String(value).replace(/[|=]/g, ' ')}`)
     .join('|');
@@ -173,10 +212,20 @@ const createUploadSignature = ({ body, actor, config }) => {
   const params = {
     timestamp,
     folder,
-    type: 'authenticated',
-    eager: resourceType === 'video' ? 'sp_auto' : 'w_1600,c_limit,q_auto,f_auto',
-    eager_async: true,
+    type: deliveryType,
+    unique_filename: true,
+    overwrite: false,
   };
+
+  if (resourceType === 'video') {
+    params.eager = 'sp_auto';
+    params.eager_async = true;
+  }
+
+  if (resourceType === 'image') {
+    params.eager = 'w_1600,c_limit,q_auto,f_auto';
+    params.eager_async = true;
+  }
 
   if (contextEntries) {
     params.context = contextEntries;
@@ -190,6 +239,7 @@ const createUploadSignature = ({ body, actor, config }) => {
     uploadUrl: `https://api.cloudinary.com/v1_1/${config.cloudName}/${resourceType}/upload`,
     signature,
     expiresAt: timestamp + 3600,
+    deliveryType,
     params,
   };
 };
