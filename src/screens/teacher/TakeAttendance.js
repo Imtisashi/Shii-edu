@@ -5,7 +5,7 @@ import { collection, query, where, getDocs, doc, serverTimestamp, writeBatch } f
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
-import { createNotification } from '../../services/NotificationService';
+import { createUnifiedNotification } from '../../services/unifiedNotificationService';
 
 export default function TakeAttendance({ navigation }) {
   const { userData } = useAuth();
@@ -77,13 +77,16 @@ export default function TakeAttendance({ navigation }) {
       await batch.commit();
       // Create notification for students
       try {
-        await createNotification({
+        await createUnifiedNotification({
           title: "Attendance Updated",
           message: `Attendance for ${new Date().toLocaleDateString()} has been marked.`,
           type: "info",
           targetRoles: ["student"],
           instituteId: userData.instituteId,
-          author: userData.name || "Teacher",
+          author: {
+            name: userData.name || "Teacher",
+            role: userData.role || "teacher"
+          },
           relatedId: new Date().toISOString().split('T')[0],
           relatedType: "attendance"
         });

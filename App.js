@@ -2,11 +2,13 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Font from 'expo-font';
+import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './src/contexts/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { installWebPerformanceTuning } from './src/utils/webPerformanceTuning';
 import { installWebScrollFix } from './src/utils/webScrollFix';
+import { Colors } from './src/constants/theme';
 
 const linking = {
   enabled: true,
@@ -44,10 +46,12 @@ export default function App() {
   if (!iconsReady) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.background }}>
       <AuthProvider>
         <NavigationContainer linking={linking} documentTitle={documentTitle}>
-          <AppNavigator />
+          <View style={{ flex: 1, backgroundColor: Colors.background }}>
+            <AppNavigator />
+          </View>
         </NavigationContainer>
       </AuthProvider>
     </GestureHandlerRootView>

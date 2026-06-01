@@ -1,109 +1,121 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, ScrollView, Alert, Platform } from 'react-native';
+import { createUnifiedNotification, useUnifiedNotifications } from '../../services/unifiedNotificationService';
 import { SmoothSpinner } from '../../components/ui/LoadingState';
-import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import DynamicHeader from '../../components/DynamicHeader';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { Colors } from '../../constants/theme';
 
 export default function TeacherNotifs() {
-  const { userData } = useAuth();
-  
-  const [activeTab, setActiveTab] = useState('read');
-  const [notices, setNotices] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { currentUser, userData } = useAuth();
+  const { notifications, loading, error, markAsRead, markAllAsRead } = useUnifiedNotifications({ limit: 100 });
 
-  // Upload Notifs State
+  const [activeTab, setActiveTab] = useState('read');
+  const [refreshing, setRefreshing] = useState(false);
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
-  const [targetLevel, setTargetLevel] = useState('Overall'); 
+  const [targetLevel, setTargetLevel] = useState('Overall');
   const [sending, setSending] = useState(false);
 
-  // --- 1. FETCH LIVE NOTICES ---
-  useEffect(() => {
-    if (!userData?.instituteId) return;
+  const formatDate = (createdAt) => {
+    if (!createdAt) return 'Just now';
+    if (createdAt.toDate) return createdAt.toDate().toLocaleDateString();
+    if (createdAt.seconds) return new Date(createdAt.seconds * 1000).toLocaleDateString();
+    return new Date(createdAt).toLocaleDateString();
+  };
 
-    const q = query(
-      collection(db, "notices"),
-      where("instituteId", "==", userData.instituteId),
-      orderBy("createdAt", "desc")
-    );
+  const getAuthorName = (author) => {
+    if (!author) return 'School';
+    if (typeof author === 'string') return author;
+    return author.name || author.email || 'School';
+  };
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setNotices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      setLoading(false);
-    });
+  const isRead = (item) => item.readBy?.includes(currentUser?.uid) || item.isRead === true;
 
-    return () => unsubscribe();
-  }, [userData]);
-
-  // --- 2. SEND NOTICE TO DATABASE ---
   const handleSendNotice = async () => {
-    if (!title || !message) {
+    if (!title.trim() || !message.trim()) {
       return Alert.alert('Incomplete', 'Please provide a title and message.');
     }
 
     setSending(true);
     try {
-      await addDoc(collection(db, "notices"), {
-        title: title.trim(),
-        message: message.trim(),
-        content: message.trim(), // Saving as both to prevent mismatch with Student UI
-        author: userData.name,
-        role: 'teacher',
-        targetLevel: targetLevel,
+      await createUnifiedNotification({
+        title,
+        message,
+        type: 'announcement',
+        targetRoles: ['student', 'teacher', 'admin'],
         instituteId: userData.instituteId,
-        createdAt: serverTimestamp(),
+        author: {
+          uid: currentUser?.uid,
+          name: userData.name || 'Teacher',
+          role: userData.role,
+        },
+        data: {
+          targetLevel,
+          originalType: 'teacher_notice',
+        },
       });
 
       const successMsg = `Notification sent to ${targetLevel} successfully!`;
-      if (Platform.OS === 'web') {
-        window.alert(successMsg);
-      } else {
-        Alert.alert('Success', successMsg);
-      }
-      
+      if (Platform.OS === 'web') window.alert(successMsg);
+      else Alert.alert('Success', successMsg);
+
       setTitle('');
       setMessage('');
       setTargetLevel('Overall');
       setActiveTab('read');
-    } catch (_error) {
-      const errMsg = "Failed to send notice.";
-      if (Platform.OS === 'web') {
-        window.alert(errMsg);
-      } else {
-        Alert.alert('Error', errMsg);
-      }
+    } catch (sendError) {
+      console.error('Failed to send teacher notification:', sendError);
+      const errMsg = 'Failed to send notice.';
+      if (Platform.OS === 'web') window.alert(errMsg);
+      else Alert.alert('Error', errMsg);
     } finally {
       setSending(false);
     }
   };
 
   const renderNotice = ({ item }) => (
-    <View style={styles.notifCard}>
+    <View style={[styles.notifCard, !isRead(item) && styles.unreadCard]}>
       <View style={styles.notifHeader}>
-        <Text style={styles.notifTitle}>{item.title}</Text>
-        <Text style={styles.notifDate}>
-          {item.createdAt ? item.createdAt.toDate().toLocaleDateString() : 'Just now'}
-        </Text>
+        <Text style={[styles.notifTitle, !isRead(item) && styles.unreadTitle]}>{item.title}</Text>
+        <Text style={styles.notifDate}>{formatDate(item.createdAt)}</Text>
       </View>
       <Text style={styles.notifMessage}>{item.message || item.content}</Text>
-      
+
       <View style={styles.notifFooter}>
-        <Text style={styles.notifSender}>From: {item.author}</Text>
-        {item.targetLevel && (
+        <Text style={styles.notifSender}>From: {getAuthorName(item.author)}</Text>
+        {(item.data?.targetLevel || item.targetLevel) && (
           <View style={styles.targetBadge}>
-            <Text style={styles.targetBadgeText}>{item.targetLevel}</Text>
+            <Text style={styles.targetBadgeText}>{item.data?.targetLevel || item.targetLevel}</Text>
           </View>
+        )}
+        {!isRead(item) && (
+          <TouchableOpacity
+            style={styles.markAsReadBtn}
+            onPress={(event) => {
+              event.stopPropagation();
+              Haptics.selectionAsync();
+              markAsRead(item.id);
+            }}
+          >
+            <Ionicons name="radio-button-off" size={16} color={Colors.textSecondary} />
+          </TouchableOpacity>
         )}
       </View>
     </View>
   );
 
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 500);
+  };
+
   return (
     <View style={styles.container}>
       <DynamicHeader title="Broadcasts" />
-      
+
       <View style={styles.tabContainer}>
         <TouchableOpacity style={[styles.tab, activeTab === 'read' && styles.activeTab]} onPress={() => setActiveTab('read')}>
           <Text style={[styles.tabText, activeTab === 'read' && styles.activeTabText]}>Inbox</Text>
@@ -118,18 +130,33 @@ export default function TeacherNotifs() {
           <View style={styles.centerContainer}><SmoothSpinner size="large" color="#8E24AA" /></View>
         ) : (
           <FlatList
-            data={notices}
+            data={notifications}
             keyExtractor={(item) => item.id}
             renderItem={renderNotice}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
-            ListEmptyComponent={<Text style={{textAlign:'center', color:'#94A3B8', marginTop: 20}}>No broadcasts found.</Text>}
+            ListHeaderComponent={
+              notifications.length > 0 ? (
+                <TouchableOpacity style={styles.markAllBtn} onPress={markAllAsRead}>
+                  <Ionicons name="checkmark-done" size={18} color="#8E24AA" />
+                  <Text style={styles.markAllText}>Mark all as read</Text>
+                </TouchableOpacity>
+              ) : null
+            }
+            ListEmptyComponent={<Text style={styles.emptyText}>{error ? 'Unable to load broadcasts.' : 'No broadcasts found.'}</Text>}
           />
         )
       )}
 
       {activeTab === 'upload' && (
         <ScrollView contentContainerStyle={styles.uploadContent} keyboardShouldPersistTaps="handled">
+          {Platform.OS === 'web' && (
+            <TouchableOpacity onPress={handleRefresh} style={styles.refreshButtonWeb}>
+              <Ionicons name="refresh" size={20} color={refreshing ? Colors.primary : '#718096'} />
+              {refreshing && <Text style={styles.refreshTextWeb}>Updating...</Text>}
+            </TouchableOpacity>
+          )}
+
           <View style={styles.card}>
             <Text style={styles.label}>Notice Title</Text>
             <TextInput style={styles.input} placeholder="e.g., Extra Class Tomorrow" value={title} onChangeText={setTitle} />
@@ -139,17 +166,17 @@ export default function TeacherNotifs() {
 
             <Text style={styles.label}>Target Audience</Text>
             <View style={styles.chipContainer}>
-              {['Overall', 'Specific Dept', 'Specific Semester'].map((lvl) => (
-                <TouchableOpacity key={lvl} style={[styles.chip, targetLevel === lvl && styles.activeChip]} onPress={() => setTargetLevel(lvl)}>
-                  <Text style={[styles.chipText, targetLevel === lvl && styles.activeChipText]}>{lvl}</Text>
+              {['Overall', 'Specific Dept', 'Specific Semester'].map((level) => (
+                <TouchableOpacity key={level} style={[styles.chip, targetLevel === level && styles.activeChip]} onPress={() => setTargetLevel(level)}>
+                  <Text style={[styles.chipText, targetLevel === level && styles.activeChipText]}>{level}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-          </View>
 
-          <TouchableOpacity style={styles.submitBtn} onPress={handleSendNotice} disabled={sending}>
-            {sending ? <SmoothSpinner color="#fff" /> : <Text style={styles.submitBtnText}>Broadcast Notification</Text>}
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.submitBtn} onPress={handleSendNotice} disabled={sending}>
+              {sending ? <SmoothSpinner color="#fff" /> : <Text style={styles.submitBtnText}>Broadcast Notification</Text>}
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       )}
     </View>
@@ -166,14 +193,20 @@ const styles = StyleSheet.create({
   activeTabText: { color: '#FFFFFF' },
   listContent: { padding: 16, paddingBottom: 80 },
   notifCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 16, elevation: 2, borderLeftWidth: 4, borderLeftColor: '#8E24AA' },
+  unreadCard: { borderLeftColor: '#3B82F6' },
   notifHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   notifTitle: { fontSize: 18, fontWeight: 'bold', color: '#2D3748', flex: 1 },
+  unreadTitle: { fontWeight: '900' },
   notifDate: { fontSize: 12, color: '#A0AEC0' },
   notifMessage: { fontSize: 15, color: '#4A5568', lineHeight: 22, marginBottom: 16 },
   notifFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#EDF2F7', paddingTop: 12 },
   notifSender: { fontSize: 12, fontWeight: '600', color: '#718096' },
   targetBadge: { backgroundColor: '#F3E5F5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   targetBadgeText: { color: '#8E24AA', fontSize: 10, fontWeight: 'bold' },
+  markAsReadBtn: { padding: 6, borderRadius: 6, backgroundColor: '#F0F9FF' },
+  markAllBtn: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', paddingVertical: 8, paddingHorizontal: 12, marginBottom: 12, borderRadius: 8, backgroundColor: '#F3E5F5' },
+  markAllText: { marginLeft: 6, color: '#8E24AA', fontWeight: '700' },
+  emptyText: { textAlign: 'center', color: '#94A3B8', marginTop: 20 },
   uploadContent: { padding: 16, paddingBottom: 80 },
   card: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 20, elevation: 2 },
   label: { fontSize: 14, fontWeight: '600', color: '#4A5568', marginBottom: 8 },
@@ -186,4 +219,6 @@ const styles = StyleSheet.create({
   activeChipText: { color: '#FFFFFF', fontWeight: 'bold' },
   submitBtn: { backgroundColor: '#8E24AA', borderRadius: 12, paddingVertical: 16, alignItems: 'center', elevation: 3 },
   submitBtnText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
+  refreshButtonWeb: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', backgroundColor: 'rgba(74, 144, 226, 0.1)', padding: 8, borderRadius: 20, marginBottom: 12 },
+  refreshTextWeb: { marginLeft: 8, fontSize: 12, color: '#4A90E2' },
 });

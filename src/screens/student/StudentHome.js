@@ -12,6 +12,7 @@ import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestor
 import { Ionicons } from '@expo/vector-icons';
 import PremiumActionCard from '../../components/ui/PremiumActionCard';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
+import { Colors } from '../../constants/theme';
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 const ENABLE_SCROLL_MOTION = Platform.OS !== 'web';
@@ -39,7 +40,7 @@ export default function StudentHome() {
     navigation.navigate('Notifications');
   };
 
-  // Enterprise Scroll Animation Values
+  // Luxury Scroll Animation Values
   const scrollY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -53,14 +54,14 @@ export default function StudentHome() {
   const initials = studentName.charAt(0).toUpperCase();
   const instituteName = userData?.instituteData?.name || "Shii Edu";
   const compactCards = layout.isMobile;
-  
+
   const instTypeStr = (userData?.instituteData?.type || 'school').toLowerCase();
   const isSchool = instTypeStr.includes('school');
   const p1 = isSchool ? `Class ${userData?.class || 'N/A'}` : (userData?.dept || 'N/A');
   const p2 = isSchool ? `Sec ${userData?.section || 'N/A'}` : `Sem ${userData?.sem || 'N/A'}`;
   const recentNotices = notices.slice(0, 3);
 
-  // Interpolations for Parallax & Glass Header
+  // Interpolations for Luxury Parallax & Glass Header
   const headerOpacity = ENABLE_SCROLL_MOTION ? scrollY.interpolate({
     inputRange: [50, 120],
     outputRange: [0, 1],
@@ -75,34 +76,34 @@ export default function StudentHome() {
 
   const heroScale = ENABLE_SCROLL_MOTION ? scrollY.interpolate({
     inputRange: [-100, 0],
-    outputRange: [1.2, 1],
+    outputRange: [1.15, 1],
     extrapolate: 'clamp',
   }) : 1;
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+    <View style={[styles.luxuryContainer, { backgroundColor: Colors.background }]}>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
 
-      {/* STICKY GLASSMORPHISM HEADER */}
-      <Animated.View pointerEvents="none" style={[styles.glassHeader, { opacity: headerOpacity }]}>
+      {/* STICKY LUXURY GLASS HEADER */}
+      <Animated.View pointerEvents="none" style={[styles.luxuryGlassHeader, { opacity: headerOpacity }]}>
         {Platform.OS === 'ios' ? (
           <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
         ) : (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.95)' }]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.08)' }]} />
         )}
-        <View style={styles.glassHeaderContent}>
-          <Text style={styles.glassTitle}>{instituteName}</Text>
+        <View style={styles.luxuryGlassHeaderContent}>
+          <Text style={styles.luxuryGlassTitle}>{instituteName}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={styles.glassAvatar}>
-              <Text style={styles.glassAvatarText}>{initials}</Text>
+            <View style={styles.luxuryGlassAvatar}>
+              <Text style={styles.luxuryGlassAvatarText}>{initials}</Text>
             </View>
             {/* Notification Badge */}
             {userData && userData.role === 'student' && (
-              <TouchableOpacity style={styles.notificationBadgeContainer} onPress={openNotifications}>
-                <Ionicons name="notifications-outline" size={24} color="#1E293B" />
+              <TouchableOpacity style={styles.luxuryNotificationBadgeContainer} onPress={openNotifications}>
+                <Ionicons name="notifications-outline" size={layout.isCompact ? 20 : 24} color={Colors.textSecondary} />
                 {unreadCount > 0 && (
-                  <View style={styles.notificationBadge}>
-                    <Text style={styles.notificationBadgeText}>{unreadCount}</Text>
+                  <View style={styles.luxuryNotificationBadge}>
+                    <Text style={styles.luxuryNotificationBadgeText}>{unreadCount}</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -111,92 +112,92 @@ export default function StudentHome() {
         </View>
       </Animated.View>
 
-      <Animated.ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false} 
+      <Animated.ScrollView
+        style={styles.luxuryScrollView}
+        showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         onScroll={ENABLE_SCROLL_MOTION ? Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: USE_NATIVE_DRIVER }) : undefined}
         scrollEventThrottle={16}
-        contentContainerStyle={[styles.scrollContent, layout.isDesktop && styles.scrollContentDesktop]}
+        contentContainerStyle={[styles.luxuryScrollContent, layout.isDesktop && styles.luxuryScrollContentDesktop]}
       >
         {/* PARALLAX HERO SECTION */}
         <Animated.View
           style={[
-            styles.heroContainer,
+            styles.luxuryHeroContainer,
             { height: layout.heroHeight },
-            layout.isDesktop && styles.heroContainerDesktop,
+            layout.isDesktop && styles.luxuryHeroContainerDesktop,
             layout.isDesktop && { maxWidth: layout.maxContentWidth },
             ENABLE_SCROLL_MOTION && { transform: [{ translateY: heroTranslateY }, { scale: heroScale }] },
           ]}
         >
-           <ImageBackground 
-            source={{ uri: userData?.instituteData?.heroImage || 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1000&auto=format&fit=crop' }}             style={styles.heroImage}
+           <ImageBackground
+            source={{ uri: userData?.instituteData?.heroImage || 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1000&auto=format&fit=crop' }}             style={styles.luxuryHeroImage}
            >
-             <View style={[styles.heroGradient, layout.isMobile && styles.heroGradientMobile, layout.isDesktop && styles.heroGradientDesktop]}>
-               <Text style={[styles.instituteHeading, layout.isMobile && styles.instituteHeadingMobile]} numberOfLines={1}>{instituteName}</Text>
-               <View style={[styles.profileRow, layout.isMobile && styles.profileRowMobile]}>
+             <View style={[styles.luxuryHeroGradient, layout.isMobile && styles.luxuryHeroGradientMobile, layout.isDesktop && styles.luxuryHeroGradientDesktop]}>
+               <Text style={[styles.luxuryInstituteHeading, layout.isMobile && styles.luxuryInstituteHeadingMobile]} numberOfLines={1}>{instituteName}</Text>
+               <View style={[styles.luxuryProfileRow, layout.isMobile && styles.luxuryProfileRowMobile]}>
                   {userData?.profilePic ? (
-                    <Image source={{ uri: userData.profilePic }} style={[styles.avatarImage, layout.isMobile && styles.avatarImageMobile]} />
+                    <Image source={{ uri: userData.profilePic }} style={[styles.luxuryAvatarImage, layout.isMobile && styles.luxuryAvatarImageMobile]} />
                   ) : (
-                    <View style={[styles.avatarFallback, layout.isMobile && styles.avatarFallbackMobile]}><Text style={[styles.avatarInitials, layout.isMobile && styles.avatarInitialsMobile]}>{initials}</Text></View>
+                    <View style={[styles.luxuryAvatarFallback, layout.isMobile && styles.luxuryAvatarFallbackMobile]}><Text style={[styles.luxuryAvatarInitials, layout.isMobile && styles.luxuryAvatarInitialsMobile]}>{initials}</Text></View>
                   )}
-                  <View style={styles.greetingBlock}>
-                    <Text style={[styles.greeting, layout.isMobile && styles.greetingMobile]}>Welcome back,</Text>
-                    <Text style={[styles.greetingName, layout.isMobile && styles.greetingNameMobile]} numberOfLines={1}>{studentName}</Text>
+                  <View style={styles.luxuryGreetingBlock}>
+                    <Text style={[styles.luxuryGreeting, layout.isMobile && styles.luxuryGreetingMobile]}>Welcome back,</Text>
+                    <Text style={[styles.luxuryGreetingName, layout.isMobile && styles.luxuryGreetingNameMobile]} numberOfLines={1}>{studentName}</Text>
                   </View>
                </View>
-               
-               <View style={[styles.pillContainer, layout.isMobile && styles.pillContainerMobile]}>
-                 <View style={[styles.pillBadge, layout.isMobile && styles.pillBadgeMobile]}><Text style={[styles.pillText, layout.isMobile && styles.pillTextMobile]} numberOfLines={1}>{p1}</Text></View>
-                 <View style={[styles.pillBadge, layout.isMobile && styles.pillBadgeMobile]}><Text style={[styles.pillText, layout.isMobile && styles.pillTextMobile]} numberOfLines={1}>{p2}</Text></View>
+
+               <View style={[styles.luxuryPillContainer, layout.isMobile && styles.luxuryPillContainerMobile]}>
+                 <View style={[styles.luxuryPillBadge, layout.isMobile && styles.luxuryPillBadgeMobile]}><Text style={[styles.luxuryPillText, layout.isMobile && styles.luxuryPillTextMobile]} numberOfLines={1}>{p1}</Text></View>
+                 <View style={[styles.luxuryPillBadge, layout.isMobile && styles.luxuryPillBadgeMobile]}><Text style={[styles.luxuryPillText, layout.isMobile && styles.luxuryPillTextMobile]} numberOfLines={1}>{p2}</Text></View>
                </View>
              </View>
            </ImageBackground>
         </Animated.View>
 
-        <View style={[styles.bodyContent, layout.isMobile && styles.bodyContentMobile, layout.isDesktop && styles.bodyContentDesktop, layout.isDesktop && { maxWidth: layout.maxContentWidth }]}>
-          <Text style={[styles.sectionTitle, layout.isMobile && styles.sectionTitleMobile]}>Dashboard</Text>
-          
-          <View style={[styles.gridContainer, layout.isDesktop && styles.gridContainerDesktop]}>
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Grades" icon="school" color="#8B5CF6" bgColor="#F5F3FF" delay={100} onPress={() => navigation.navigate('Grades')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Attendance" icon="bar-chart" color="#10B981" bgColor="#ECFDF5" delay={200} onPress={() => navigation.navigate('AttendanceView')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title={layout.isMobile ? 'Fees' : 'Fee Ledger'} icon="wallet" color="#F59E0B" bgColor="#FFFBEB" delay={300} onPress={() => navigation.navigate('FeePayment')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Routine" icon="calendar" color="#E11D48" bgColor="#FFE4E6" delay={400} onPress={() => navigation.navigate('Routine')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="PYQs" icon="document-text" color="#3B82F6" bgColor="#EFF6FF" delay={500} onPress={() => navigation.navigate('PYQView')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Gallery" icon="images" color="#F97316" bgColor="#FFF7ED" delay={600} onPress={() => navigation.navigate('GalleryView')} />
+        <View style={[styles.luxuryBodyContent, layout.isMobile && styles.luxuryBodyContentMobile, layout.isDesktop && styles.luxuryBodyContentDesktop, layout.isDesktop && { maxWidth: layout.maxContentWidth }]}>
+          <Text style={[styles.luxurySectionTitle, layout.isMobile && styles.luxurySectionTitleMobile]}>Dashboard</Text>
+
+          <View style={[styles.luxuryGridContainer, layout.isDesktop && styles.luxuryGridContainerDesktop]}>
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Grades" icon="school" color={Colors.accent} bgColor={Colors.surface} delay={100} onPress={() => navigation.navigate('Grades')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Attendance" icon="bar-chart" color={Colors.success} bgColor={Colors.surface} delay={200} onPress={() => navigation.navigate('AttendanceView')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title={layout.isMobile ? 'Fees' : 'Fee Ledger'} icon="wallet" color={Colors.warning} bgColor={Colors.surface} delay={300} onPress={() => navigation.navigate('FeePayment')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Routine" icon="calendar" color={Colors.secondary} bgColor={Colors.surface} delay={400} onPress={() => navigation.navigate('Routine')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="PYQs" icon="document-text" color={Colors.primaryVariant} bgColor={Colors.surface} delay={500} onPress={() => navigation.navigate('PYQView')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Gallery" icon="images" color={Colors.accentVariant} bgColor={Colors.surface} delay={600} onPress={() => navigation.navigate('GalleryView')} />
           </View>
 
-          <Text style={[styles.sectionTitle, layout.isMobile && styles.sectionTitleMobile]}>Recent Broadcasts</Text>
-          <View style={[styles.noticeContainer, layout.isMobile && styles.noticeContainerMobile]}>
+          <Text style={[styles.luxurySectionTitle, layout.isMobile && styles.luxurySectionTitleMobile]}>Recent Broadcasts</Text>
+          <View style={[styles.luxuryNoticeContainer, layout.isMobile && styles.luxuryNoticeContainerMobile]}>
             {notices.length === 0 ? (
-              <Text style={styles.emptyNotices}>No recent announcements.</Text>
+              <Text style={styles.luxuryEmptyNotices}>No recent announcements.</Text>
             ) : (
               recentNotices.map((item, index) => (
                 <TouchableOpacity
                   key={item.id}
-                  style={[styles.miniNotice, index === recentNotices.length - 1 && { borderBottomWidth: 0 }]}
+                  style={[styles.luxuryMiniNotice, index === recentNotices.length - 1 && { borderBottomWidth: 0 }]}
                   onPress={() => {
                     Haptics.selectionAsync();
                     navigation.navigate('MainTabs', { screen: 'Notices' });
                   }}
                   accessibilityLabel={`Open notice ${item.title || 'details'}`}
                 >
-                  <View style={styles.noticeIconCage}>
-                    <Ionicons name="notifications" size={16} color="#3B82F6" />
+                  <View style={styles.luxuryNoticeIconCage}>
+                    <Ionicons name="notifications" size={16} color={Colors.accent} />
                   </View>
-                  <View style={styles.noticeTextBlock}>
-                    <Text style={styles.miniNoticeTitle} numberOfLines={1}>{item.title}</Text>
-                    <Text style={styles.miniNoticeMeta}>{item.author || 'Campus'} - {item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString() : 'Just now'}</Text>
+                  <View style={styles.luxuryNoticeTextBlock}>
+                    <Text style={styles.luxuryMiniNoticeTitle} numberOfLines={1}>{item.title}</Text>
+                    <Text style={styles.luxuryMiniNoticeMeta}>{item.author || 'Campus'} - {item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString() : 'Just now'}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color="#CBD5E0" />
+                  <Ionicons name="chevron-forward" size={16} color={Colors.border} />
                 </TouchableOpacity>
               ))
             )}
           </View>
 
-          <TouchableOpacity style={[styles.logoutBtn, layout.isMobile && styles.logoutBtnMobile]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); logout(); }}>
-            <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-            <Text style={styles.logoutBtnText}>Secure Sign Out</Text>
+          <TouchableOpacity style={[styles.luxuryLogoutBtn, layout.isMobile && styles.luxuryLogoutBtnMobile]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); logout(); }}>
+            <Ionicons name="log-out-outline" size={layout.isCompact ? 18 : 20} color={Colors.error} />
+            <Text style={styles.luxuryLogoutBtnText}>Secure Sign Out</Text>
           </TouchableOpacity>
         </View>
       </Animated.ScrollView>
@@ -286,6 +287,78 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   notificationBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+
+  luxuryContainer: { flex: 1, backgroundColor: '#F4F4F5' },
+  luxuryScrollView: { flex: 1 },
+  luxuryGlassHeader: { position: 'absolute', top: 0, left: 0, right: 0, height: Platform.OS === 'ios' ? 100 : 80, zIndex: 100, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
+  luxuryGlassHeaderContent: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingHorizontal: 20, paddingBottom: 15 },
+  luxuryGlassTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', letterSpacing: 0 },
+  luxuryGlassAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#3B82F6', justifyContent: 'center', alignItems: 'center' },
+  luxuryGlassAvatarText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+  luxuryScrollContent: { paddingBottom: 120 },
+  luxuryScrollContentDesktop: { alignItems: 'center', paddingBottom: 80 },
+  luxuryHeroContainer: { height: 320, width: '100%', backgroundColor: '#0F172A' },
+  luxuryHeroContainerDesktop: { width: '100%', alignSelf: 'center', borderRadius: 28, overflow: 'hidden', marginTop: 24 },
+  luxuryHeroImage: { width: '100%', height: '100%', justifyContent: 'flex-end' },
+  luxuryHeroGradient: { backgroundColor: 'rgba(0,0,0,0.6)', width: '100%', height: '100%', padding: 24, justifyContent: 'flex-end' },
+  luxuryHeroGradientDesktop: { padding: 36 },
+  luxuryHeroGradientMobile: { padding: 18 },
+  luxuryInstituteHeading: { fontSize: 16, fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 20 },
+  luxuryInstituteHeadingMobile: { fontSize: 12, lineHeight: 16, marginBottom: 14, letterSpacing: 1 },
+  luxuryProfileRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  luxuryProfileRowMobile: { marginBottom: 12 },
+  luxuryGreetingBlock: { marginLeft: 16, flex: 1, minWidth: 0 },
+  luxuryAvatarFallback: { width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)' },
+  luxuryAvatarFallbackMobile: { width: 56, height: 56, borderRadius: 28 },
+  luxuryAvatarInitials: { fontSize: 28, fontWeight: 'bold', color: '#fff' },
+  luxuryAvatarInitialsMobile: { fontSize: 22 },
+  luxuryAvatarImage: { width: 70, height: 70, borderRadius: 35, borderWidth: 2, borderColor: '#fff' },
+  luxuryAvatarImageMobile: { width: 56, height: 56, borderRadius: 28 },
+  luxuryGreeting: { fontSize: 16, color: '#E2E8F0', fontWeight: '500' },
+  luxuryGreetingMobile: { fontSize: 13 },
+  luxuryGreetingName: { fontSize: 32, fontWeight: '900', color: '#FFFFFF', marginTop: 2, letterSpacing: 0 },
+  luxuryGreetingNameMobile: { fontSize: 24, lineHeight: 30 },
+  luxuryPillContainer: { flexDirection: 'row', flexWrap: 'wrap' },
+  luxuryPillContainerMobile: { marginTop: 2 },
+  luxuryPillBadge: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', marginRight: 10 },
+  luxuryPillBadgeMobile: { paddingHorizontal: 10, paddingVertical: 6, marginRight: 8, marginBottom: 8 },
+  luxuryPillText: { color: '#ffffff', fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
+  luxuryPillTextMobile: { fontSize: 12, letterSpacing: 0.2 },
+  luxuryBodyContent: { padding: 20, marginTop: -20, backgroundColor: '#F4F4F5', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+  luxuryBodyContentMobile: { paddingHorizontal: 16, paddingTop: 18 },
+  luxuryBodyContentDesktop: { width: '100%', alignSelf: 'center', marginTop: 18, borderRadius: 0, paddingHorizontal: 0 },
+  luxurySectionTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', marginBottom: 16, marginTop: 10, letterSpacing: 0 },
+  luxurySectionTitleMobile: { fontSize: 18, marginBottom: 12 },
+  luxuryGridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 },
+  luxuryGridContainerDesktop: { alignContent: 'flex-start' },
+  luxuryNoticeContainer: { backgroundColor: '#fff', borderRadius: 24, padding: 16, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.03, shadowRadius: 15, marginBottom: 30 },
+  luxuryNoticeContainerMobile: { borderRadius: 18, padding: 12 },
+  luxuryMiniNotice: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  luxuryNoticeIconCage: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+  luxuryNoticeTextBlock: { flex: 1, minWidth: 0 },
+  luxuryMiniNoticeTitle: { fontWeight: '700', fontSize: 15, color: '#1E293B', marginBottom: 4 },
+  luxuryMiniNoticeMeta: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
+  luxuryEmptyNotices: { color: '#94A3B8', fontStyle: 'italic', textAlign: 'center', paddingVertical: 20 },
+  luxuryLogoutBtn: { backgroundColor: '#fff', flexDirection: 'row', padding: 20, borderRadius: 20, alignItems: 'center', justifyContent: 'center', shadowColor: '#EF4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 2 },
+  luxuryLogoutBtnMobile: { padding: 16, borderRadius: 17 },
+  luxuryLogoutBtnText: { color: '#EF4444', fontWeight: 'bold', fontSize: 16, marginLeft: 10 },
+  luxuryNotificationBadgeContainer: { position: 'relative', marginLeft: 12 },
+  luxuryNotificationBadge: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: '#EF4444',
+    borderRadius: 12,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  luxuryNotificationBadgeText: {
     color: '#FFFFFF',
     fontSize: 10,
     fontWeight: 'bold',

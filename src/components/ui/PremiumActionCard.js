@@ -1,15 +1,16 @@
 import React, { useRef, useEffect } from 'react';
-import { Animated, Platform, TouchableWithoutFeedback, View, Text, StyleSheet } from 'react-native';
+import { Animated, Easing, Platform, TouchableWithoutFeedback, View, Text, StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors, Fonts } from '../../constants/theme';
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 const ENABLE_MOTION = Platform.OS !== 'web';
 
 const getCardWidth = (columns) => {
-  if (columns >= 4) return '23.5%';
-  if (columns === 3) return '31.8%';
-  return '48%';
+  if (columns >= 4) return '22%';
+  if (columns === 3) return '30%';
+  return '46%';
 };
 
 const triggerImpact = (style) => {
@@ -17,35 +18,50 @@ const triggerImpact = (style) => {
 };
 
 export default function PremiumActionCard({ title, icon, color, bgColor, delay, onPress, columns = 2, compact = false, style }) {
-  const scaleAnim = useRef(new Animated.Value(ENABLE_MOTION ? 0.8 : 1)).current;
+  const scaleAnim = useRef(new Animated.Value(ENABLE_MOTION ? 0.85 : 1)).current;
   const fadeAnim = useRef(new Animated.Value(ENABLE_MOTION ? 0 : 1)).current;
-  const slideAnim = useRef(new Animated.Value(ENABLE_MOTION ? 40 : 0)).current;
+  const slideAnim = useRef(new Animated.Value(ENABLE_MOTION ? 30 : 0)).current;
   const tiltAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (!ENABLE_MOTION) return;
 
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 500, delay: delay, useNativeDriver: USE_NATIVE_DRIVER }),
-      Animated.spring(slideAnim, { toValue: 0, friction: 8, tension: 40, delay: delay, useNativeDriver: USE_NATIVE_DRIVER }),
-      Animated.spring(scaleAnim, { toValue: 1, friction: 8, tension: 40, delay: delay, useNativeDriver: USE_NATIVE_DRIVER })
+    // Luxury staggered entrance animation
+    Animated.sequence([
+      Animated.delay(delay),
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 800, easing: Easing.out(Easing.cubic), useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.spring(slideAnim, { toValue: 0, friction: 6, tension: 50, delay: delay * 0.5, useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.spring(scaleAnim, { toValue: 1, friction: 6, tension: 50, delay: delay * 0.5, useNativeDriver: USE_NATIVE_DRIVER })
+      ])
     ]).start();
-  }, [delay, fadeAnim, scaleAnim, slideAnim]);
+
+    // Subtle pulse animation for luxury feel
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.02, duration: 2000, easing: Easing.inOut(Easing.quad), useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 2000, easing: Easing.inOut(Easing.quad), useNativeDriver: USE_NATIVE_DRIVER }),
+      ])
+    ).start();
+  }, [delay, fadeAnim, pulseAnim, scaleAnim, slideAnim]);
 
   const handlePressIn = () => {
     triggerImpact(Haptics.ImpactFeedbackStyle.Light);
     if (!ENABLE_MOTION) return;
     Animated.parallel([
-      Animated.spring(scaleAnim, { toValue: 0.94, useNativeDriver: USE_NATIVE_DRIVER }),
-      Animated.spring(tiltAnim, { toValue: 1, useNativeDriver: USE_NATIVE_DRIVER })
+      Animated.spring(scaleAnim, { toValue: 0.95, friction: 4, tension: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.spring(tiltAnim, { toValue: 1.5, friction: 4, tension: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(pulseAnim, { toValue: 1.05, duration: 100, useNativeDriver: USE_NATIVE_DRIVER })
     ]).start();
   };
 
   const handlePressOut = () => {
     if (!ENABLE_MOTION) return;
     Animated.parallel([
-      Animated.spring(scaleAnim, { toValue: 1, friction: 5, tension: 50, useNativeDriver: USE_NATIVE_DRIVER }),
-      Animated.spring(tiltAnim, { toValue: 0, friction: 5, tension: 50, useNativeDriver: USE_NATIVE_DRIVER })
+      Animated.spring(scaleAnim, { toValue: 1, friction: 4, tension: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.spring(tiltAnim, { toValue: 0, friction: 4, tension: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(pulseAnim, { toValue: 1, duration: 150, useNativeDriver: USE_NATIVE_DRIVER })
     ]).start();
   };
 
@@ -55,8 +71,8 @@ export default function PremiumActionCard({ title, icon, color, bgColor, delay, 
   };
 
   const tilt = tiltAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '2deg']
+    inputRange: [0, 1.5],
+    outputRange: ['0deg', '3deg']
   });
 
   return (
@@ -68,98 +84,133 @@ export default function PremiumActionCard({ title, icon, color, bgColor, delay, 
       accessibilityLabel={title}
     >
       <Animated.View style={[
-        styles.cardBody, 
-        compact && styles.compactCard,
-        { 
+        styles.luxuryCardBody,
+        compact && styles.luxuryCompactCard,
+        {
           width: getCardWidth(columns),
-          backgroundColor: bgColor, 
-          opacity: fadeAnim, 
-          transform: [{ scale: scaleAnim }, { translateY: slideAnim }, { rotateZ: tilt }] 
+          backgroundColor: bgColor,
+          opacity: fadeAnim,
+          transform: [
+            { scale: scaleAnim },
+            { translateY: slideAnim },
+            { rotateZ: tilt }
+          ],
         },
         style,
       ]}>
-        <View style={styles.glowOverlay} />
-        <View style={styles.cornerAccent} />
-        <View style={[styles.iconCage, compact && styles.compactIconCage, { backgroundColor: color + '15' }]}>
-          <Ionicons name={icon} size={compact ? 22 : 28} color={color} />
+        {/* Luxury glow overlay */}
+        <View style={[styles.luxuryGlowOverlay, { backgroundColor: color + '33' }]} />
+        {/* Corner accent with luxury touch */}
+        <View style={[styles.luxuryCornerAccent, { backgroundColor: color + '22' }]} />
+        {/* Enhanced icon cage */}
+        <View style={[styles.luxuryIconCage, compact && styles.luxuryCompactIconCage, {
+          backgroundColor: color + '0A',
+          borderWidth: 1,
+          borderColor: color + '33'
+        }]}>
+          <Ionicons name={icon} size={compact ? 24 : 30} color={color} />
         </View>
-        <Text style={[styles.title, compact && styles.compactTitle]} numberOfLines={2}>{title}</Text>
-        <View style={[styles.bottomAccent, { backgroundColor: color }]} />
+        {/* Title with luxury typography */}
+        <Text style={[styles.luxuryTitle, compact && styles.luxuryCompactTitle]} numberOfLines={2}>{title}</Text>
+        {/* Bottom accent with animation */}
+        <Animated.View style={[
+          styles.luxuryBottomAccent,
+          {
+            backgroundColor: color,
+            opacity: fadeAnim,
+            transform: [{ scaleX: pulseAnim }]
+          }
+        ]} />
       </Animated.View>
     </TouchableWithoutFeedback>
   );
 }
 
 const styles = StyleSheet.create({
-  cardBody: {
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+  luxuryCardBody: {
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    borderRadius: 24,
     alignItems: 'center',
-    marginBottom: 16,
-    minHeight: 154,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.04,
-    shadowRadius: 15,
-    elevation: 3,
+    marginBottom: 20,
+    minHeight: 170,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.6)',
+    borderWidth: 1.5,
+    // Luxury shadow
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+    // Enhanced border for luxury feel
+    borderColor: Platform.select({
+      web: 'rgba(255,255,255,0.15)',
+      default: 'rgba(255,255,255,0.12)'
+    }),
+    backgroundColor: Platform.select({
+      web: 'rgba(255,255,255,0.02)',
+      default: '#FFFFFF'
+    }),
   },
-  compactCard: {
-    paddingVertical: 16,
-    paddingHorizontal: 10,
-    marginBottom: 12,
-    minHeight: 126,
-    borderRadius: 17,
-  },
-  glowOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.55)',
-    opacity: 0.45,
-  },
-  cornerAccent: {
-    position: 'absolute',
-    top: -22,
-    right: -22,
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(255,255,255,0.36)',
-  },
-  iconCage: {
-    width: 64,
-    height: 64,
+  luxuryCompactCard: {
+    paddingVertical: 20,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+    minHeight: 140,
     borderRadius: 20,
+  },
+  luxuryGlowOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    opacity: 0.6,
+  },
+  luxuryCornerAccent: {
+    position: 'absolute',
+    top: -28,
+    right: -28,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  luxuryIconCage: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 18,
+    borderWidth: 1.5,
   },
-  compactIconCage: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
-    marginBottom: 10,
+  luxuryCompactIconCage: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    marginBottom: 12,
   },
-  title: {
-    color: '#0F172A',
+  luxuryTitle: {
+    color: Colors.textPrimary,
     fontWeight: '800',
-    fontSize: 15,
-    letterSpacing: 0,
+    fontSize: 16,
+    letterSpacing: -0.25,
     textAlign: 'center',
+    // Luxury typography
+    fontFamily: Fonts.heading,
+    marginTop: 4,
   },
-  compactTitle: {
-    fontSize: 13,
-    lineHeight: 17,
+  luxuryCompactTitle: {
+    fontSize: 14,
+    lineHeight: 18,
   },
-  bottomAccent: {
+  luxuryBottomAccent: {
     position: 'absolute',
-    left: 18,
-    right: 18,
-    bottom: 10,
-    height: 3,
-    borderRadius: 999,
-    opacity: 0.18,
+    left: 20,
+    right: 20,
+    bottom: 12,
+    height: 4,
+    borderRadius: 2,
+    opacity: 0.8,
   },
 });

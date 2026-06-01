@@ -1,11 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { Alert, Animated, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, Easing, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import useResponsiveLayout from '../hooks/useResponsiveLayout';
 import BrandLogo from './BrandLogo';
+import { Colors, Fonts, Radius, Spacing } from '../constants/theme';
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
@@ -16,28 +17,42 @@ export default function DynamicHeader({ title, showBack = false }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-12)).current;
   const bellScale = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+    // Luxury staggered entrance with enhanced easing
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 320,
+        duration: 800,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.spring(slideAnim, {
         toValue: 0,
-        friction: 8,
-        tension: 55,
+        friction: 6,
+        tension: 50,
         useNativeDriver: USE_NATIVE_DRIVER,
       }),
     ]).start();
-  }, [fadeAnim, slideAnim]);
+
+    // Subtle pulse for luxury feel
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.02, duration: 3000, easing: Easing.inOut(Easing.quad), useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 3000, easing: Easing.inOut(Easing.quad), useNativeDriver: USE_NATIVE_DRIVER }),
+      ])
+    ).start();
+  }, [fadeAnim, pulseAnim, slideAnim]);
 
   const handleBellPress = () => {
     Haptics.selectionAsync();
+    // Luxury bell animation with overshoot
     Animated.sequence([
-      Animated.spring(bellScale, { toValue: 0.9, useNativeDriver: USE_NATIVE_DRIVER }),
-      Animated.spring(bellScale, { toValue: 1, friction: 5, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.spring(bellScale, { toValue: 0.85, friction: 4, tension: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.spring(bellScale, { toValue: 1.1, friction: 4, tension: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.spring(bellScale, { toValue: 0.95, friction: 4, tension: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.spring(bellScale, { toValue: 1, friction: 4, tension: 60, useNativeDriver: USE_NATIVE_DRIVER }),
     ]).start();
 
     const role = userData?.role?.trim().toLowerCase();
@@ -92,66 +107,66 @@ export default function DynamicHeader({ title, showBack = false }) {
   // Fallback to placeholders if the institute hasn't configured them yet
   const instituteData = userData?.instituteData;
   const instituteName = instituteData?.name || "Shii Edu";
-  const logoUrl = instituteData?.logoUrl || null; 
-  const logoSize = layout.isCompact ? 34 : 40;
+  const logoUrl = instituteData?.logoUrl || null;
+  const logoSize = layout.isCompact ? 36 : 44; // Slightly larger for luxury feel
 
   return (
     <Animated.View
       style={[
-        styles.headerContainer,
-        layout.isMobile && styles.headerContainerMobile,
-        layout.isWeb && layout.isMobile && styles.headerContainerMobileWeb,
-        layout.isDesktop && styles.headerContainerDesktop,
+        styles.luxuryHeaderContainer,
+        layout.isMobile && styles.luxuryHeaderContainerMobile,
+        layout.isWeb && layout.isMobile && styles.luxuryHeaderContainerMobileWeb,
+        layout.isDesktop && styles.luxuryHeaderContainerDesktop,
         {
           opacity: fadeAnim,
           transform: [{ translateY: slideAnim }],
         },
       ]}
     >
-      <View style={[styles.headerContent, layout.isDesktop && { maxWidth: layout.maxContentWidth }]}>
-        <View style={styles.leftSection}>
+      <View style={[styles.luxuryHeaderContent, layout.isDesktop && { maxWidth: layout.maxContentWidth }]}>
+        <View style={styles.luxuryLeftSection}>
           {showBack ? (
             <TouchableOpacity
               onPress={() => {
                 Haptics.selectionAsync();
                 returnToRoleHome();
               }}
-              style={[styles.backButton, { minWidth: layout.touchTarget, minHeight: layout.touchTarget }]}
+              style={[styles.luxuryBackButton, { minWidth: layout.touchTarget, minHeight: layout.touchTarget }]}
             >
-              <Ionicons name="arrow-back" size={layout.isCompact ? 21 : 24} color="#2D3748" />
+              <Ionicons name="arrow-back" size={layout.isCompact ? 22 : 26} color={Colors.textSecondary} />
             </TouchableOpacity>
           ) : null}
 
-          {/* Dynamic Logo */}
+          {/* Dynamic Logo with luxury enhancement */}
           {logoUrl ? (
-            <Image source={{ uri: logoUrl }} style={[styles.logo, layout.isCompact && styles.logoCompact]} resizeMode="contain" />
+            <Image source={{ uri: logoUrl }} style={[styles.luxuryLogo, layout.isCompact && styles.luxuryLogoCompact]} resizeMode="contain" />
           ) : (
-            <View style={[styles.placeholderLogo, layout.isCompact && styles.placeholderLogoCompact]}>
+            <View style={[styles.luxuryPlaceholderLogo, layout.isCompact && styles.luxuryPlaceholderLogoCompact]}>
               <BrandLogo size={logoSize} />
             </View>
           )}
 
-          {/* Dynamic Name or Page Title */}
-          <View style={styles.textContainer}>
-            <Text style={[styles.instituteName, layout.isCompact && styles.instituteNameCompact]} numberOfLines={1}>
+          {/* Dynamic Name or Page Title with luxury typography */}
+          <View style={styles.luxuryTextContainer}>
+            <Text style={[styles.luxuryInstituteName, layout.isCompact && styles.luxuryInstituteNameCompact]} numberOfLines={1}>
               {instituteName}
             </Text>
-            {title && <Text style={[styles.pageTitle, layout.isCompact && styles.pageTitleCompact]} numberOfLines={1}>{title}</Text>}
+            {title && <Text style={[styles.luxuryPageTitle, layout.isCompact && styles.luxuryPageTitleCompact]} numberOfLines={1}>{title}</Text>}
           </View>
         </View>
 
-        {/* Notification Bell (Global feature for all 3 UIs) */}
+        {/* Notification Bell (Global feature for all 3 UIs) with luxury enhancement */}
         <TouchableOpacity
           style={[
-            styles.notificationButton,
-            layout.isCompact && styles.notificationButtonCompact,
+            styles.luxuryNotificationButton,
+            layout.isCompact && styles.luxuryNotificationButtonCompact,
             { minWidth: layout.touchTarget, minHeight: layout.touchTarget },
           ]}
           onPress={handleBellPress}
           accessibilityLabel="Open notifications"
         >
-          <Animated.View style={{ transform: [{ scale: bellScale }] }}>
-            <Ionicons name="notifications-outline" size={layout.isCompact ? 21 : 24} color="#2D3748" />
+          <Animated.View style={{ transform: [{ scale: bellScale }, { scale: pulseAnim }] }}>
+            <Ionicons name="notifications-outline" size={layout.isCompact ? 22 : 26} color={Colors.textSecondary} />
           </Animated.View>
           {/* Optional: Add a red dot badge here if unread notifications exist */}
         </TouchableOpacity>
@@ -161,105 +176,121 @@ export default function DynamicHeader({ title, showBack = false }) {
 }
 
 const styles = StyleSheet.create({
-  headerContainer: {
+  luxuryHeaderContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 50, // Accounts for iOS/Android status bar safely
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Platform.select({
+      ios: 60, // Accounts for iOS status bar safely with luxury spacing
+      android: 50,
+      web: 30,
+      default: 50,
+    }),
+    paddingBottom: Spacing.md,
+    backgroundColor: Colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#EDF2F7',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 3,
+    borderBottomColor: Colors.border,
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  headerContainerDesktop: {
-    paddingTop: 22,
-    paddingHorizontal: 32,
+  luxuryHeaderContainerDesktop: {
+    paddingTop: 30,
+    paddingHorizontal: Spacing.xxl,
   },
-  headerContainerMobile: {
-    paddingHorizontal: 14,
-    paddingBottom: 12,
+  luxuryHeaderContainerMobile: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.sm,
   },
-  headerContainerMobileWeb: {
-    paddingTop: 16,
+  luxuryHeaderContainerMobileWeb: {
+    paddingTop: 20,
   },
-  headerContent: {
+  luxuryHeaderContent: {
     width: '100%',
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  leftSection: {
+  luxuryLeftSection: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
-  backButton: {
-    marginRight: 8,
-    borderRadius: 999,
+  luxuryBackButton: {
+    marginRight: Spacing.md,
+    borderRadius: Radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.hover,
   },
-  logo: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    marginRight: 12,
+  luxuryLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: Radius.lg,
+    marginRight: Spacing.lg,
   },
-  logoCompact: {
-    width: 34,
-    height: 34,
-    borderRadius: 7,
-    marginRight: 9,
+  luxuryLogoCompact: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.md,
+    marginRight: Spacing.md,
   },
-  placeholderLogo: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+  luxuryPlaceholderLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: Radius.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: Spacing.lg,
+    backgroundColor: Colors.surfaceVariant,
   },
-  placeholderLogoCompact: {
-    width: 34,
-    height: 34,
-    borderRadius: 7,
-    marginRight: 9,
+  luxuryPlaceholderLogoCompact: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+    backgroundColor: Colors.surfaceVariant,
   },
-  textContainer: {
+  luxuryTextContainer: {
     flex: 1,
     justifyContent: 'center',
   },
-  instituteName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#718096',
-  },
-  instituteNameCompact: {
-    fontSize: 12,
-  },
-  pageTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2D3748',
-  },
-  pageTitleCompact: {
+  luxuryInstituteName: {
     fontSize: 16,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    letterSpacing: -0.25,
+    fontFamily: Fonts.heading,
   },
-  notificationButton: {
-    padding: 8,
-    backgroundColor: '#F7FAFC',
-    borderRadius: 50,
+  luxuryInstituteNameCompact: {
+    fontSize: 14,
+  },
+  luxuryPageTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+    letterSpacing: -0.5,
+    fontFamily: Fonts.heading,
+  },
+  luxuryPageTitleCompact: {
+    fontSize: 18,
+  },
+  luxuryNotificationButton: {
+    padding: Spacing.sm,
+    backgroundColor: Colors.surfaceVariant,
+    borderRadius: Radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  notificationButtonCompact: {
-    padding: 6,
+  luxuryNotificationButtonCompact: {
+    padding: Spacing.xs,
   },
 });
