@@ -9,7 +9,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "deploy:firebase:rules": "npx --yes firebase-tools@15.19.0 deploy --only firestore:rules,storage --project edu-hub-1fce7 --non-interactive"
   },
   "dependencies": {
     "@expo/metro-runtime": "56.0.13",

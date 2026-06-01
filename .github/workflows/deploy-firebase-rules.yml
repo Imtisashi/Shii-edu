@@ -1,0 +1,54 @@
+name: Deploy Firebase Rules
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .firebaserc
+      - firebase.json
+      - firestore.rules
+      - storage.rules
+      - .github/workflows/deploy-firebase-rules.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FIREBASE_PROJECT_ID: edu-hub-1fce7
+  FIREBASE_CLI_VERSION: 15.19.0
+
+jobs:
+  deploy-rules:
+    name: Deploy Firestore and Storage rules
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Prepare Firebase credentials
+        shell: bash
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_JSON" ]; then
+            echo "::error title=Missing FIREBASE_SERVICE_ACCOUNT_JSON::Add a GitHub Actions secret named FIREBASE_SERVICE_ACCOUNT_JSON with a Firebase service account JSON key."
+            exit 1
+          fi
+
+          credentials_file="$RUNNER_TEMP/firebase-service-account.json"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT_JSON" > "$credentials_file"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$credentials_file" >> "$GITHUB_ENV"
+
+      - name: Install Firebase CLI
+        run: npm install --global firebase-tools@${FIREBASE_CLI_VERSION}
+
+      - name: Deploy rules
+        run: firebase deploy --only firestore:rules,storage --project "$FIREBASE_PROJECT_ID" --non-interactive
