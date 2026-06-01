@@ -30,6 +30,34 @@ const secondsToLabel = (seconds) => {
   return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
 };
 
+const getYouTubeEmbedUrl = (url) => {
+  const value = String(url || '').trim();
+  if (!value) return null;
+
+  const match = value.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{6,})/);
+  if (!match) return null;
+
+  return `https://www.youtube.com/embed/${match[1]}?rel=0&modestbranding=1&playsinline=1`;
+};
+
+function WebYouTubePlayer({ embedUrl }) {
+  return React.createElement('iframe', {
+    src: embedUrl,
+    title: 'YouTube lesson player',
+    allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
+    allowFullScreen: true,
+    style: {
+      width: '100%',
+      height: '100%',
+      minHeight: 260,
+      border: 0,
+      backgroundColor: '#020617',
+      borderRadius: 18,
+      display: 'block',
+    },
+  });
+}
+
 function WebHlsVideo({ sourceUrl, posterUrl, initialPositionSeconds, onProgress, onEnded }) {
   const videoRef = useRef(null);
 
@@ -158,6 +186,9 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
   }, [progressRecords]);
 
   const selectedProgress = selectedLesson ? progressByLesson.get(selectedLesson.id) : null;
+  const youtubeEmbedUrl = selectedLesson
+    ? getYouTubeEmbedUrl(selectedLesson.youtubeUrl || selectedLesson.externalUrl || selectedLesson.playbackUrl)
+    : null;
   const completedCount = lessons.filter((lesson) => progressByLesson.get(lesson.id)?.completed).length;
   const completionPercent = lessons.length ? Math.round((completedCount / lessons.length) * 100) : 0;
 
@@ -201,8 +232,12 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
 
     const resolvePlayback = async () => {
       if (!selectedLesson) return;
-      if (selectedLesson.playbackUrl) {
-        setPlaybackUrl(selectedLesson.playbackUrl);
+      if (youtubeEmbedUrl) {
+        setPlaybackUrl(selectedLesson.youtubeUrl || selectedLesson.externalUrl || selectedLesson.playbackUrl);
+        return;
+      }
+      if (selectedLesson.playbackUrl || selectedLesson.externalUrl) {
+        setPlaybackUrl(selectedLesson.playbackUrl || selectedLesson.externalUrl);
         return;
       }
       if (!selectedLesson.cloudinaryPublicId) {
@@ -233,7 +268,7 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
     return () => {
       cancelled = true;
     };
-  }, [course?.id, currentUser, selectedLesson]);
+  }, [course?.id, currentUser, selectedLesson, youtubeEmbedUrl]);
 
   const persistProgress = async ({ force = false, completed = false } = {}) => {
     if (!currentUser?.uid || !userData?.instituteId || !course?.id || !selectedLesson?.id) return;
@@ -289,6 +324,16 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
   const handleEnded = () => {
     lastProgressRef.current = {
       ...lastProgressRef.current,
+      completed: true,
+    };
+    persistProgress({ force: true, completed: true });
+  };
+
+  const handleManualComplete = () => {
+    const durationSeconds = selectedLesson?.durationSeconds || lastProgressRef.current.durationSeconds || 0;
+    lastProgressRef.current = {
+      positionSeconds: durationSeconds,
+      durationSeconds,
       completed: true,
     };
     persistProgress({ force: true, completed: true });
@@ -392,7 +437,11 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
               <Text style={styles.videoStateText}>{playbackError}</Text>
             </View>
           ) : playbackUrl ? (
-            Platform.OS === 'web' ? (
+            youtubeEmbedUrl && Platform.OS === 'web' ? (
+              <WebYouTubePlayer embedUrl={youtubeEmbedUrl} />
+            ) : youtubeEmbedUrl ? (
+              <NativeVideoFallback sourceUrl={playbackUrl} />
+            ) : Platform.OS === 'web' ? (
               <WebHlsVideo
                 sourceUrl={playbackUrl}
                 posterUrl={posterUrl}
@@ -422,7 +471,12 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
               <Ionicons name="checkmark-circle" size={17} color="#FFFFFF" />
               <Text style={styles.completedBadgeText}>Completed</Text>
             </View>
-          ) : null}
+          ) : (
+            <TouchableOpacity style={styles.markCompleteBtn} onPress={handleManualComplete}>
+              <Ionicons name="checkmark-done" size={17} color={Colors.success} />
+              <Text style={styles.markCompleteText}>Mark Complete</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -571,6 +625,8 @@ const styles = StyleSheet.create({
   selectedLessonDescription: { color: Colors.textSecondary, lineHeight: 21, marginTop: Spacing.xs },
   completedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.success, borderRadius: Radius.pill, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
   completedBadgeText: { color: '#FFFFFF', fontWeight: '900', marginLeft: 5, fontSize: 12 },
+  markCompleteBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ECFDF5', borderRadius: Radius.pill, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderWidth: 1, borderColor: '#BBF7D0' },
+  markCompleteText: { color: Colors.success, fontWeight: '900', marginLeft: 5, fontSize: 12 },
   interactionPanel: {
     flex: 1,
     backgroundColor: Colors.surface,

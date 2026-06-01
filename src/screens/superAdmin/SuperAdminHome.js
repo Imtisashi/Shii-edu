@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
   list: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC' },
   loadingText: { marginTop: 12, color: '#64748B', fontWeight: '600' },
-  listContent: { paddingVertical: 16, paddingBottom: 32 },
+  listContent: { paddingVertical: 16, paddingBottom: 110 },
   listContentDesktop: { width: '100%', alignSelf: 'center', paddingTop: 24 },
   hero: {
     backgroundColor: '#0F172A',

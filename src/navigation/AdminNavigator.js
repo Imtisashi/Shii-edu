@@ -15,6 +15,7 @@ import ManageRoutines from '../screens/admin/ManageRoutines';
 import ManageHolidays from '../screens/admin/ManageHolidays';
 import UploadGallery from '../screens/admin/UploadGallery';
 import AddUser from '../screens/admin/AddUser';
+import CourseManager from '../screens/teacher/CourseManager';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -81,6 +82,7 @@ export default function AdminNavigator() {
       <Stack.Screen name="ManageHolidays" component={ManageHolidays} options={{ title: 'Campus Calendar' }} />
       <Stack.Screen name="UploadGallery" component={UploadGallery} options={{ title: 'Event Gallery' }} />
       <Stack.Screen name="AddUser" component={AddUser} options={{ title: 'Add Users' }} />
+      <Stack.Screen name="Courses" component={CourseManager} options={{ title: 'Course Uploader' }} />
     </Stack.Navigator>
   );
 }

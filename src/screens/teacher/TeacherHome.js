@@ -140,7 +140,8 @@ export default function TeacherHome() {
             <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Directory" icon="people" color="#8B5CF6" bgColor="#F5F3FF" delay={300} onPress={() => navigation.navigate('Students')} />
             <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Routine" icon="calendar" color="#E11D48" bgColor="#FFE4E6" delay={400} onPress={() => navigation.navigate('Routine')} />
             <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title={layout.isMobile ? 'Tasks' : 'Assignments'} icon="document-text" color="#F59E0B" bgColor="#FFFBEB" delay={500} onPress={() => navigation.navigate('Assignments')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Gallery" icon="images" color="#F97316" bgColor="#FFF7ED" delay={600} onPress={() => navigation.navigate('GalleryView')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Courses" icon="play-circle" color="#2563EB" bgColor="#EFF6FF" delay={600} onPress={() => navigation.navigate('Courses')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Gallery" icon="images" color="#F97316" bgColor="#FFF7ED" delay={700} onPress={() => navigation.navigate('GalleryView')} />
           </View>
 
           <TouchableOpacity style={[styles.logoutBtn, layout.isMobile && styles.logoutBtnMobile]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); logout(); }}>

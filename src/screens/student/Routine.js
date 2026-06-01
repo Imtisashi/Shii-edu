@@ -31,22 +31,24 @@ export default function Routine() {
     setLoading(true);
 
     const routinesRef = collection(db, 'routines');
-    const routineQuery = isSchool
-      ? query(
-        routinesRef,
-        where('instituteId', '==', userData.instituteId),
-        where('class', '==', userClass),
-        where('section', '==', userSection)
-      )
-      : query(
-        routinesRef,
-        where('instituteId', '==', userData.instituteId),
-        where('dept', '==', userDept),
-        where('sem', '==', userSem)
-      );
+    const routineQuery = query(
+      routinesRef,
+      where('instituteId', '==', userData.instituteId)
+    );
 
     const unsubscribe = onSnapshot(routineQuery, (snapshot) => {
-      const docs = snapshot.docs.map((document) => ({ id: document.id, ...document.data() })).sort(sortByTime);
+      const docs = snapshot.docs
+        .map((document) => ({ id: document.id, ...document.data() }))
+        .filter((item) => {
+          if (isSchool) {
+            return String(item.class || item.targetPrimary || '') === userClass &&
+              String(item.section || item.targetSecondary || '') === userSection;
+          }
+
+          return String(item.dept || item.targetPrimary || '') === userDept &&
+            String(item.sem || item.targetSecondary || '') === userSem;
+        })
+        .sort(sortByTime);
       setSchedule(docs);
       setLoading(false);
     }, (error) => {

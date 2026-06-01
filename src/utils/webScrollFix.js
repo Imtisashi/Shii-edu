@@ -10,21 +10,27 @@ export const installWebScrollFix = () => {
   style.id = STYLE_ID;
   style.textContent = `
     html,
-    body,
-    #root {
+    body {
       width: 100%;
-      height: 100%;
-      overscroll-behavior-y: none;
+      min-height: 100%;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     body {
       margin: 0;
-      overflow: hidden;
+      position: static !important;
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
     }
 
-    #root {
+    #root,
+    #root > div {
+      width: 100%;
+      min-height: 100vh;
+      overflow: visible;
       isolation: isolate;
     }
 
@@ -36,9 +42,16 @@ export const installWebScrollFix = () => {
       touch-action: manipulation;
     }
 
-    [style*="overflow"] {
+    [data-rn-scrollview],
+    [style*="overflow: auto"],
+    [style*="overflow:auto"],
+    [style*="overflow-y: auto"],
+    [style*="overflow-y:auto"],
+    [style*="overflow: scroll"],
+    [style*="overflow:scroll"] {
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-y: contain;
+      scroll-behavior: auto;
     }
   `;
   document.head.appendChild(style);

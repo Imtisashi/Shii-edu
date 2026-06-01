@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Platform, KeyboardAvoidingView } from 'react-native';
 import { SmoothSpinner } from '../../components/ui/LoadingState';
-import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import Papa from 'papaparse';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +24,8 @@ export default function ManageRoutines() {
   const [subject, setSubject] = useState('');
   const [primaryTag, setPrimaryTag] = useState(''); // Class or Dept
   const [secondaryTag, setSecondaryTag] = useState(''); // Section or Sem
+  const [bulkText, setBulkText] = useState('');
+  const [isBulkSaving, setIsBulkSaving] = useState(false);
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -57,15 +60,23 @@ export default function ManageRoutines() {
 
     setIsSaving(true);
     try {
+      const primary = primaryTag.trim();
+      const secondary = secondaryTag.trim() || (instType === 'school' ? 'A' : '1');
+      const scopeFields = instType === 'school'
+        ? { class: primary, section: secondary }
+        : { dept: primary, sem: secondary };
+
       await addDoc(collection(db, "routines"), {
         instituteId: userData.instituteId,
         teacherId: selectedTeacher.id,
+        teacherUid: selectedTeacher.uid || selectedTeacher.id,
         teacherName: selectedTeacher.name,
         day: day,
         time: time.trim(),
         subject: subject.trim(),
-        targetPrimary: primaryTag.trim(), // Class or Dept
-        targetSecondary: secondaryTag.trim() || (instType === 'school' ? 'A' : '1'), // Sec or Sem
+        targetPrimary: primary,
+        targetSecondary: secondary,
+        ...scopeFields,
         createdAt: serverTimestamp()
       });
 
@@ -92,6 +103,129 @@ export default function ManageRoutines() {
       await deleteDoc(doc(db, "routines", routineId));
     } catch (error) {
       console.error("Delete failed", error);
+    }
+  };
+
+  const resolveTeacher = (row) => {
+    const teacherNeedle = String(row.teacherEmail || row.TeacherEmail || row.email || row.teacher || row.Teacher || row.teacherName || row.TeacherName || row.teacherCode || row.TeacherCode || '').trim().toLowerCase();
+    if (!teacherNeedle) return null;
+
+    return teachers.find((teacher) => {
+      const candidates = [
+        teacher.email,
+        teacher.name,
+        teacher.teacherCode,
+        teacher.uniqueId,
+        teacher.id,
+      ].filter(Boolean).map((value) => String(value).trim().toLowerCase());
+      return candidates.includes(teacherNeedle);
+    }) || null;
+  };
+
+  const handleBulkUpload = async () => {
+    if (!bulkText.trim()) {
+      if (Platform.OS === 'web') {
+        window.alert("Paste CSV routine rows first.");
+      } else {
+        Alert.alert("No CSV", "Paste CSV routine rows first.");
+      }
+      return;
+    }
+
+    const parsed = Papa.parse(bulkText.trim(), {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (header) => header.trim(),
+    });
+
+    if (parsed.errors.length > 0) {
+      const message = parsed.errors[0]?.message || 'CSV could not be parsed.';
+      if (Platform.OS === 'web') {
+        window.alert(message);
+      } else {
+        Alert.alert("CSV Error", message);
+      }
+      return;
+    }
+
+    const rows = parsed.data.filter((row) => Object.values(row).some((value) => String(value || '').trim()));
+    if (rows.length === 0) {
+      if (Platform.OS === 'web') {
+        window.alert("No usable rows found.");
+      } else {
+        Alert.alert("CSV Empty", "No usable rows found.");
+      }
+      return;
+    }
+
+    setIsBulkSaving(true);
+    let uploaded = 0;
+    let skipped = 0;
+
+    try {
+      const batch = writeBatch(db);
+      rows.forEach((row) => {
+        const teacher = resolveTeacher(row);
+        const rowDay = String(row.day || row.Day || '').trim();
+        const rowTime = String(row.time || row.Time || '').trim();
+        const rowSubject = String(row.subject || row.Subject || row.course || row.Course || '').trim();
+        const primary = String(
+          instType === 'school'
+            ? (row.class || row.Class || row.standard || row.Standard || '')
+            : (row.dept || row.Dept || row.department || row.Department || '')
+        ).trim();
+        const secondary = String(
+          instType === 'school'
+            ? (row.section || row.Section || '')
+            : (row.sem || row.Sem || row.semester || row.Semester || '')
+        ).trim() || (instType === 'school' ? 'A' : '1');
+
+        if (!teacher || !rowDay || !rowTime || !rowSubject || !primary) {
+          skipped += 1;
+          return;
+        }
+
+        const scopeFields = instType === 'school'
+          ? { class: primary, section: secondary }
+          : { dept: primary, sem: secondary };
+
+        batch.set(doc(collection(db, 'routines')), {
+          instituteId: userData.instituteId,
+          teacherId: teacher.id,
+          teacherUid: teacher.uid || teacher.id,
+          teacherName: teacher.name || '',
+          day: rowDay,
+          time: rowTime,
+          subject: rowSubject,
+          targetPrimary: primary,
+          targetSecondary: secondary,
+          ...scopeFields,
+          source: 'bulk_csv',
+          createdAt: serverTimestamp(),
+        });
+        uploaded += 1;
+      });
+
+      if (uploaded > 0) {
+        await batch.commit();
+      }
+
+      setBulkText('');
+      const message = `Routine upload complete. ${uploaded} row${uploaded === 1 ? '' : 's'} uploaded, ${skipped} skipped.`;
+      if (Platform.OS === 'web') {
+        window.alert(message);
+      } else {
+        Alert.alert("Upload Complete", message);
+      }
+    } catch (error) {
+      console.error('Bulk routine upload failed:', error);
+      if (Platform.OS === 'web') {
+        window.alert("Bulk upload failed.");
+      } else {
+        Alert.alert("Error", "Bulk upload failed.");
+      }
+    } finally {
+      setIsBulkSaving(false);
     }
   };
 
@@ -158,6 +292,27 @@ export default function ManageRoutines() {
           </TouchableOpacity>
         </View>
 
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Automatic Routine Uploader</Text>
+          <Text style={styles.helperText}>
+            Paste CSV rows and upload the master schedule in one shot. Headers: day,time,subject,teacherEmail,{instType === 'school' ? 'class,section' : 'dept,sem'}.
+          </Text>
+          <TextInput
+            style={[styles.input, styles.bulkInput]}
+            value={bulkText}
+            onChangeText={setBulkText}
+            multiline
+            textAlignVertical="top"
+            autoCapitalize="none"
+            placeholder={instType === 'school'
+              ? "day,time,subject,teacherEmail,class,section\nMonday,10:00 AM,Physics,teacher@school.edu,10,A"
+              : "day,time,subject,teacherEmail,dept,sem\nMonday,10:00 AM,Data Structures,prof@college.edu,CSE,3"}
+          />
+          <TouchableOpacity style={styles.submitBtn} onPress={handleBulkUpload} disabled={isBulkSaving}>
+            {isBulkSaving ? <SmoothSpinner color="#fff" /> : <Text style={styles.submitText}>Upload CSV Routine</Text>}
+          </TouchableOpacity>
+        </View>
+
         {/* ACTIVE ROUTINES VIEWER */}
         <Text style={styles.sectionTitle}>Active Master Schedule</Text>
         {loading ? <SmoothSpinner color="#3B82F6" /> : routines.length === 0 ? (
@@ -190,6 +345,7 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 16, paddingBottom: 80 },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, elevation: 3, marginBottom: 25 },
   cardTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B', marginBottom: 20 },
+  helperText: { color: '#64748B', fontSize: 13, lineHeight: 19, marginTop: -12, marginBottom: 16 },
   label: { fontSize: 13, fontWeight: 'bold', color: '#475569', marginBottom: 8, textTransform: 'uppercase' },
   chipRow: { flexDirection: 'row', marginBottom: 20 },
   chip: { backgroundColor: '#F1F5F9', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, marginRight: 10, borderWidth: 1, borderColor: '#E2E8F0' },
@@ -198,6 +354,7 @@ const styles = StyleSheet.create({
   activeChipText: { color: '#fff' },
   row: { flexDirection: 'row' },
   input: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 12, fontSize: 15, marginBottom: 15 },
+  bulkInput: { minHeight: 150, fontFamily: Platform.OS === 'web' ? 'monospace' : undefined },
   submitBtn: { backgroundColor: '#3B82F6', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 5 },
   submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   

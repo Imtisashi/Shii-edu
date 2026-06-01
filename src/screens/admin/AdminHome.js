@@ -116,8 +116,9 @@ export default function AdminHome() {
             <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title={layout.isMobile ? 'Routine' : 'Master Routine'} icon="calendar" color="#E11D48" bgColor="#FFE4E6" delay={300} onPress={() => navigation.navigate('ManageRoutines')} />
             <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Revenue" icon="wallet" color="#10B981" bgColor="#ECFDF5" delay={400} onPress={() => navigation.navigate('Ledger')} />
             <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Broadcast" icon="megaphone" color="#F59E0B" bgColor="#FFFBEB" delay={500} onPress={() => navigation.navigate('Broadcasts')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Gallery" icon="images" color="#FF6B6B" bgColor="#FEF2F2" delay={600} onPress={() => navigation.navigate('UploadGallery')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Calendar" icon="calendar-number" color="#64748B" bgColor="#F1F5F9" delay={700} onPress={() => navigation.navigate('ManageHolidays')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Courses" icon="play-circle" color="#2563EB" bgColor="#EFF6FF" delay={600} onPress={() => navigation.navigate('Courses')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Gallery" icon="images" color="#FF6B6B" bgColor="#FEF2F2" delay={700} onPress={() => navigation.navigate('UploadGallery')} />
+            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Calendar" icon="calendar-number" color="#64748B" bgColor="#F1F5F9" delay={800} onPress={() => navigation.navigate('ManageHolidays')} />
           </View>
 
           <TouchableOpacity style={[styles.logoutBtn, layout.isMobile && styles.logoutBtnMobile]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); logout(); }}>
