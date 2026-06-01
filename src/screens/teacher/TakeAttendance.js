@@ -5,6 +5,7 @@ import { collection, query, where, getDocs, doc, serverTimestamp, writeBatch } f
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { createNotification } from '../../services/NotificationService';
 
 export default function TakeAttendance({ navigation }) {
   const { userData } = useAuth();
@@ -74,6 +75,21 @@ export default function TakeAttendance({ navigation }) {
         });
       });
       await batch.commit();
+      // Create notification for students
+      try {
+        await createNotification({
+          title: "Attendance Updated",
+          message: `Attendance for ${new Date().toLocaleDateString()} has been marked.`,
+          type: "info",
+          targetRoles: ["student"],
+          instituteId: userData.instituteId,
+          author: userData.name || "Teacher",
+          relatedId: new Date().toISOString().split('T')[0],
+          relatedType: "attendance"
+        });
+      } catch (notificationError) {
+        console.warn("Failed to send attendance notification:", notificationError);
+      }
       Alert.alert("Success", "Attendance recorded.");
       returnToTeacherHome();
     } catch (_err) {

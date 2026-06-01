@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import { auth, db } from '../../firebaseConfig';
 
 const AuthContext = createContext();
@@ -13,14 +13,25 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState(null);
   const unsubscribeDocRef = useRef(null);
   const authResolvedRef = useRef(false);
+  const notificationsUnsubscribeRef = useRef(null);
 
   const logout = async () => {
     try {
       await signOut(auth);
       setUserData(null);
       setCurrentUser(null);
+      setNotifications([]);
+
+      // Clean up notification subscription
+      if (notificationsUnsubscribeRef.current) {
+        notificationsUnsubscribeRef.current();
+        notificationsUnsubscribeRef.current = null;
+      }
     } catch (error) {
       console.error("Logout Error:", error);
     }
@@ -106,14 +117,97 @@ export function AuthProvider({ children }) {
       if (unsubscribeDocRef.current) {
         unsubscribeDocRef.current();
       }
+      // Clean up notification subscription
+      if (notificationsUnsubscribeRef.current) {
+        notificationsUnsubscribeRef.current();
+        notificationsUnsubscribeRef.current = null;
+      }
     };
   }, []);
+
+  // Set up real-time notifications listener when user data changes
+  useEffect(() => {
+    const cleanupNotifications = () => {
+      if (notificationsUnsubscribeRef.current) {
+        notificationsUnsubscribeRef.current();
+        notificationsUnsubscribeRef.current = null;
+      }
+    };
+
+    if (!currentUser?.uid || !userData?.instituteId) {
+      cleanupNotifications();
+      setNotifications([]);
+      setNotificationsLoading(false);
+      return;
+    }
+
+    setNotificationsLoading(true);
+    setNotificationsError(null);
+
+    // Base query for institute-specific notifications
+    const baseQuery = query(
+      collection(db, "notifications"),
+      where("instituteId", "==", userData.instituteId),
+      orderBy("createdAt", "desc")
+    );
+
+    cleanupNotifications();
+
+    // Role-specific filters
+    let notificationsQuery;
+    const notificationRole = ['student', 'teacher', 'admin'].includes(userData.role)
+      ? userData.role
+      : 'student';
+
+    if (userData.role === 'superadmin') {
+      notificationsQuery = baseQuery;
+    } else {
+      notificationsQuery = query(
+        baseQuery,
+        where("targetRoles", "array-contains-any", [notificationRole, "all"])
+      );
+    }
+
+    // Limit to 50 most recent notifications
+    const finalQuery = query(notificationsQuery, limit(50));
+
+    // Set up real-time listener
+    const unsubscribe = onSnapshot(
+      finalQuery,
+      (snapshot) => {
+        const newNotifications = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setNotifications(newNotifications);
+        setNotificationsLoading(false);
+        setNotificationsError(null);
+      },
+      (error) => {
+        console.error('Error fetching notifications:', error);
+        setNotificationsError(error);
+        setNotificationsLoading(false);
+      }
+    );
+
+    notificationsUnsubscribeRef.current = unsubscribe;
+
+    return () => {
+      unsubscribe();
+      if (notificationsUnsubscribeRef.current === unsubscribe) {
+        notificationsUnsubscribeRef.current = null;
+      }
+    };
+  }, [currentUser?.uid, userData?.instituteId, userData?.role]);
 
   const value = {
     currentUser,
     userData,
     loading,
-    logout
+    logout,
+    notifications,
+    notificationsLoading,
+    notificationsError
   };
 
   return (

@@ -1,5 +1,5 @@
 import React from 'react';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { sharedStackScreenOptions, sharedTabScreenOptions } from './animatedScreenOptions';
@@ -16,11 +16,12 @@ import AttendanceView from '../screens/student/AttendanceView';
 import Grades from '../screens/student/Grades';
 import Notices from '../screens/student/Notices';
 import Routine from '../screens/student/Routine';
+import StudentNotifications from '../screens/student/StudentNotifications';
 
-const Stack = createStackNavigator();
+const Drawer = createDrawerNavigator();
 const Tab = createBottomTabNavigator();
 
-// --- THE NEW BOTTOM BAR ---
+// --- THE BOTTOM TAB NAVIGATOR (for quick access) ---
 function BottomTabNavigator() {
   const layout = useResponsiveLayout();
 
@@ -35,7 +36,7 @@ function BottomTabNavigator() {
           else if (route.name === 'Tasks') iconName = focused ? 'book' : 'book-outline';
           else if (route.name === 'Notices') iconName = focused ? 'megaphone' : 'megaphone-outline';
           else if (route.name === 'Faculty') iconName = focused ? 'people' : 'people-outline';
-          
+
           const iconSize = layout.isMobile ? (focused ? 23 : 21) : (focused ? 28 : 24);
           return <Ionicons name={iconName} size={iconSize} color={color} />;
         },
@@ -69,32 +70,78 @@ function BottomTabNavigator() {
   );
 }
 
-// --- THE MAIN STACK ---
+// --- THE MAIN DRAWER NAVIGATOR ---
 export default function StudentNavigator() {
   return (
-    <Stack.Navigator 
-      screenOptions={{ 
+    <Drawer.Navigator
+      screenOptions={{
         ...sharedStackScreenOptions,
-        headerStyle: { backgroundColor: '#fff', elevation: 0, shadowOpacity: 0 }, 
+        headerStyle: { backgroundColor: '#fff', elevation: 0, shadowOpacity: 0 },
         headerTintColor: '#1E293B',
         headerTitleStyle: { fontWeight: 'bold' },
+        drawerActiveTintColor: '#4A90E2',
+        drawerInactiveTintColor: '#94A3B8',
+        drawerStyle: { width: 280 },
       }}
     >
-      {/* 1. Load the Bottom Tabs First */}
-      <Stack.Screen 
-        name="MainTabs" 
-        component={BottomTabNavigator} 
-        options={{ headerShown: false }} 
-      />
-      
-      {/* 2. Load the Pop-up Screens */}
-      <Stack.Screen name="FeePayment" component={FeePayment} options={{ title: 'Fee Payment' }} />
-      <Stack.Screen name="GalleryView" component={GalleryView} options={{ title: 'Campus Gallery' }} />
-      <Stack.Screen name="PYQView" component={PYQView} options={{ title: 'Past Year Papers' }} />
-      <Stack.Screen name="AttendanceView" component={AttendanceView} options={{ title: 'Attendance Stats' }} />
-      <Stack.Screen name="Grades" component={Grades} options={{ title: 'Academic Grades' }} />
-      <Stack.Screen name="Routine" component={Routine} options={{ title: 'Class Routine' }} />
-      
-    </Stack.Navigator>
+      {/* Home screen is the bottom tab navigator */}
+      <Drawer.Screen name="Home" component={BottomTabNavigator} options={{
+        drawerLabel: 'Home',
+        drawerIcon: ({ focused, color }) => (
+          <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
+        )
+      }} />
+
+      {/* Other screens accessible from the drawer */}
+      <Drawer.Screen name="Gallery" component={GalleryView} options={{
+        drawerLabel: 'Gallery',
+        drawerIcon: ({ focused, color }) => (
+          <Ionicons name={focused ? 'images' : 'images-outline'} size={24} color={color} />
+        )
+      }} />
+
+      <Drawer.Screen name="Attendance" component={AttendanceView} options={{
+        drawerLabel: 'Attendance',
+        drawerIcon: ({ focused, color }) => (
+          <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} size={24} color={color} />
+        )
+      }} />
+
+      <Drawer.Screen name="Grades" component={Grades} options={{
+        drawerLabel: 'Grades',
+        drawerIcon: ({ focused, color }) => (
+          <Ionicons name={focused ? 'school' : 'school-outline'} size={24} color={color} />
+        )
+      }} />
+
+      <Drawer.Screen name="Routine" component={Routine} options={{
+        drawerLabel: 'Routine',
+        drawerIcon: ({ focused, color }) => (
+          <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
+        )
+      }} />
+
+      <Drawer.Screen name="PYQs" component={PYQView} options={{
+        drawerLabel: 'PYQs',
+        drawerIcon: ({ focused, color }) => (
+          <Ionicons name={focused ? 'document-text' : 'document-text-outline'} size={24} color={color} />
+        )
+      }} />
+
+      <Drawer.Screen name="Fee Payment" component={FeePayment} options={{
+        drawerLabel: 'Fee Payment',
+        drawerIcon: ({ focused, color }) => (
+          <Ionicons name={focused ? 'wallet' : 'wallet-outline'} size={24} color={color} />
+        )
+      }} />
+
+      {/* We can add more screens as needed */}
+      <Drawer.Screen name="Notifications" component={StudentNotifications} options={{
+        drawerLabel: 'Notifications',
+        drawerIcon: ({ focused, color }) => (
+          <Ionicons name={focused ? 'notifications' : 'notifications-outline'} size={24} color={color} />
+        )
+      }} />
+    </Drawer.Navigator>
   );
 }

@@ -43,7 +43,7 @@ export default function DynamicHeader({ title, showBack = false }) {
     const role = userData?.role?.trim().toLowerCase();
     try {
       if (role === 'student') {
-        navigation.navigate('MainTabs', { screen: 'Notices' });
+        navigation.navigate('Notifications');
         return;
       }
       if (role === 'teacher') {
@@ -74,7 +74,12 @@ export default function DynamicHeader({ title, showBack = false }) {
       return;
     }
 
-    if (role === 'student' || role === 'admin') {
+    if (role === 'student') {
+      navigation.navigate('Home');
+      return;
+    }
+
+    if (role === 'admin') {
       navigation.navigate('MainTabs');
       return;
     }

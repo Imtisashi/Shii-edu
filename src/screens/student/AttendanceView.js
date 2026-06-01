@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { PieChart } from 'react-native-chart-kit';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 import DynamicHeader from '../../components/DynamicHeader';
 import { db } from '../../../firebaseConfig';
@@ -19,42 +19,42 @@ export default function AttendanceView() {
   });
 
   useEffect(() => {
-    const fetchAttendance = async () => {
-      if (!currentUser?.uid || !userData?.instituteId) {
-        setLoading(false);
-        return;
-      }
+    if (!currentUser?.uid || !userData?.instituteId) {
+      setLoading(false);
+      return;
+    }
 
-      setLoading(true);
-      try {
-        const attendanceQuery = query(
-          collection(db, 'attendance'),
-          where('instituteId', '==', userData.instituteId),
-          where('studentId', '==', currentUser.uid)
-        );
-        const querySnapshot = await getDocs(attendanceQuery);
-        const nextStats = { present: 0, absent: 0, notMarked: 0 };
+    setLoading(true);
 
-        querySnapshot.docs.forEach((attendanceDoc) => {
-          const data = attendanceDoc.data();
-          if (data.status === 'present' || data.isPresent === true) {
-            nextStats.present += 1;
-          } else if (data.status === 'absent' || data.isPresent === false) {
-            nextStats.absent += 1;
-          } else {
-            nextStats.notMarked += 1;
-          }
-        });
+    const attendanceQuery = query(
+      collection(db, 'attendance'),
+      where('instituteId', '==', userData.instituteId),
+      where('studentId', '==', currentUser.uid)
+    );
 
-        setAttendanceStats(nextStats);
-      } catch (error) {
-        console.error('Error fetching attendance:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    const unsubscribe = onSnapshot(attendanceQuery, (querySnapshot) => {
+      const nextStats = { present: 0, absent: 0, notMarked: 0 };
 
-    fetchAttendance();
+      querySnapshot.docs.forEach((attendanceDoc) => {
+        const data = attendanceDoc.data();
+        if (data.status === 'present' || data.isPresent === true) {
+          nextStats.present += 1;
+        } else if (data.status === 'absent' || data.isPresent === false) {
+          nextStats.absent += 1;
+        } else {
+          nextStats.notMarked += 1;
+        }
+      });
+
+      setAttendanceStats(nextStats);
+      setLoading(false);
+    }, (error) => {
+      console.error('Error fetching attendance:', error);
+      setLoading(false);
+    });
+
+    // Cleanup function to unsubscribe from the listener
+    return () => unsubscribe();
   }, [currentUser?.uid, userData]);
 
   const totalClasses = attendanceStats.present + attendanceStats.absent + attendanceStats.notMarked;

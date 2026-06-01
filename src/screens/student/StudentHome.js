@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { 
-  View, Text, StyleSheet, TouchableOpacity, 
-  ImageBackground, Animated, Platform, Image, StatusBar 
+import {
+  View, Text, StyleSheet, TouchableOpacity,
+  ImageBackground, Animated, Platform, Image, StatusBar
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
@@ -18,9 +18,26 @@ const ENABLE_SCROLL_MOTION = Platform.OS !== 'web';
 
 export default function StudentHome() {
   const navigation = useNavigation();
-  const { userData, logout } = useAuth();
+  const { userData, logout, notifications } = useAuth();
   const layout = useResponsiveLayout();
   const [notices, setNotices] = useState([]);
+
+  // Calculate unread notification count for students
+  const unreadCount = userData?.role === 'student' && notifications
+    ? notifications.filter(notif =>
+        !(notif.readBy?.includes(userData.uid) || notif.isRead === true) &&
+        (notif.targetRoles?.includes('student') || notif.targetRoles?.includes('all'))
+      ).length
+    : 0;
+
+  const openNotifications = () => {
+    const parentNavigation = navigation.getParent?.();
+    if (parentNavigation) {
+      parentNavigation.navigate('Notifications');
+      return;
+    }
+    navigation.navigate('Notifications');
+  };
 
   // Enterprise Scroll Animation Values
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -75,8 +92,21 @@ export default function StudentHome() {
         )}
         <View style={styles.glassHeaderContent}>
           <Text style={styles.glassTitle}>{instituteName}</Text>
-          <View style={styles.glassAvatar}>
-            <Text style={styles.glassAvatarText}>{initials}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={styles.glassAvatar}>
+              <Text style={styles.glassAvatarText}>{initials}</Text>
+            </View>
+            {/* Notification Badge */}
+            {userData && userData.role === 'student' && (
+              <TouchableOpacity style={styles.notificationBadgeContainer} onPress={openNotifications}>
+                <Ionicons name="notifications-outline" size={24} color="#1E293B" />
+                {unreadCount > 0 && (
+                  <View style={styles.notificationBadge}>
+                    <Text style={styles.notificationBadgeText}>{unreadCount}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </Animated.View>
@@ -241,4 +271,23 @@ const styles = StyleSheet.create({
   logoutBtn: { backgroundColor: '#fff', flexDirection: 'row', padding: 20, borderRadius: 20, alignItems: 'center', justifyContent: 'center', shadowColor: '#EF4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 2 },
   logoutBtnMobile: { padding: 16, borderRadius: 17 },
   logoutBtnText: { color: '#EF4444', fontWeight: 'bold', fontSize: 16, marginLeft: 10 },
+
+  // Notification Badge Styles
+  notificationBadgeContainer: { position: 'relative', marginLeft: 12 },
+  notificationBadge: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: '#EF4444',
+    borderRadius: 12,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notificationBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
 });

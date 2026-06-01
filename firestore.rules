@@ -46,6 +46,19 @@ service cloud.firestore {
       return isAdmin() && sameInstituteId(instituteId);
     }
 
+    function readByList(data) {
+      return data.keys().hasAny(['readBy']) ? data.readBy : [];
+    }
+
+    function notificationReadReceiptOnly() {
+      let existingReadBy = readByList(resource.data);
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']) &&
+        request.resource.data.readBy is list &&
+        request.resource.data.readBy.hasAll(existingReadBy) &&
+        request.resource.data.readBy.size() <= existingReadBy.size() + 1 &&
+        request.auth.uid in request.resource.data.readBy;
+    }
+
     function immutableUserFields() {
       return !request.resource.data.diff(resource.data).affectedKeys()
         .hasAny(['uid', 'role', 'instituteId', 'createdAt', 'createdBy', 'authEmail']);
@@ -127,6 +140,16 @@ service cloud.firestore {
         (signedIn() && resource.data.uid == request.auth.uid) ||
         adminFor(resource.data.instituteId);
       allow write: if false;
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSuperAdmin() ||
+        ((isAdmin() || isTeacher() || isStudent()) && sameInstitute(resource.data));
+      allow create: if isSuperAdmin() || adminOrTeacherFor(request.resource.data.instituteId);
+      allow update: if isSuperAdmin() ||
+        adminFor(resource.data.instituteId) ||
+        ((isAdmin() || isTeacher() || isStudent()) && sameInstitute(resource.data) && notificationReadReceiptOnly());
+      allow delete: if isSuperAdmin() || adminFor(resource.data.instituteId);
     }
 
     match /payments/{paymentId} {
