@@ -10,12 +10,27 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
+    function profileExists() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
     function role() {
-      return profile().role;
+      return profileExists() ? profile().role : null;
+    }
+
+    function isSuperAdminRole(value) {
+      return value in ['superadmin', 'superAdmin', 'SuperAdmin', 'super_admin', 'super-admin', 'super admin'];
     }
 
     function isSuperAdmin() {
-      return signedIn() && (role() == 'superadmin' || role() == 'superAdmin');
+      return signedIn() && (
+        isSuperAdminRole(role()) ||
+        isSuperAdminRole(request.auth.token.role) ||
+        isSuperAdminRole(request.auth.token.userRole) ||
+        isSuperAdminRole(request.auth.token.user_role) ||
+        request.auth.token.superadmin == true ||
+        request.auth.token.superAdmin == true
+      );
     }
 
     function isAdmin() {
@@ -114,10 +129,17 @@ service cloud.firestore {
     match /notices/{noticeId} {
       allow read: if sameInstitute(resource.data);
       allow create: if isSuperAdmin() || adminOrTeacherFor(request.resource.data.instituteId);
-      allow update, delete: if isSuperAdmin() || adminFor(resource.data.instituteId);
+      allow update: if isSuperAdmin() || adminOrTeacherFor(resource.data.instituteId);
+      allow delete: if isSuperAdmin() || adminFor(resource.data.instituteId);
     }
 
     match /routines/{routineId} {
+      allow read: if sameInstitute(resource.data);
+      allow create: if isSuperAdmin() || adminFor(request.resource.data.instituteId);
+      allow update, delete: if isSuperAdmin() || adminFor(resource.data.instituteId);
+    }
+
+    match /holidays/{holidayId} {
       allow read: if sameInstitute(resource.data);
       allow create: if isSuperAdmin() || adminFor(request.resource.data.instituteId);
       allow update, delete: if isSuperAdmin() || adminFor(resource.data.instituteId);
@@ -201,7 +223,8 @@ service cloud.firestore {
 
     match /pyqs/{paperId} {
       allow read: if sameInstitute(resource.data);
-      allow create, update, delete: if isSuperAdmin() || adminFor(request.resource.data.instituteId);
+      allow create: if isSuperAdmin() || adminOrTeacherFor(request.resource.data.instituteId);
+      allow update, delete: if isSuperAdmin() || adminOrTeacherFor(resource.data.instituteId);
     }
 
     match /paymentOrders/{orderId} {

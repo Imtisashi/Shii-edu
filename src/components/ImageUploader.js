@@ -32,7 +32,7 @@ export default function ImageUploader() {
 
   const handleUpload = async (uri) => {
     setUploading(true);
-    const cloudinaryUrl = await uploadToCloudinary(uri);
+    const cloudinaryUrl = await uploadToCloudinary(uri, `profile-pictures/${userData.uid}`);
 
     if (cloudinaryUrl) {
       try {

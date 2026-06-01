@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Modal,
   Platform,
@@ -186,6 +186,11 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
   }, [progressRecords]);
 
   const selectedProgress = selectedLesson ? progressByLesson.get(selectedLesson.id) : null;
+  const courseId = course?.id || null;
+  const currentUserUid = currentUser?.uid || null;
+  const instituteId = userData?.instituteId || null;
+  const selectedLessonDurationSeconds = selectedLesson?.durationSeconds || 0;
+  const selectedLessonStableId = selectedLesson?.id || null;
   const youtubeEmbedUrl = selectedLesson
     ? getYouTubeEmbedUrl(selectedLesson.youtubeUrl || selectedLesson.externalUrl || selectedLesson.playbackUrl)
     : null;
@@ -199,21 +204,21 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
   }, [lessons, selectedLessonId]);
 
   useEffect(() => {
-    if (!currentUser?.uid || !course?.id) {
+    if (!currentUserUid || !courseId) {
       setProgressRecords([]);
       return undefined;
     }
 
     return subscribeToCourseProgressList({
-      userId: currentUser.uid,
-      courseId: course.id,
+      userId: currentUserUid,
+      courseId,
       onProgressList: setProgressRecords,
       onError: (progressError) => {
         console.error('Course progress subscription failed:', progressError);
         setProgressRecords([]);
       },
     });
-  }, [course?.id, currentUser?.uid]);
+  }, [courseId, currentUserUid]);
 
   useEffect(() => {
     setNotes(selectedProgress?.notes || '');
@@ -270,8 +275,8 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
     };
   }, [course?.id, currentUser, selectedLesson, youtubeEmbedUrl]);
 
-  const persistProgress = async ({ force = false, completed = false } = {}) => {
-    if (!currentUser?.uid || !userData?.instituteId || !course?.id || !selectedLesson?.id) return;
+  const persistProgress = useCallback(async ({ force = false, completed = false } = {}) => {
+    if (!currentUserUid || !instituteId || !courseId || !selectedLessonStableId) return;
 
     const now = Date.now();
     if (!force && now - lastSavedAtRef.current < SAVE_INTERVAL_MS) return;
@@ -279,18 +284,18 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
 
     const snapshot = lastProgressRef.current;
     await saveLessonProgress({
-      userId: currentUser.uid,
-      instituteId: userData.instituteId,
-      courseId: course.id,
-      lessonId: selectedLesson.id,
+      userId: currentUserUid,
+      instituteId,
+      courseId,
+      lessonId: selectedLessonStableId,
       positionSeconds: snapshot.positionSeconds,
-      durationSeconds: snapshot.durationSeconds || selectedLesson.durationSeconds,
+      durationSeconds: snapshot.durationSeconds || selectedLessonDurationSeconds,
       completed: completed || snapshot.completed,
       notes,
     }).catch((saveError) => {
       console.error('Progress save failed:', saveError);
     });
-  };
+  }, [courseId, currentUserUid, instituteId, notes, selectedLessonDurationSeconds, selectedLessonStableId]);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return undefined;
@@ -303,7 +308,7 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
       window.removeEventListener('pagehide', flush);
       window.removeEventListener('beforeunload', flush);
     };
-  }, [course?.id, currentUser?.uid, notes, selectedLesson?.id, userData?.instituteId]);
+  }, [persistProgress]);
 
   const handleProgress = ({ positionSeconds, durationSeconds }) => {
     const completed = durationSeconds > 0 && positionSeconds / durationSeconds >= 0.9;

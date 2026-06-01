@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, Platform } from 'react-native';
 import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { collection, query, where, getDocs, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { PieChart } from 'react-native-chart-kit';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
 import DynamicHeader from '../../components/DynamicHeader';
-
-const screenWidth = Dimensions.get('window').width;
+import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 
 const resolveStudentUid = (student) => student.uid || student.authUid || student.id;
+const normalizeValue = (value) => String(value || '').trim().toLowerCase();
+const createAttendanceDocId = (instituteId, studentUid, date, subject = 'daily') =>
+  `${instituteId}_${studentUid}_${date}_${subject}`.replace(/[^a-zA-Z0-9_-]/g, '_');
 
 export default function TeacherAttendance() {
   const { userData } = useAuth();
+  const layout = useResponsiveLayout();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -53,40 +55,34 @@ export default function TeacherAttendance() {
       ];
 
   useEffect(() => {
-    // SECURITY GATE: Only Class Teachers can load this data
-    if (!userData?.isClassTeacher) {
+    if (!userData?.instituteId) {
       setLoading(false);
       return;
     }
 
     const fetchStudents = async () => {
       try {
-        let q;
-        if (isSchool) {
-          q = query(
-            collection(db, "users"),
-            where("instituteId", "==", userData.instituteId),
-            where("role", "==", "student"),
-            where("class", "==", userData.assignedClass),
-            where("section", "==", userData.assignedSection)
-          );
-        } else {
-          q = query(
-            collection(db, "users"),
-            where("instituteId", "==", userData.instituteId),
-            where("role", "==", "student"),
-            where("dept", "==", userData.assignedDept),
-            where("sem", "==", userData.assignedSem)
-          );
-        }
-
+        const q = query(
+          collection(db, "users"),
+          where("instituteId", "==", userData.instituteId),
+          where("role", "==", "student")
+        );
         const snapshot = await getDocs(q);
-        const studentList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const allStudents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const studentList = userData?.isClassTeacher
+          ? allStudents.filter((student) => {
+            if (isSchool) {
+              return normalizeValue(student.class) === normalizeValue(userData.assignedClass) &&
+                normalizeValue(student.section) === normalizeValue(userData.assignedSection);
+            }
+
+            return normalizeValue(student.dept) === normalizeValue(userData.assignedDept) &&
+              normalizeValue(student.sem) === normalizeValue(userData.assignedSem);
+          })
+          : allStudents;
         
-        // Sort alphabetically
         studentList.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
         
-        // Default everyone to Present (true)
         const initialRecord = {};
         studentList.forEach(s => initialRecord[s.id] = true);
 
@@ -94,6 +90,9 @@ export default function TeacherAttendance() {
         setAttendanceRecord(initialRecord);
       } catch (error) {
         console.error("Error fetching students:", error);
+        const err = "Could not load students for attendance.";
+        if (Platform.OS === 'web') window.alert(err);
+        else Alert.alert("Error", err);
       } finally {
         setLoading(false);
       }
@@ -119,7 +118,8 @@ export default function TeacherAttendance() {
       students.forEach((student) => {
         const isPresent = Boolean(attendanceRecord[student.id]);
         const studentUid = resolveStudentUid(student);
-        batch.set(doc(collection(db, "attendance")), {
+        const attendanceRef = doc(db, "attendance", createAttendanceDocId(userData.instituteId, studentUid, today));
+        batch.set(attendanceRef, {
           instituteId: userData.instituteId,
           teacherId: userData.uid,
           teacherName: userData.name,
@@ -129,13 +129,13 @@ export default function TeacherAttendance() {
           studentUniqueId: student.uniqueId || null,
           studentEmail: student.email || '',
           studentName: student.name || '',
-          targetPrimary: isSchool ? userData.assignedClass : userData.assignedDept,
-          targetSecondary: isSchool ? userData.assignedSection : userData.assignedSem,
+          targetPrimary: isSchool ? (student.class || userData.assignedClass || '') : (student.dept || userData.assignedDept || ''),
+          targetSecondary: isSchool ? (student.section || userData.assignedSection || '') : (student.sem || userData.assignedSem || ''),
           status: isPresent ? 'present' : 'absent',
           isPresent,
           date: today,
           timestamp: serverTimestamp()
-        });
+        }, { merge: true });
       });
       await batch.commit();
 
@@ -162,17 +162,17 @@ export default function TeacherAttendance() {
     const isPresent = attendanceRecord[item.id];
     
     return (
-      <View style={styles.studentCard}>
+      <View style={[styles.studentCard, layout.isCompact && styles.studentCardCompact]}>
         <View style={styles.avatarFallback}>
           <Text style={styles.avatarText}>{(item.name || 'S').charAt(0).toUpperCase()}</Text>
         </View>
         <View style={styles.infoBox}>
-          <Text style={styles.studentName}>{item.name}</Text>
-          <Text style={styles.studentId}>{item.email}</Text>
+          <Text style={styles.studentName} numberOfLines={1}>{item.name}</Text>
+          <Text style={styles.studentId} numberOfLines={1}>{item.email || item.uniqueId || item.id}</Text>
         </View>
         
         <TouchableOpacity 
-          style={[styles.toggleBtn, isPresent ? styles.presentBtn : styles.absentBtn]}
+          style={[styles.toggleBtn, layout.isCompact && styles.toggleBtnCompact, isPresent ? styles.presentBtn : styles.absentBtn]}
           onPress={() => toggleAttendance(item.id)}
         >
           <Text style={[styles.toggleText, isPresent ? styles.presentText : styles.absentText]}>
@@ -182,22 +182,6 @@ export default function TeacherAttendance() {
       </View>
     );
   };
-
-  // If the user is NOT a class teacher, show the lock screen
-  if (!loading && !userData?.isClassTeacher) {
-    return (
-      <View style={styles.container}>
-        <DynamicHeader title="Attendance" showBack={true} />
-        <View style={styles.lockContainer}>
-          <Ionicons name="lock-closed" size={80} color="#CBD5E0" />
-          <Text style={styles.lockTitle}>Access Denied</Text>
-          <Text style={styles.lockSub}>
-            Only assigned Class Advisors have the privileges to record daily attendance.
-          </Text>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
@@ -209,7 +193,9 @@ export default function TeacherAttendance() {
         <>
           <View style={styles.summaryBox}>
             <Text style={styles.summaryTitle}>
-              {isSchool 
+              {!userData?.isClassTeacher
+                ? 'All Students'
+                : isSchool
                 ? `Class ${userData.assignedClass} - Sec ${userData.assignedSection}`
                 : `${userData.assignedDept} - Sem ${userData.assignedSem}`
               }
@@ -219,7 +205,7 @@ export default function TeacherAttendance() {
             <View style={styles.pieWrap}>
               <PieChart
                 data={visibleChartData}
-                width={Math.min(screenWidth - 32, 440)}
+                width={layout.chartWidth(440)}
                 height={150}
                 chartConfig={{ color: (opacity = 1) => `rgba(15, 23, 42, ${opacity})` }}
                 accessor="population"
@@ -265,9 +251,6 @@ export default function TeacherAttendance() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  lockContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30 },
-  lockTitle: { fontSize: 24, fontWeight: '900', color: '#1E293B', marginTop: 20 },
-  lockSub: { fontSize: 15, color: '#64748B', textAlign: 'center', marginTop: 10, lineHeight: 22 },
   
   summaryBox: { backgroundColor: '#fff', padding: 20, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   summaryTitle: { fontSize: 18, fontWeight: 'bold', color: '#1E293B' },
@@ -282,13 +265,15 @@ const styles = StyleSheet.create({
   
   listContent: { padding: 16, paddingBottom: 100 },
   studentCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 15, borderRadius: 16, marginBottom: 10, elevation: 1 },
+  studentCardCompact: { alignItems: 'flex-start', flexWrap: 'wrap' },
   avatarFallback: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   avatarText: { fontSize: 18, fontWeight: 'bold', color: '#64748B' },
-  infoBox: { flex: 1 },
+  infoBox: { flex: 1, minWidth: 0 },
   studentName: { fontSize: 16, fontWeight: 'bold', color: '#1E293B' },
   studentId: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
   
   toggleBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+  toggleBtnCompact: { width: '100%', alignItems: 'center', marginTop: 12 },
   presentBtn: { backgroundColor: '#ECFDF5', borderColor: '#10B981' },
   absentBtn: { backgroundColor: '#FEF2F2', borderColor: '#EF4444' },
   presentText: { color: '#10B981', fontWeight: 'bold', fontSize: 13 },

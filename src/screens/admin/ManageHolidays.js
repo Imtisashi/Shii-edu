@@ -3,8 +3,29 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, M
 import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { Ionicons } from '@expo/vector-icons';
 import DynamicHeader from '../../components/DynamicHeader';
+import { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, where } from 'firebase/firestore';
+import { db } from '../../../firebaseConfig';
+import { useAuth } from '../../contexts/AuthContext';
+
+const showAlert = (title, message) => {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.alert(`${title}\n\n${message}`);
+    return;
+  }
+
+  Alert.alert(title, message);
+};
+
+const createdAtToMillis = (createdAt) => {
+  if (!createdAt) return 0;
+  if (typeof createdAt.toMillis === 'function') return createdAt.toMillis();
+  if (createdAt.seconds) return createdAt.seconds * 1000;
+  const parsed = new Date(createdAt).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
 
 export default function ManageHolidays() {
+  const { userData } = useAuth();
   const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -15,45 +36,73 @@ export default function ManageHolidays() {
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
-    // Simulated fetch of holidays from Firestore 'holidays' collection
-    setTimeout(() => {
-      setHolidays([
-        { id: 'h1', title: 'Summer Vacation Starts', date: 'May 15, 2026', type: 'Long Break' },
-        { id: 'h2', title: 'Independence Day', date: 'August 15, 2026', type: 'National Holiday' },
-        { id: 'h3', title: 'Diwali Break', date: 'November 8, 2026', type: 'Festival' },
-      ]);
+    if (!userData?.instituteId) {
       setLoading(false);
-    }, 1000);
-  }, []);
+      return undefined;
+    }
 
-  const handleAddHoliday = () => {
+    const holidaysQuery = query(
+      collection(db, 'holidays'),
+      where('instituteId', '==', userData.instituteId)
+    );
+
+    const unsubscribe = onSnapshot(holidaysQuery, (snapshot) => {
+      const holidayList = snapshot.docs
+        .map((holidayDoc) => ({ id: holidayDoc.id, ...holidayDoc.data() }))
+        .sort((a, b) => createdAtToMillis(b.createdAt) - createdAtToMillis(a.createdAt));
+      setHolidays(holidayList);
+      setLoading(false);
+    }, (error) => {
+      console.error('Holiday fetch failed:', error);
+      setLoading(false);
+      showAlert('Calendar Unavailable', 'Could not load holidays right now.');
+    });
+
+    return () => unsubscribe();
+  }, [userData?.instituteId]);
+
+  const handleAddHoliday = async () => {
     if (!holidayName || !holidayDate) {
-      Alert.alert('Incomplete', 'Please provide both the name and the date of the holiday.');
+      showAlert('Incomplete', 'Please provide both the name and the date of the holiday.');
+      return;
+    }
+
+    if (!userData?.instituteId) {
+      showAlert('Missing Institute', 'Your admin profile is not linked to an institute.');
       return;
     }
 
     setAdding(true);
-    // Simulate uploading to Firestore
-    setTimeout(() => {
-      const newEntry = {
-        id: Math.random().toString(),
-        title: holidayName,
-        date: holidayDate,
-        type: 'Declared Holiday'
-      };
-      
-      setHolidays(prev => [...prev, newEntry]);
-      setAdding(false);
+    try {
+      await addDoc(collection(db, 'holidays'), {
+        title: holidayName.trim(),
+        date: holidayDate.trim(),
+        type: 'Declared Holiday',
+        instituteId: userData.instituteId,
+        createdBy: userData.uid || null,
+        createdByName: userData.name || userData.email || 'Admin',
+        createdAt: serverTimestamp(),
+      });
       setModalVisible(false);
       setHolidayName('');
       setHolidayDate('');
-      Alert.alert('Success', 'Holiday added to the academic calendar!');
-    }, 1000);
+      showAlert('Success', 'Holiday added to the academic calendar.');
+    } catch (error) {
+      console.error('Holiday save failed:', error);
+      showAlert('Error', 'Failed to add this holiday.');
+    } finally {
+      setAdding(false);
+    }
   };
 
   const deleteHoliday = (id) => {
-    const removeHoliday = () => {
-      setHolidays(prev => prev.filter(item => item.id !== id));
+    const removeHoliday = async () => {
+      try {
+        await deleteDoc(doc(db, 'holidays', id));
+      } catch (error) {
+        console.error('Holiday delete failed:', error);
+        showAlert('Error', 'Failed to remove this holiday.');
+      }
     };
 
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -174,7 +223,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F7FA' },
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   
-  listContent: { padding: 16, paddingBottom: 80 },
+  listContent: { padding: 16, paddingBottom: 130 },
   card: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
@@ -205,7 +254,7 @@ const styles = StyleSheet.create({
 
   fab: {
     position: 'absolute',
-    bottom: 24,
+    bottom: 88,
     right: 24,
     backgroundColor: '#C2185B',
     width: 60,

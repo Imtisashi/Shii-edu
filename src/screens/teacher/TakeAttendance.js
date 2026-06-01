@@ -8,6 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { createUnifiedNotification } from '../../services/unifiedNotificationService';
 
 const resolveStudentUid = (student) => student.uid || student.authUid || student.id;
+const createAttendanceDocId = (instituteId, studentUid, date, subject = 'general') =>
+  `${instituteId}_${studentUid}_${date}_${subject}`.replace(/[^a-zA-Z0-9_-]/g, '_');
 
 export default function TakeAttendance({ navigation }) {
   const { userData } = useAuth();
@@ -65,11 +67,14 @@ export default function TakeAttendance({ navigation }) {
     setIsSubmitting(true);
     try {
       const batch = writeBatch(db);
+      const today = new Date().toISOString().split('T')[0];
       students.forEach((student) => {
         const isPresent = Boolean(attendance[student.id]);
         const studentUid = resolveStudentUid(student);
-        batch.set(doc(collection(db, "attendance")), {
-          date: new Date().toISOString().split('T')[0],
+        const subject = selectedSubject || 'General';
+        const attendanceRef = doc(db, "attendance", createAttendanceDocId(userData.instituteId, studentUid, today, subject));
+        batch.set(attendanceRef, {
+          date: today,
           timestamp: serverTimestamp(),
           teacherId: userData.uid,
           teacherName: userData.name || '',
@@ -83,8 +88,8 @@ export default function TakeAttendance({ navigation }) {
           status: isPresent ? 'present' : 'absent',
           isPresent,
           type: instType,
-          subject: selectedSubject || 'General'
-        });
+          subject
+        }, { merge: true });
       });
       await batch.commit();
       // Create notification for students

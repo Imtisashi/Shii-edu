@@ -34,6 +34,7 @@ export default function SuperAdminHome() {
   const [institutes, setInstitutes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(false);
   const [showAddInstituteModal, setShowAddInstituteModal] = useState(false);
   const [deletingInstituteId, setDeletingInstituteId] = useState('');
 
@@ -58,28 +59,55 @@ export default function SuperAdminHome() {
     try {
       const institutesRef = collection(db, 'institutes');
       const snapshot = await getDocs(institutesRef);
-      const institutesList = await Promise.all(
-        snapshot.docs.map(async (instituteDoc) => {
-          const data = instituteDoc.data();
-          const stats = await getInstituteStats(data.instituteId || instituteDoc.id);
+      const institutesList = snapshot.docs.map((instituteDoc) => {
+        const data = instituteDoc.data();
 
-          return {
-            id: instituteDoc.id,
-            ...data,
-            instituteId: data.instituteId || instituteDoc.id,
-            totalUsers: stats.totalUsers || 0,
-            teachers: stats.teachers || 0,
-            students: stats.students || 0,
-          };
-        })
-      );
+        return {
+          id: instituteDoc.id,
+          ...data,
+          instituteId: data.instituteId || instituteDoc.id,
+          totalUsers: Number(data.totalUsers) || 0,
+          teachers: Number(data.teachers) || 0,
+          students: Number(data.students) || 0,
+          statsReady: false,
+        };
+      });
 
       institutesList.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       setInstitutes(institutesList);
+      setLoading(false);
+      setRefreshing(false);
+
+      setStatsLoading(true);
+      Promise.all(
+        institutesList.map(async (institute) => {
+          const stats = await getInstituteStats(institute.instituteId);
+          return {
+            id: institute.id,
+            totalUsers: stats.totalUsers || 0,
+            teachers: stats.teachers || 0,
+            students: stats.students || 0,
+            statsReady: true,
+          };
+        })
+      ).then((statsList) => {
+        const statsById = statsList.reduce((acc, stats) => {
+          acc[stats.id] = stats;
+          return acc;
+        }, {});
+
+        setInstitutes((currentInstitutes) => currentInstitutes.map((institute) => ({
+          ...institute,
+          ...(statsById[institute.id] || {}),
+        })));
+      }).catch((statsError) => {
+        console.warn('Institute stats refresh failed:', statsError);
+      }).finally(() => {
+        setStatsLoading(false);
+      });
     } catch (error) {
       console.error('Error fetching institutes:', error);
       Alert.alert('Error', 'Failed to load institutes.');
-    } finally {
       setLoading(false);
       setRefreshing(false);
     }
@@ -305,11 +333,11 @@ export default function SuperAdminHome() {
               </View>
               <View style={styles.statCard}>
                 <Text style={styles.statsLabel}>Users</Text>
-                <Text style={styles.statsValue}>{dashboardStats.totalUsers}</Text>
+                <Text style={styles.statsValue}>{statsLoading ? '...' : dashboardStats.totalUsers}</Text>
               </View>
               <View style={styles.statCard}>
                 <Text style={styles.statsLabel}>Admins</Text>
-                <Text style={styles.statsValue}>{dashboardStats.admins}</Text>
+                <Text style={styles.statsValue}>{statsLoading ? '...' : dashboardStats.admins}</Text>
               </View>
             </View>
 

@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, paddingVertical: 12, fontSize: 16, color: '#2D3748', outlineStyle: 'none' },
 
-  listContent: { paddingHorizontal: 16, paddingBottom: 80 },
+  listContent: { paddingHorizontal: 16, paddingBottom: 130 },
   card: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
@@ -261,10 +261,10 @@ const styles = StyleSheet.create({
   avatarFallback: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
   avatarInitials: { fontSize: 20, fontWeight: 'bold', color: '#3B82F6' },
   
-  infoContainer: { flex: 1 },
+  infoContainer: { flex: 1, minWidth: 0 },
   userName: { fontSize: 16, fontWeight: 'bold', color: '#2D3748', marginBottom: 2 },
   identifier: { fontSize: 13, color: '#718096', marginBottom: 8 },
-  badgeRow: { flexDirection: 'row' },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap' },
   badge: { backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginRight: 8 },
   badgeText: { fontSize: 11, color: '#475569', fontWeight: '600' },
   secondaryBadge: { backgroundColor: '#EFF6FF' },
@@ -273,5 +273,5 @@ const styles = StyleSheet.create({
   
   emptyContainer: { alignItems: 'center', marginTop: 60 },
   emptyText: { marginTop: 16, fontSize: 16, color: '#718096' },
-  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: '#3B82F6', width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5 },
+  fab: { position: 'absolute', bottom: 88, right: 20, backgroundColor: '#3B82F6', width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5 },
 });

@@ -16,6 +16,7 @@ import UploadAssignment from '../screens/teacher/UploadAssignment';
 import UploadGrades from '../screens/teacher/UploadGrades';
 import TeacherProfileSettings from '../screens/teacher/TeacherProfileSettings';
 import CourseManager from '../screens/teacher/CourseManager';
+import UploadPYQ from '../screens/admin/UploadPYQ';
 
 // Import GalleryView from student folder (since the Teacher Grid uses it)
 import GalleryView from '../screens/student/GalleryView';
@@ -36,6 +37,7 @@ export default function TeacherNavigator() {
       <Stack.Screen name="Routine" component={TeacherRoutine} />
       <Stack.Screen name="Assignments" component={TeacherAssignments} />
       <Stack.Screen name="Courses" component={CourseManager} />
+      <Stack.Screen name="UploadPYQ" component={UploadPYQ} />
       <Stack.Screen name="GalleryView" component={GalleryView} />
 
       {/* EXTRA TEACHER SCREENS (For deeper navigation later) */}

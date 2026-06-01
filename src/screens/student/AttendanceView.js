@@ -33,21 +33,21 @@ export default function AttendanceView() {
 
     setLoading(true);
 
-    const attendanceQuery = query(
-      collection(db, 'attendance'),
-      where('instituteId', '==', userData.instituteId),
-      where(
-        'studentId',
-        studentIdentifiers.length === 1 ? '==' : 'in',
-        studentIdentifiers.length === 1 ? studentIdentifiers[0] : studentIdentifiers
-      )
-    );
+    const listenerBuckets = new Map();
+    const computeStats = () => {
+      const recordsById = new Map();
+      listenerBuckets.forEach((records) => {
+        records.forEach((record) => {
+          recordsById.set(record.id, record);
+        });
+      });
 
-    const unsubscribe = onSnapshot(attendanceQuery, (querySnapshot) => {
       const nextStats = { present: 0, absent: 0, notMarked: 0 };
 
-      querySnapshot.docs.forEach((attendanceDoc) => {
-        const data = attendanceDoc.data();
+      recordsById.forEach((record) => {
+        const data = record.data;
+        if (data.instituteId && data.instituteId !== userData.instituteId) return;
+
         if (data.status === 'present' || data.isPresent === true) {
           nextStats.present += 1;
         } else if (data.status === 'absent' || data.isPresent === false) {
@@ -59,13 +59,36 @@ export default function AttendanceView() {
 
       setAttendanceStats(nextStats);
       setLoading(false);
-    }, (error) => {
-      console.error('Error fetching attendance:', error);
-      setLoading(false);
+    };
+
+    const listenerSpecs = [
+      ...studentIdentifiers.map((identifier) => ({ field: 'studentId', value: identifier })),
+      currentUser?.uid ? { field: 'studentUid', value: currentUser.uid } : null,
+    ].filter(Boolean);
+
+    const unsubscribes = listenerSpecs.map((spec, index) => {
+      const bucketKey = `${spec.field}:${spec.value}:${index}`;
+      const attendanceQuery = query(
+        collection(db, 'attendance'),
+        where(spec.field, '==', spec.value)
+      );
+
+      return onSnapshot(attendanceQuery, (querySnapshot) => {
+        listenerBuckets.set(bucketKey, querySnapshot.docs.map((attendanceDoc) => ({
+          id: attendanceDoc.id,
+          data: attendanceDoc.data(),
+        })));
+        computeStats();
+      }, (error) => {
+        console.warn(`Attendance listener failed for ${spec.field}:`, error);
+        listenerBuckets.set(bucketKey, []);
+        computeStats();
+      });
     });
 
-    // Cleanup function to unsubscribe from the listener
-    return () => unsubscribe();
+    return () => {
+      unsubscribes.forEach((unsubscribe) => unsubscribe());
+    };
   }, [currentUser?.uid, userData?.uid, userData?.uniqueId, userData?.email, userData?.instituteId]);
 
   const totalClasses = attendanceStats.present + attendanceStats.absent + attendanceStats.notMarked;

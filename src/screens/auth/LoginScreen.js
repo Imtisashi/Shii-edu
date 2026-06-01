@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Modal, Alert, Animated, ScrollView } from 'react-native';
 import { SmoothSpinner } from '../../components/ui/LoadingState';
-import { auth, db } from '../../../firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
+import { auth } from '../../../firebaseConfig';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -104,26 +103,7 @@ export default function Login() {
       }
 
       // Authenticate
-      const userCredential = await signInWithEmailAndPassword(auth, loginEmail, password);
-
-      // Fetch Role to determine routing
-      const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
-
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-
-        // Role-based access control - Super Admin check happens here via Firestore role
-        // No hardcoded emails or secrets in client-side code
-        if (userData.role === 'superAdmin') {
-          // Super Admin access granted based solely on Firestore role
-          // Navigation handled automatically by App.js
-        }
-        // For all other roles (admin, teacher, student), access is granted normally
-        // Navigation handled automatically by App.js based on role
-      } else {
-        auth.signOut();
-        showLoginAlert('Account data not found in database.');
-      }
+      await signInWithEmailAndPassword(auth, loginEmail, password);
     } catch (error) {
       console.error(error);
       const msg = "Invalid ID/Email or Password. Please try again.";

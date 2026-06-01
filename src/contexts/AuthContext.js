@@ -1,9 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { getIdTokenResult, onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { auth, db } from '../../firebaseConfig';
 
 const AuthContext = createContext();
+
+const normalizeRole = (role) => {
+  const compactRole = String(role || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+  if (compactRole === 'superadmin') return 'superadmin';
+  if (compactRole === 'instituteadmin') return 'admin';
+  if (compactRole === 'professor') return 'teacher';
+  return compactRole;
+};
 
 const createdAtToMillis = (createdAt) => {
   if (!createdAt) return 0;
@@ -24,6 +32,7 @@ export function AuthProvider({ children }) {
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationsError, setNotificationsError] = useState(null);
+  const [profileError, setProfileError] = useState(null);
   const unsubscribeDocRef = useRef(null);
   const authResolvedRef = useRef(false);
   const notificationsUnsubscribeRef = useRef(null);
@@ -34,6 +43,7 @@ export function AuthProvider({ children }) {
       setUserData(null);
       setCurrentUser(null);
       setNotifications([]);
+      setProfileError(null);
 
       // Clean up notification subscription
       if (notificationsUnsubscribeRef.current) {
@@ -57,9 +67,11 @@ export function AuthProvider({ children }) {
         }
         // Set up new document subscription
         unsubscribeDocRef.current = onSnapshot(userRef, async (userSnap) => {
+          setProfileError(null);
+
           if (userSnap.exists()) {
             const basicData = userSnap.data();
-            const normalizedRole = (basicData.role || '').trim().toLowerCase();
+            const normalizedRole = normalizeRole(basicData.role);
             const instituteId = basicData.instituteId || null;
 
             try {
@@ -89,12 +101,38 @@ export function AuthProvider({ children }) {
             }
           } else {
             console.error("Critical Error: Firebase Auth exists, but Firestore User Profile is missing.");
-            setUserData(null);
+            try {
+              const tokenResult = await getIdTokenResult(user);
+              const claimsRole = normalizeRole(tokenResult.claims?.role || tokenResult.claims?.userRole || tokenResult.claims?.user_role);
+              const hasSuperAdminClaim = claimsRole === 'superadmin' || tokenResult.claims?.superadmin === true || tokenResult.claims?.superAdmin === true;
+
+              if (hasSuperAdminClaim) {
+                setUserData({
+                  uid: user.uid,
+                  role: 'superadmin',
+                  name: user.displayName || user.email || 'Super Admin',
+                  email: user.email || '',
+                  instituteId: null,
+                  uniqueId: null,
+                  instituteData: null,
+                  recoveredFromToken: true,
+                });
+                setProfileError(null);
+              } else {
+                setUserData(null);
+                setProfileError('Your Firebase Auth account exists, but the matching Firestore user profile is missing.');
+              }
+            } catch (tokenError) {
+              console.error('Failed to recover user profile from token claims:', tokenError);
+              setUserData(null);
+              setProfileError('Your account profile could not be loaded.');
+            }
           }
           setLoading(false);
         }, (error) => {
           console.error("User profile subscription failed:", error);
           setUserData(null);
+          setProfileError(error.message || 'Your account profile could not be loaded.');
           setLoading(false);
         });
       } else {
@@ -104,6 +142,7 @@ export function AuthProvider({ children }) {
           unsubscribeDocRef.current = null;
         }
         setUserData(null);
+        setProfileError(null);
         setLoading(false);
       }
     };
@@ -207,7 +246,8 @@ export function AuthProvider({ children }) {
     logout,
     notifications,
     notificationsLoading,
-    notificationsError
+    notificationsError,
+    profileError
   };
 
   return (
