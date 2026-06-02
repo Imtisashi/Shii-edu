@@ -1,11 +1,13 @@
 import React from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
-import { Colors } from '../constants/theme';
+import { StyleSheet, View } from 'react-native';
+import { useLayoutContext } from '../contexts/LayoutContext';
 
 export default function RootLayout({ children }) {
+  const { width, height, theme } = useLayoutContext();
+
   return (
-    <View style={styles.root}>
-      <View style={styles.appFrame}>
+    <View style={[styles.root, { width, height, backgroundColor: theme.background }]}>
+      <View style={[styles.appFrame, { width, height, backgroundColor: theme.background }]}>
         {children}
       </View>
     </View>
@@ -15,15 +17,13 @@ export default function RootLayout({ children }) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    minHeight: Platform.OS === 'web' ? '100vh' : undefined,
-    backgroundColor: Colors.background,
-    overflow: Platform.OS === 'web' ? 'visible' : 'hidden',
+    minHeight: '100vh',
+    overflow: 'visible',
   },
   appFrame: {
     flex: 1,
-    minHeight: Platform.OS === 'web' ? '100vh' : undefined,
+    minHeight: '100vh',
     width: '100%',
-    backgroundColor: Colors.background,
-    overflow: Platform.OS === 'web' ? 'visible' : 'hidden',
+    overflow: 'visible',
   },
 });

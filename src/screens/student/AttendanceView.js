@@ -1,5 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  FlatList,
+  RefreshControl,
+} from 'react-native';
 import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { PieChart } from 'react-native-chart-kit';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
@@ -8,6 +15,7 @@ import DynamicHeader from '../../components/DynamicHeader';
 import { db } from '../../../firebaseConfig';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 import { useInstitution } from '../../contexts/InstitutionContext';
+import { useLayoutContext } from '../../contexts/LayoutContext';
 
 const timestampToMillis = (value) => {
   if (!value) return 0;
@@ -33,6 +41,7 @@ export default function AttendanceView() {
   const { currentUser, userData } = useAuth();
   const layout = useResponsiveLayout();
   const institution = useInstitution();
+  const { width, height, theme } = useLayoutContext();
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [attendanceRecords, setAttendanceRecords] = useState([]);
@@ -41,6 +50,7 @@ export default function AttendanceView() {
     absent: 0,
     notMarked: 0,
   });
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     const studentIdentifiers = Array.from(new Set([
@@ -58,7 +68,7 @@ export default function AttendanceView() {
     setLoading(true);
 
     const listenerBuckets = new Map();
-    const computeStats = () => {
+    const computeStats = useCallback(() => {
       const recordsById = new Map();
       listenerBuckets.forEach((records) => {
         records.forEach((record) => {
@@ -94,7 +104,7 @@ export default function AttendanceView() {
       setAttendanceStats(nextStats);
       setErrorMessage('');
       setLoading(false);
-    };
+    }, [userData?.instituteId]);
 
     const listenerSpecs = [
       ...studentIdentifiers.map((identifier) => ({ field: 'studentId', value: identifier })),
@@ -129,7 +139,6 @@ export default function AttendanceView() {
 
   const totalClasses = attendanceStats.present + attendanceStats.absent + attendanceStats.notMarked;
   const presentPercentage = totalClasses ? Math.round((attendanceStats.present / totalClasses) * 100) : 0;
-  const latestRecords = attendanceRecords.slice(0, 8);
 
   const chartData = useMemo(() => {
     const data = [
@@ -169,8 +178,48 @@ export default function AttendanceView() {
         ];
   }, [attendanceStats]);
 
+  const renderItem = useCallback(({ item }) => {
+    const statusLabel = getRecordStatus(item);
+    const isPresent = statusLabel === 'Present';
+    const isAbsent = statusLabel === 'Absent';
+
+    return (
+      <View key={item.id} style={styles.historyRow}>
+        <View style={[
+          styles.statusMark,
+          isPresent && styles.statusPresent,
+          isAbsent && styles.statusAbsent,
+        ]} />
+        <View style={styles.historyTextBlock}>
+          <Text style={styles.historyTitle}>
+            {item.subject || item.targetPrimary || institution.labels.attendance}
+          </Text>
+          <Text style={styles.historyMeta}>
+            {formatRecordDate(item)} {item.teacherName ? `- ${item.teacherName}` : ''}
+          </Text>
+        </View>
+        <Text style={[
+          styles.historyStatus,
+          isPresent && styles.historyStatusPresent,
+          isAbsent && styles.historyStatusAbsent,
+        ]}>
+          {statusLabel}
+        </Text>
+      </View>
+    );
+  }, [institution.labels.attendance]);
+
+  const ListEmptyComponent = useCallback(() => (
+    <View style={styles.emptyListContainer}>
+      <Text style={styles.emptyListTitle}>No attendance marked yet</Text>
+      <Text style={styles.emptyListText}>
+        Your records will appear here as soon as faculty submits attendance.
+      </Text>
+    </View>
+  ), []);
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <DynamicHeader title="My Attendance" showBack />
 
       {loading ? (
@@ -187,6 +236,18 @@ export default function AttendanceView() {
             layout.isDesktop && { maxWidth: layout.maxContentWidth },
           ]}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                // Trigger a refetch by refetching the listeners?
+                // We can't easily refetch the snapshots, so we do nothing for now.
+                // In a real app, we might invalidate the cache or refetch the queries.
+                setTimeout(() => setRefreshing(false), 1000);
+              }}
+            />
+          }
         >
           <View style={[styles.heroCard, layout.isCompact && styles.heroCardCompact]}>
             <View>
@@ -247,42 +308,20 @@ export default function AttendanceView() {
               <Text style={styles.summaryTitle}>Recent Attendance</Text>
               <Text style={styles.historyCount}>{attendanceRecords.length} record{attendanceRecords.length === 1 ? '' : 's'}</Text>
             </View>
-            {latestRecords.length ? (
-              latestRecords.map((record) => {
-                const statusLabel = getRecordStatus(record);
-                const isPresent = statusLabel === 'Present';
-                const isAbsent = statusLabel === 'Absent';
-
-                return (
-                  <View key={record.id} style={styles.historyRow}>
-                    <View style={[
-                      styles.statusMark,
-                      isPresent && styles.statusPresent,
-                      isAbsent && styles.statusAbsent,
-                    ]} />
-                    <View style={styles.historyTextBlock}>
-                      <Text style={styles.historyTitle}>
-                        {record.subject || record.targetPrimary || institution.labels.attendance}
-                      </Text>
-                      <Text style={styles.historyMeta}>
-                        {formatRecordDate(record)} {record.teacherName ? `- ${record.teacherName}` : ''}
-                      </Text>
-                    </View>
-                    <Text style={[
-                      styles.historyStatus,
-                      isPresent && styles.historyStatusPresent,
-                      isAbsent && styles.historyStatusAbsent,
-                    ]}>
-                      {statusLabel}
-                    </Text>
-                  </View>
-                );
-              })
+            {attendanceRecords.length > 0 ? (
+              <FlatList
+                data={attendanceRecords}
+                keyExtractor={(item) => item.id}
+                renderItem={renderItem}
+                removeClippedSubviews={true}
+                initialNumToRender={10}
+                maxToRenderPerBatch={10}
+                windowSize={7}
+                ListEmptyComponent={ListEmptyComponent}
+                contentContainerStyle={styles.historyListContent}
+              />
             ) : (
-              <View style={styles.noHistory}>
-                <Text style={styles.noHistoryTitle}>No attendance marked yet</Text>
-                <Text style={styles.noHistoryText}>Your records will appear here as soon as faculty submits attendance.</Text>
-              </View>
+              <ListEmptyComponent />
             )}
           </View>
         </ScrollView>
@@ -292,7 +331,7 @@ export default function AttendanceView() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { color: '#64748B', fontWeight: '700', marginTop: 12 },
   content: { paddingTop: 16, paddingBottom: 96 },
@@ -362,7 +401,8 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   historyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  historyCount: { color: '#64748B', fontSize: 12, fontWeight: '800' },
+  historyCount: { color: '#64A3B8', fontSize: 12, fontWeight: '800' },
+  historyListContent: { paddingBottom: 20 },
   historyRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -379,7 +419,7 @@ const styles = StyleSheet.create({
   historyStatus: { color: '#92400E', fontSize: 13, fontWeight: '900', marginLeft: 10 },
   historyStatusPresent: { color: '#059669' },
   historyStatusAbsent: { color: '#DC2626' },
-  noHistory: { paddingVertical: 20, alignItems: 'center' },
-  noHistoryTitle: { color: '#0F172A', fontSize: 16, fontWeight: '900' },
-  noHistoryText: { color: '#94A3B8', fontSize: 13, textAlign: 'center', marginTop: 5, lineHeight: 19 },
+  emptyListContainer: { paddingVertical: 40, alignItems: 'center' },
+  emptyListTitle: { color: '#0F172A', fontSize: 16, fontWeight: '900' },
+  emptyListText: { color: '#94A3B8', fontSize: 13, textAlign: 'center', marginTop: 5, lineHeight: 19 },
 });

@@ -17,17 +17,17 @@ const normalizeText = (value) => String(value || '').trim();
 const lowerText = (value) => normalizeText(value).toLowerCase();
 const limitText = (value, maxLength = 6000) => normalizeText(value).slice(0, maxLength);
 
-const getOpenAIConfig = () => {
-  const apiKey = process.env.OPENAI_API_KEY;
+const getGeminiConfig = () => {
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    const error = new Error('OPENAI_API_KEY is not configured.');
+    const error = new Error('GEMINI_API_KEY is not configured.');
     error.statusCode = 503;
     throw error;
   }
 
   return {
     apiKey,
-    model: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
+    model: process.env.GEMINI_MODEL || 'gemini-1.5-pro',
   };
 };
 
@@ -196,23 +196,27 @@ const createPrompt = async ({ action, body, actor, firestore, instituteId }) => 
   };
 };
 
-const callOpenAI = async ({ config, action, prompt }) => {
-  const response = await fetch('https://api.openai.com/v1/responses', {
+const callGemini = async ({ config, action, prompt }) => {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${config.apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: config.model,
-      instructions: [
-        'You are Edu-Hub alpha, a precise educational SaaS assistant.',
-        'Use only the institution-scoped context provided.',
-        'Do not invent records, grades, courses, attendance, policies, or people.',
-        prompt.responseShape,
-      ].join(' '),
-      input: prompt.input,
-      max_output_tokens: action === 'studyGuide' ? 1800 : 1200,
+      contents: [{
+        parts: [{
+          text: [
+            'You are Edu-Hub alpha, a precise educational SaaS assistant.',
+            'Use only the institution-scoped context provided.',
+            'Do not invent records, grades, courses, attendance, policies, or people.',
+            prompt.responseShape,
+          ].join(' ') + '\n\n' + prompt.input
+        }]
+      }],
+      generationConfig: {
+        maxOutputTokens: action === 'studyGuide' ? 1800 : 1200,
+        temperature: 0.7,
+      }
     }),
   });
 
@@ -223,9 +227,12 @@ const callOpenAI = async ({ config, action, prompt }) => {
     throw error;
   }
 
+  // Extract text from Gemini response format
+  const text = payload.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
   return {
-    id: payload.id,
-    text: payload.output_text || '',
+    id: payload.candidates?.[0]?.candidateId || '',
+    text: text,
     raw: payload,
   };
 };
@@ -249,9 +256,9 @@ module.exports = async function handler(req, res) {
 
     const { firestore } = getAdminServices();
     const instituteId = actorInstituteId(actor, body);
-    const config = getOpenAIConfig();
+    const config = getGeminiConfig();
     const prompt = await createPrompt({ action, body, actor, firestore, instituteId });
-    const generation = await callOpenAI({ config, action, prompt });
+    const generation = await callGemini({ config, action, prompt });
 
     res.status(200).json({
       success: true,

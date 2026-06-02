@@ -5,12 +5,12 @@ import * as Font from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { InstitutionProvider } from './src/contexts/InstitutionContext';
+import { LayoutContextProvider } from './src/contexts/LayoutContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import RootLayout from './src/components/RootLayout';
 import { installWebPerformanceTuning } from './src/utils/webPerformanceTuning';
 import { installWebScrollFix } from './src/utils/webScrollFix';
 import { installFirestoreOfflinePersistence } from './src/services/offlinePersistence';
-import { Colors } from './src/constants/theme';
 
 const linking = {
   enabled: true,
@@ -49,14 +49,16 @@ export default function App() {
   if (!iconsReady) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.background }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
       <AuthProvider>
         <InstitutionProvider>
-          <NavigationContainer linking={linking} documentTitle={documentTitle}>
-            <RootLayout>
-              <AppNavigator />
-            </RootLayout>
-          </NavigationContainer>
+          <LayoutContextProvider>
+            <NavigationContainer linking={linking} documentTitle={documentTitle}>
+              <RootLayout>
+                <AppNavigator />
+              </RootLayout>
+            </NavigationContainer>
+          </LayoutContextProvider>
         </InstitutionProvider>
       </AuthProvider>
     </GestureHandlerRootView>
