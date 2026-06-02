@@ -1,0 +1,1 @@
+export { uploadSignedCloudinaryAsset as uploadInstitutionAsset } from './cloudinaryMediaService';

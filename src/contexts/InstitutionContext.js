@@ -120,9 +120,10 @@ export function InstitutionProvider({ children }) {
         attendance: profile.attendanceLabel,
         grading: profile.gradingLabel,
         faculty: profile.facultyLabel,
-        course: profile.courseLabel,
-      },
-    }, [userData]);
+        course: profile.courseLabel
+      }
+    };
+  }, [userData]);
 
   return (
     <InstitutionContext.Provider value={value}>
