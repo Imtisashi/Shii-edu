@@ -1,79 +1,19 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 import { getInstitutionProfile, InstitutionType } from '../services/institutionalProfile';
-import { useLayoutContext } from '../contexts/LayoutContext';
 
-interface InstitutionTypeType {
-  mode: InstitutionType;
-  academicYears?: Array<{ id: string; label: string }>;
-  gradeBlocks?: Array<{
-    id: string;
-    label: string;
-    sections: Array<{
-      id: string;
-      label: string;
-      classTeacherUid?: string | null;
-    }>;
-  }>;
-  departments?: Array<{
-    id: string;
-    label: string;
-    courses: Array<string>;
-  }>;
-  semesters?: Array<{ id: string; label: string }>;
-  classTeacherAssignments?: Record<string, string>;
-  attendancePolicy: {
-    requiredDaily: boolean;
-    allowSubjectAttendance: boolean;
-    parentVisible: boolean;
-  };
-  grading: {
-    label: string;
-    matrices: Array<any>;
-  };
-  parentDashboardsEnabled: boolean;
-  creditHours?: Record<string, number>;
-  electiveRegistration?: {
-    enabled: boolean;
-    window: { start: string; end: string } | null;
-  };
-  professorCoursePairings?: Record<string, string>;
-  gpa?: {
-    scale: number;
-    cgpaEnabled: boolean;
-    formula: string;
-  };
-}
+const InstitutionContext = createContext(null);
 
-const InstitutionContext = createContext<{
-  profile: any;
-  workflow: InstitutionTypeType;
-  institutionType: InstitutionType;
-  isSchool: boolean;
-  isCollege: boolean;
-  labels: {
-    academicRoot: string;
-    academicChild: string;
-    attendance: string;
-    grading: string;
-    faculty: string;
-    course: string;
-  };
-} | null>(null);
-
-const arrayFromConfig = (value: any) => {
+const arrayFromConfig = (value) => {
   if (!value) return [];
   if (Array.isArray(value)) return value.filter(Boolean);
   if (typeof value === 'object') return Object.values(value).filter(Boolean);
   return [];
 };
 
-const normalizeSection = (section: any) => {
+const normalizeSection = (section) => {
   if (typeof section === 'string' || typeof section === 'number') {
-    return {
-      id: String(section),
-      label: String(section)
-    };
+    return { id: String(section), label: String(section) };
   }
 
   return {
@@ -83,7 +23,7 @@ const normalizeSection = (section: any) => {
   };
 };
 
-const buildSchoolWorkflow = (instituteData: any = {}): InstitutionTypeType => {
+const buildSchoolWorkflow = (instituteData = {}) => {
   const academicYears = arrayFromConfig(instituteData.academicYears || instituteData.years)
     .map((year) => (typeof year === 'string' ? { id: year, label: year } : year));
   const gradeSource = instituteData.classSections || instituteData.gradeSections || instituteData.classes || [];
@@ -121,14 +61,10 @@ const buildSchoolWorkflow = (instituteData: any = {}): InstitutionTypeType => {
   };
 };
 
-const buildCollegeWorkflow = (instituteData: any = {}): InstitutionTypeType => {
+const buildCollegeWorkflow = (instituteData = {}) => {
   const departments = arrayFromConfig(instituteData.departments || instituteData.depts)
     .map((department) => (typeof department === 'string'
-      ? {
-          id: department,
-          label: department,
-          courses: []
-        }
+      ? { id: department, label: department, courses: [] }
       : {
         id: String(department.id || department.code || department.name || ''),
         label: String(department.label || department.name || department.code || 'Department'),
@@ -162,9 +98,8 @@ const buildCollegeWorkflow = (instituteData: any = {}): InstitutionTypeType => {
   };
 };
 
-export function InstitutionProvider({ children }: { children: React.ReactNode }) {
+export function InstitutionProvider({ children }) {
   const { userData } = useAuth();
-  const { width, height, fontScale, theme } = useLayoutContext();
 
   const value = useMemo(() => {
     const profile = getInstitutionProfile(userData || {});
@@ -187,8 +122,7 @@ export function InstitutionProvider({ children }: { children: React.ReactNode })
         faculty: profile.facultyLabel,
         course: profile.courseLabel,
       },
-    };
-  }, [userData, width, height, fontScale, theme]);
+    }, [userData]);
 
   return (
     <InstitutionContext.Provider value={value}>
