@@ -3,7 +3,7 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton } from '../../components/ui/LoadingState';
 import StudentScreenScaffold, { EnterprisePanel, ScreenIntro } from '../../components/student/StudentScreenScaffold';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
@@ -42,14 +42,7 @@ const mergeGradeLists = (...lists) => {
 };
 
 function LoadingState() {
-  const { colors } = useRootLayout();
-
-  return (
-    <StudentScreenScaffold accentVariant="amber" scroll={false} style={styles.centerContent}>
-      <SmoothSpinner size={42} color={colors.amber} trackColor={colors.hairline} />
-      <Text style={[styles.loadingText, { color: colors.textSoft }]}>Loading grades...</Text>
-    </StudentScreenScaffold>
-  );
+  return <RosterSkeleton rowCount={5} showFilters={false} />;
 }
 
 function StatsHero({ average, totalExams }) {

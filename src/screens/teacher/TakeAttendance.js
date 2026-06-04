@@ -251,7 +251,7 @@ function TakeAttendanceContent({ navigation }) {
   });
 
   if (loading) {
-    return <AttendanceSkeleton accent="violet" label="Loading attendance roster..." rowCount={5} />;
+    return <AttendanceSkeleton accent="violet" label="Preparing attendance roster..." rowCount={5} />;
   }
 
   return (

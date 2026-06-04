@@ -56,7 +56,7 @@ export default function InstituteSyncSplash() {
     cachedInstituteIdentity?.logoUrl ||
     null;
   const stageLabel = authStage === 'verifying'
-    ? 'Loading your institute workspace'
+    ? 'Preparing your institute workspace'
     : authStage === 'biometric-verifying'
       ? 'Confirming biometric access'
       : 'Synchronizing your secure workspace';

@@ -763,7 +763,8 @@ p {
 .landing-links a,
 .landing-login,
 .landing-primary-action,
-.landing-secondary-action {
+.landing-secondary-action,
+.landing-contact-action {
   align-items: center;
   border-radius: var(--radius);
   display: inline-flex;
@@ -795,7 +796,8 @@ p {
 
 .landing-login:hover,
 .landing-primary-action:hover,
-.landing-secondary-action:hover {
+.landing-secondary-action:hover,
+.landing-contact-action:hover {
   transform: translateY(-1px);
 }
 
@@ -824,9 +826,7 @@ p {
 }
 
 .landing-hero-scrim {
-  background:
-    linear-gradient(90deg, rgba(4, 10, 22, 0.9), rgba(4, 10, 22, 0.58) 48%, rgba(4, 10, 22, 0.28)),
-    linear-gradient(0deg, rgba(4, 10, 22, 0.68), transparent 48%);
+  background: rgba(4, 10, 22, 0.72);
   z-index: -1;
 }
 
@@ -881,6 +881,33 @@ p {
   background: rgba(15, 23, 42, 0.48);
   border: 1px solid rgba(226, 232, 240, 0.44);
   color: #ffffff;
+}
+
+.landing-onboarding {
+  align-items: center;
+  background: rgba(248, 250, 252, 0.1);
+  border: 1px solid rgba(226, 232, 240, 0.28);
+  border-radius: var(--radius);
+  color: #e2e8f0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: 620px;
+  padding: 10px;
+}
+
+.landing-onboarding span {
+  flex: 1 1 250px;
+  font-size: 0.875rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.landing-contact-action {
+  background: #ffffff;
+  border: 1px solid #ffffff;
+  color: #0f172a;
+  justify-content: center;
 }
 
 .landing-band {
@@ -1258,12 +1285,15 @@ p {
 
   .landing-actions,
   .landing-primary-action,
-  .landing-secondary-action {
+  .landing-secondary-action,
+  .landing-onboarding,
+  .landing-contact-action {
     width: 100%;
   }
 
   .landing-primary-action,
-  .landing-secondary-action {
+  .landing-secondary-action,
+  .landing-contact-action {
     justify-content: center;
   }
 

@@ -4,7 +4,7 @@ import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import DynamicHeader from '../../components/DynamicHeader';
 import FleetMap from '../../components/fleet/FleetMap';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { SkeletonBlock } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
 import { subscribeToFleetLocations } from '../../services/fleetTrackingService';
@@ -94,7 +94,15 @@ export default function FleetTrackingScreen() {
         </View>
 
         <View style={[styles.mapCard, { backgroundColor: colors.card, borderColor: colors.hairline, borderRadius: radii.card }]}>
-          {loading ? <View style={styles.center}><SmoothSpinner color={colors.accent} /></View> : <FleetMap accent={colors.accent} locations={locations} mutedColor={colors.muted} textColor={colors.text} />}
+          {loading ? (
+            <View style={styles.mapSkeleton}>
+              <SkeletonBlock height={188} radius={8} width="100%" />
+              <View style={styles.mapSkeletonFooter}>
+                <SkeletonBlock height={34} radius={8} width="46%" />
+                <SkeletonBlock height={34} radius={8} width="32%" />
+              </View>
+            </View>
+          ) : <FleetMap accent={colors.accent} locations={locations} mutedColor={colors.muted} textColor={colors.text} />}
         </View>
 
         {errorMessage ? <Text style={[styles.errorText, { color: colors.warning }]}>{errorMessage}</Text> : null}
@@ -123,6 +131,8 @@ const styles = StyleSheet.create({
   eyebrow: { fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
   listWrap: { flex: 1, minHeight: 120 },
   mapCard: { borderWidth: 1, height: 280, marginBottom: 12, overflow: 'hidden' },
+  mapSkeleton: { flex: 1, justifyContent: 'space-between', padding: 12 },
+  mapSkeletonFooter: { flexDirection: 'row', justifyContent: 'space-between' },
   screen: { flex: 1, overflow: 'hidden' },
   statusDot: { borderRadius: 4, height: 7, marginRight: 5, width: 7 },
   statusPill: { alignItems: 'center', borderRadius: 8, borderWidth: 1, flexDirection: 'row', marginLeft: 10, paddingHorizontal: 9, paddingVertical: 6 },

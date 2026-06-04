@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, Modal, Platform } from 'react-native';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton, SmoothSpinner } from '../../components/ui/LoadingState';
 import { Ionicons } from '@expo/vector-icons';
 import DynamicHeader from '../../components/DynamicHeader';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, where } from 'firebase/firestore';
@@ -147,9 +147,7 @@ export default function ManageHolidays() {
       <DynamicHeader title="Manage Holidays" showBack={true} />
       
       {loading ? (
-        <View style={styles.centerContainer}>
-          <SmoothSpinner size="large" color="#2D3748" />
-        </View>
+        <RosterSkeleton rowCount={5} showFilters={false} />
       ) : (
         <FlatList
           data={holidays}
@@ -280,8 +278,8 @@ const baseStyles = StyleSheet.create({
     backgroundColor: '#0F172A',
     borderColor: '#334155',
     borderWidth: 1,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
     padding: 24,
     minHeight: 350,
   },

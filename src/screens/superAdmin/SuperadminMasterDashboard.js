@@ -551,7 +551,7 @@ export default function SuperadminMasterDashboard() {
   );
 
   if (loading) {
-    return <LoadingState label="Loading platform dashboard..." color="#38BDF8" />;
+    return <LoadingState />;
   }
 
   return (

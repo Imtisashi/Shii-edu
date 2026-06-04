@@ -4,12 +4,15 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
 import { sharedStackScreenOptions } from './animatedScreenOptions';
 import EdgeDrawerButton from '../components/navigation/EdgeDrawerButton';
+import RoleDrawerContent from '../components/navigation/RoleDrawerContent';
 import { useRootLayout } from '../contexts/RootLayoutContext';
 import ParentHome from '../screens/parent/ParentHome';
 import FeePayment from '../screens/student/FeePayment';
 import StudentNotifications from '../screens/student/StudentNotifications';
 import CommunicationHub from '../screens/shared/CommunicationHub';
 import FleetTrackingScreen from '../screens/shared/FleetTrackingScreen';
+import AccountProfileScreen from '../screens/shared/AccountProfileScreen';
+import AccountSettingsScreen from '../screens/shared/AccountSettingsScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -18,6 +21,14 @@ export default function ParentNavigator() {
 
   return (
     <Drawer.Navigator
+      drawerContent={(props) => (
+        <RoleDrawerContent
+          {...props}
+          dashboardRoute="ParentHome"
+          profileRoute="ParentProfile"
+          settingsRoute="ParentSettings"
+        />
+      )}
       screenOptions={({ navigation }) => ({
         ...sharedStackScreenOptions,
         drawerActiveBackgroundColor: colors.accentSoft,
@@ -79,6 +90,16 @@ export default function ParentNavigator() {
         options={{
           drawerIcon: ({ focused, color }) => <Ionicons color={color} name={focused ? 'notifications' : 'notifications-outline'} size={24} />,
         }}
+      />
+      <Drawer.Screen
+        component={AccountProfileScreen}
+        name="ParentProfile"
+        options={{ drawerLabel: 'Profile', title: 'Profile' }}
+      />
+      <Drawer.Screen
+        component={AccountSettingsScreen}
+        name="ParentSettings"
+        options={{ drawerLabel: 'Settings', title: 'Settings' }}
       />
     </Drawer.Navigator>
   );

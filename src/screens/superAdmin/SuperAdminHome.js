@@ -20,7 +20,7 @@ import { deleteInstituteAsSuperAdmin, getInstituteStats } from '../../services/f
 import { db } from '../../../firebaseConfig';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 import AddInstituteModal from '../../components/superAdmin/AddInstituteModal';
-import LoadingState, { SmoothSpinner } from '../../components/ui/LoadingState';
+import LoadingState, { SkeletonBlock, SmoothSpinner } from '../../components/ui/LoadingState';
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
@@ -287,7 +287,7 @@ export default function SuperAdminHome() {
   );
 
   if (loading) {
-    return <LoadingState label="Loading superadmin dashboard..." color="#2563EB" />;
+    return <LoadingState />;
   }
 
   return (
@@ -333,11 +333,19 @@ export default function SuperAdminHome() {
               </View>
               <View style={styles.statCard}>
                 <Text style={styles.statsLabel}>Users</Text>
-                <Text style={styles.statsValue}>{statsLoading ? '...' : dashboardStats.totalUsers}</Text>
+                {statsLoading ? (
+                  <SkeletonBlock height={38} radius={8} width={86} />
+                ) : (
+                  <Text style={styles.statsValue}>{dashboardStats.totalUsers}</Text>
+                )}
               </View>
               <View style={styles.statCard}>
                 <Text style={styles.statsLabel}>Admins</Text>
-                <Text style={styles.statsValue}>{statsLoading ? '...' : dashboardStats.admins}</Text>
+                {statsLoading ? (
+                  <SkeletonBlock height={38} radius={8} width={70} />
+                ) : (
+                  <Text style={styles.statsValue}>{dashboardStats.admins}</Text>
+                )}
               </View>
             </View>
 

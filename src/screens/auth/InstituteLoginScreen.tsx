@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Image,
-  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -58,14 +57,6 @@ type InstituteAuthValue = {
   unlockWithBiometrics: () => Promise<unknown>;
 };
 
-const REGISTRATION_EMAIL = 'sashimiofficials@gmail.com';
-
-const openRegistrationEmail = () => {
-  const subject = encodeURIComponent('Institute onboarding request');
-  const body = encodeURIComponent('Hello Shii-Edu team,\n\nPlease contact us about registering our institute.\n\nInstitute name:\nContact person:\nPhone:\n');
-  Linking.openURL(`mailto:${REGISTRATION_EMAIL}?subject=${subject}&body=${body}`).catch(() => {});
-};
-
 export default function InstituteLoginScreen() {
   const layout = useResponsiveLayout();
   const insets = useSafeAreaInsets();
@@ -87,8 +78,8 @@ export default function InstituteLoginScreen() {
   const [biometricSubmitting, setBiometricSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
-  const mobileCardWidth = layout.isMobile
-    ? Math.max(280, layout.width - layout.horizontalPadding * 2)
+  const mobilePanelWidth = layout.isMobile
+    ? Math.max(280, Math.min(450, layout.width - 32))
     : undefined;
 
   useEffect(() => {
@@ -203,58 +194,12 @@ export default function InstituteLoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.brandPanel, layout.isDesktop ? styles.brandPanelDesktop : styles.brandPanelMobile]}>
-            <View style={styles.platformLockup}>
-              {returningLogoUrl ? (
-                <Image
-                  accessibilityLabel={`${returningInstituteName} logo`}
-                  resizeMode="contain"
-                  source={{ uri: returningLogoUrl }}
-                  style={styles.brandLogoImage}
-                />
-              ) : (
-                <BrandLogo size={68} variant="light" style={styles.brandIcon} />
-              )}
-              <View style={styles.platformCopy}>
-                <BrandWordmark color="#F8FAFC" size={layout.isMobile ? 'md' : 'lg'} />
-                <Text style={styles.brandEyebrow}>Institute Access Control</Text>
-              </View>
-            </View>
-
-            <Text style={styles.brandTitle}>A secure landing point for every institute role.</Text>
-            <Text style={styles.brandCopy}>
-              Verify the institute, confirm the user, then open the campus workspace assigned to that role.
-            </Text>
-
-            <View style={styles.structureGraphic} accessibilityLabel="Institute verification flow">
-              <View style={[styles.structureNode, styles.structureNodeStrong]}>
-                <Ionicons name="business-outline" size={19} color="#67E8F9" />
-                <Text style={styles.structureNodeText}>Institute</Text>
-              </View>
-              <View style={styles.structureRail} />
-              <View style={styles.structureNode}>
-                <Ionicons name="id-card-outline" size={19} color="#CBD5E1" />
-                <Text style={styles.structureNodeText}>User</Text>
-              </View>
-              <View style={styles.structureRail} />
-              <View style={styles.structureNode}>
-                <Ionicons name="shield-checkmark-outline" size={19} color="#CBD5E1" />
-                <Text style={styles.structureNodeText}>Workspace</Text>
-              </View>
-            </View>
-
-            <View style={styles.brandFeatureRow}>
-              <Ionicons name="lock-closed-outline" size={18} color="#67E8F9" />
-              <Text style={styles.brandFeatureText}>Supabase-protected tenant checks before workspace access.</Text>
-            </View>
-          </View>
-
-          <View style={[styles.authSector, layout.isDesktop && styles.authSectorDesktop]}>
+          <View style={styles.authSector}>
           <View
             style={[
               styles.card,
               layout.isMobile && styles.cardMobile,
-              layout.isMobile && { width: mobileCardWidth },
+              layout.isMobile && { width: mobilePanelWidth },
               layout.isDesktop && styles.cardDesktop,
               layout.isCompact && styles.cardCompact,
             ]}
@@ -268,11 +213,11 @@ export default function InstituteLoginScreen() {
                     source={{ uri: returningLogoUrl }}
                     style={styles.formLogoImage}
                   />
-                ) : (
-                  <BrandLogo size={58} style={undefined} />
-                )}
+              ) : (
+                <BrandLogo size={58} style={undefined} />
+              )}
               </View>
-              <BrandWordmark color="#F8FAFC" size={layout.isMobile ? 'sm' : 'md'} style={styles.formWordmark} />
+              <BrandWordmark color="#0F172A" size={layout.isMobile ? 'sm' : 'md'} style={styles.formWordmark} />
               <Text style={[styles.title, layout.isMobile && styles.titleMobile]}>
                 {hasReturningInstitute ? returningInstituteName : 'Secure institute login'}
               </Text>
@@ -293,9 +238,9 @@ export default function InstituteLoginScreen() {
                   style={[styles.biometricButton, biometricSubmitting && styles.loginBtnDisabled]}
                 >
                   {biometricSubmitting ? (
-                    <SmoothSpinner color="#67E8F9" size={22} trackColor="#075985" style={undefined} />
+                    <SmoothSpinner color="#2563EB" size={22} trackColor="#BFDBFE" style={undefined} />
                   ) : (
-                    <Ionicons name="finger-print-outline" size={24} color="#67E8F9" />
+                    <Ionicons name="finger-print-outline" size={24} color="#2563EB" />
                   )}
                   <View style={styles.biometricButtonCopy}>
                     <Text style={styles.biometricButtonTitle}>
@@ -305,7 +250,7 @@ export default function InstituteLoginScreen() {
                       {cachedInstituteIdentity?.instituteName || 'Your institute'}
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+                  <Ionicons name="chevron-forward" size={18} color="#64748B" />
                 </TouchableOpacity>
               ) : null}
 
@@ -319,7 +264,7 @@ export default function InstituteLoginScreen() {
 
               <Text style={styles.label}>Institute ID</Text>
               <View style={styles.inputContainer}>
-                <Ionicons name="business-outline" size={20} color="#CBD5E1" style={styles.icon} />
+                <Ionicons name="business-outline" size={20} color="#64748B" style={styles.icon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Institute ID"
@@ -327,14 +272,14 @@ export default function InstituteLoginScreen() {
                   onChangeText={handleInstituteIdChange}
                   autoCapitalize="none"
                   autoCorrect={false}
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#64748B"
                   returnKeyType="next"
                 />
               </View>
 
               <Text style={styles.label}>User ID</Text>
               <View style={styles.inputContainer}>
-                <Ionicons name="id-card-outline" size={20} color="#CBD5E1" style={styles.icon} />
+                <Ionicons name="id-card-outline" size={20} color="#64748B" style={styles.icon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Student, teacher, or admin ID"
@@ -342,21 +287,21 @@ export default function InstituteLoginScreen() {
                   onChangeText={handleUserIdChange}
                   autoCapitalize="none"
                   autoCorrect={false}
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#64748B"
                   returnKeyType="next"
                 />
               </View>
 
               <Text style={styles.label}>Password</Text>
               <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={20} color="#CBD5E1" style={styles.icon} />
+                <Ionicons name="lock-closed-outline" size={20} color="#64748B" style={styles.icon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Password"
                   value={password}
                   onChangeText={handlePasswordChange}
                   secureTextEntry={!showPassword}
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#64748B"
                   returnKeyType="go"
                   onSubmitEditing={handleLogin}
                 />
@@ -365,13 +310,13 @@ export default function InstituteLoginScreen() {
                   style={styles.eyeIcon}
                   accessibilityLabel="Toggle password visibility"
                 >
-                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#CBD5E1" />
+                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#64748B" />
                 </TouchableOpacity>
               </View>
 
               {visibleError ? (
                 <View style={styles.errorBox}>
-                  <Ionicons name="alert-circle-outline" size={18} color="#FCA5A5" />
+                  <Ionicons name="alert-circle-outline" size={18} color="#DC2626" />
                   <Text style={styles.errorText}>{visibleError}</Text>
                 </View>
               ) : null}
@@ -386,13 +331,13 @@ export default function InstituteLoginScreen() {
                     activeOpacity={0.8}
                   >
                     <View style={[styles.checkbox, enableBiometrics && styles.checkboxActive]}>
-                      {enableBiometrics ? <Ionicons name="checkmark" size={14} color="#020617" /> : null}
+                      {enableBiometrics ? <Ionicons name="checkmark" size={14} color="#FFFFFF" /> : null}
                     </View>
                     <Text style={styles.rememberText}>Use {biometricLabel} on this device next time</Text>
                   </TouchableOpacity>
                 ) : (
                   <View style={styles.secureCacheRow}>
-                    <Ionicons name="key-outline" size={16} color="#67E8F9" />
+                    <Ionicons name="key-outline" size={16} color="#2563EB" />
                     <Text style={styles.secureCacheText}>Institute ID and User ID are cached securely after sign-in</Text>
                   </View>
                 )}
@@ -415,23 +360,8 @@ export default function InstituteLoginScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.registrationBlock}>
-              <Text style={styles.registrationText}>
-                Is your institute not registered? Contact us to onboard.
-              </Text>
-              <TouchableOpacity
-                accessibilityLabel="Contact for Registration"
-                activeOpacity={0.84}
-                onPress={openRegistrationEmail}
-                style={styles.registrationButton}
-              >
-                <Ionicons name="mail-outline" size={18} color="#020617" />
-                <Text style={styles.registrationButtonText}>Contact for Registration</Text>
-              </TouchableOpacity>
-            </View>
-
             <View style={styles.footer}>
-              <Ionicons name="lock-closed-outline" size={15} color="#67E8F9" />
+              <Ionicons name="lock-closed-outline" size={15} color="#2563EB" />
               <Text style={styles.footerText}>Every session opens only your institute workspace</Text>
             </View>
             {authStage === 'biometric-required' ? (
@@ -447,49 +377,27 @@ export default function InstituteLoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  keyboardRoot: { flex: 1 },
-  scrollView: { flex: 1 },
-  container: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
-  containerMobile: { alignItems: 'stretch' },
-  containerDesktop: { alignItems: 'stretch', flexDirection: 'row', gap: 22, paddingHorizontal: 40 },
+  keyboardRoot: { backgroundColor: '#F8FAFC', flex: 1 },
+  scrollView: { backgroundColor: '#F8FAFC', flex: 1 },
+  container: {
+    alignItems: 'center',
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  containerMobile: { paddingHorizontal: 16 },
+  containerDesktop: { paddingHorizontal: 40 },
   containerCompact: { paddingHorizontal: 14 },
   authSector: {
     alignItems: 'center',
     justifyContent: 'center',
+    maxWidth: 520,
     width: '100%',
   },
-  authSectorDesktop: {
-    flex: 1,
-    minWidth: 0,
-  },
-  brandPanel: {
-    backgroundColor: '#0F172A',
-    borderColor: '#334155',
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: 'center',
-  },
-  brandPanelDesktop: {
-    flex: 1,
-    alignSelf: 'stretch',
-    minWidth: 0,
-    padding: 34,
-  },
-  brandPanelMobile: {
-    marginBottom: 14,
-    padding: 18,
-  },
-  brandIcon: { flexShrink: 0 },
-  brandLogoImage: { borderRadius: 8, flexShrink: 0, height: 68, width: 68 },
-  brandEyebrow: { color: '#93C5FD', fontSize: 12, fontWeight: '900', letterSpacing: 0, marginTop: 2 },
-  brandTitle: { color: '#F8FAFC', fontSize: 31, fontWeight: '900', lineHeight: 38, marginTop: 24, maxWidth: 520 },
-  brandCopy: { color: '#CBD5E1', fontSize: 16, fontWeight: '700', lineHeight: 24, marginTop: 12, maxWidth: 470 },
-  brandFeatureRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12 },
-  brandFeatureText: { flex: 1, color: '#E2E8F0', marginLeft: 10, fontSize: 14, fontWeight: '800', lineHeight: 20 },
   biometricButton: {
     alignItems: 'center',
-    backgroundColor: '#082F49',
-    borderColor: '#0E7490',
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
     borderRadius: 8,
     borderWidth: 1,
     flexDirection: 'row',
@@ -504,48 +412,48 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   biometricButtonSubtitle: {
-    color: '#94A3B8',
+    color: '#64748B',
     fontSize: 12,
     fontWeight: '700',
     marginTop: 3,
   },
   biometricButtonTitle: {
-    color: '#F8FAFC',
+    color: '#0F172A',
     fontSize: 14,
     fontWeight: '800',
   },
   card: {
     width: '100%',
     maxWidth: 450,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
-    padding: 24,
+    borderColor: '#D7E0EC',
     borderWidth: 1,
-    borderColor: '#334155',
+    padding: 26,
   },
-  cardDesktop: { maxWidth: 480 },
+  cardDesktop: { maxWidth: 480, padding: 30 },
   cardMobile: { alignSelf: 'center', maxWidth: '100%', borderRadius: 8, padding: 18 },
   cardCompact: { padding: 16, borderRadius: 8 },
   header: { alignItems: 'center', marginBottom: 30 },
   headerMobile: { marginBottom: 18 },
-  logoCage: { backgroundColor: '#111827', padding: 10, borderRadius: 8, marginBottom: 15, borderWidth: 1, borderColor: '#334155' },
+  logoCage: { backgroundColor: '#F8FAFC', padding: 10, borderRadius: 8, marginBottom: 15, borderWidth: 1, borderColor: '#D7E0EC' },
   logoCageMobile: { padding: 8, borderRadius: 8, marginBottom: 12 },
-  title: { fontSize: 26, fontWeight: '800', color: '#F8FAFC', marginBottom: 5 },
+  title: { fontSize: 26, fontWeight: '900', color: '#0F172A', marginBottom: 5 },
   titleMobile: { fontSize: 24 },
-  subtitle: { fontSize: 14, color: '#CBD5E1', textAlign: 'center' },
+  subtitle: { fontSize: 14, color: '#475569', textAlign: 'center' },
   form: { marginBottom: 14 },
   formWordmark: { marginBottom: 4 },
   formLogoImage: { borderRadius: 8, height: 58, width: 58 },
-  label: { fontSize: 12, fontWeight: '700', color: '#E2E8F0', marginBottom: 8 },
-  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#020617', borderWidth: 1, borderColor: '#334155', borderRadius: 8, marginBottom: 13 },
+  label: { fontSize: 12, fontWeight: '800', color: '#334155', marginBottom: 8 },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8, marginBottom: 13 },
   icon: { paddingHorizontal: 15 },
-  input: { flex: 1, minWidth: 0, paddingVertical: 14, fontSize: 16, color: '#F8FAFC' },
+  input: { flex: 1, minWidth: 0, paddingVertical: 14, fontSize: 16, color: '#0F172A' },
   eyeIcon: { paddingHorizontal: 12, paddingVertical: 12 },
-  errorBox: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#3B1216', borderWidth: 1, borderColor: '#7F1D1D', borderRadius: 8, padding: 12, marginBottom: 16 },
-  errorText: { flex: 1, color: '#FECACA', fontSize: 13, lineHeight: 19, fontWeight: '700', marginLeft: 8 },
+  errorBox: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA', borderRadius: 8, padding: 12, marginBottom: 16 },
+  errorText: { flex: 1, color: '#991B1B', fontSize: 13, lineHeight: 19, fontWeight: '700', marginLeft: 8 },
   optionsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
   orLine: {
-    backgroundColor: '#334155',
+    backgroundColor: '#D7E0EC',
     flex: 1,
     height: 1,
   },
@@ -555,105 +463,31 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   orText: {
-    color: '#94A3B8',
+    color: '#64748B',
     fontSize: 11,
     fontWeight: '700',
     marginHorizontal: 10,
   },
   rememberRow: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
   checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: '#94A3B8', justifyContent: 'center', alignItems: 'center', marginRight: 8 },
-  checkboxActive: { backgroundColor: '#67E8F9', borderColor: '#67E8F9' },
-  rememberText: { flexShrink: 1, fontSize: 13, color: '#E2E8F0', fontWeight: '600' },
+  checkboxActive: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
+  rememberText: { flexShrink: 1, fontSize: 13, color: '#334155', fontWeight: '700' },
   secureCacheRow: {
     alignItems: 'center',
     flexDirection: 'row',
     flexShrink: 1,
   },
   secureCacheText: {
-    color: '#CBD5E1',
+    color: '#475569',
     flexShrink: 1,
     fontSize: 12,
     fontWeight: '700',
     marginLeft: 7,
   },
-  loginBtn: { minHeight: 52, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', backgroundColor: '#2563EB', paddingVertical: 14, borderRadius: 8 },
+  loginBtn: { minHeight: 52, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', backgroundColor: '#0F172A', paddingVertical: 14, borderRadius: 8 },
   loginBtnDisabled: { opacity: 0.66 },
   loginBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800', marginLeft: 8 },
-  platformCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  platformLockup: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 15,
-    minWidth: 0,
-  },
-  registrationBlock: {
-    backgroundColor: '#111827',
-    borderColor: '#334155',
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 12,
-    marginTop: 4,
-    padding: 14,
-  },
-  registrationButton: {
-    alignItems: 'center',
-    backgroundColor: '#67E8F9',
-    borderRadius: 8,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    minHeight: 46,
-    paddingHorizontal: 14,
-  },
-  registrationButtonText: {
-    color: '#020617',
-    fontSize: 14,
-    fontWeight: '900',
-    marginLeft: 8,
-  },
-  registrationText: {
-    color: '#E2E8F0',
-    fontSize: 13,
-    fontWeight: '800',
-    lineHeight: 19,
-    textAlign: 'center',
-  },
-  structureGraphic: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    marginTop: 26,
-    maxWidth: 520,
-  },
-  structureNode: {
-    alignItems: 'center',
-    backgroundColor: '#111827',
-    borderColor: '#334155',
-    borderRadius: 8,
-    borderWidth: 1,
-    flex: 1,
-    minHeight: 78,
-    justifyContent: 'center',
-    padding: 10,
-  },
-  structureNodeStrong: {
-    backgroundColor: '#082F49',
-    borderColor: '#0E7490',
-  },
-  structureNodeText: {
-    color: '#E2E8F0',
-    fontSize: 12,
-    fontWeight: '900',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  structureRail: {
-    backgroundColor: '#334155',
-    height: 1,
-    width: 18,
-  },
-  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#334155' },
-  footerText: { fontSize: 12, color: '#CBD5E1', marginLeft: 6, fontWeight: '700' },
-  supportText: { color: '#94A3B8', fontSize: 11, lineHeight: 16, marginTop: 10, textAlign: 'center' },
+  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#E2E8F0' },
+  footerText: { flexShrink: 1, fontSize: 12, color: '#334155', marginLeft: 6, fontWeight: '700', textAlign: 'center' },
+  supportText: { color: '#64748B', fontSize: 11, lineHeight: 16, marginTop: 10, textAlign: 'center' },
 });

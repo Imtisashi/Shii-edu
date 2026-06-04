@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform, Keyboard, FlatList } from 'react-native';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton, SmoothSpinner } from '../../components/ui/LoadingState';
 import { collection, query, where, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig'; 
 import { useAuth } from '../../contexts/AuthContext';
@@ -146,7 +146,7 @@ export default function ManageNotices() {
         </View>
 
         {loadingList ? (
-          <SmoothSpinner size="large" color="#4A90E2" style={{ marginTop: 50 }} />
+          <RosterSkeleton rowCount={5} showFilters={false} />
         ) : (
           <FlatList
             data={notices}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Platform, KeyboardAvoidingView } from 'react-native';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton, SmoothSpinner } from '../../components/ui/LoadingState';
 import { collection, query, where, onSnapshot, deleteDoc, doc, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore';
 import Papa from 'papaparse';
 import { db } from '../../../firebaseConfig';
@@ -416,7 +416,7 @@ export default function ManageRoutines() {
 
         {/* ACTIVE ROUTINES VIEWER */}
         <Text style={styles.sectionTitle}>Active Master Schedule</Text>
-        {loading ? <SmoothSpinner color="#3B82F6" /> : routines.length === 0 ? (
+        {loading ? <RosterSkeleton rowCount={5} showFilters={false} style={styles.embeddedSkeleton} /> : routines.length === 0 ? (
           <Text style={styles.emptyText}>No routines assigned yet.</Text>
         ) : (
           routines.map(r => (
@@ -444,6 +444,7 @@ export default function ManageRoutines() {
 const baseStyles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#02030A', overflow: 'hidden' },
   scrollContent: { padding: 16, paddingBottom: 80 },
+  embeddedSkeleton: { minHeight: 420 },
   card: { backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1, padding: 20, marginBottom: 25 },
   cardTitle: { fontSize: 18, fontWeight: '900', color: '#F8FAFC', marginBottom: 20 },
   helperText: { color: '#B9C6DD', fontSize: 13, lineHeight: 19, marginTop: -12, marginBottom: 16 },

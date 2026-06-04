@@ -333,7 +333,6 @@ function AttendanceViewContent() {
     return (
       <AttendanceSkeleton
         accent="emerald"
-        label={`Loading ${attendanceLabel.toLowerCase()}...`}
         rowCount={4}
       />
     );

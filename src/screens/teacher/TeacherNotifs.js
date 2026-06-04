@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { z } from 'zod';
 import { createUnifiedNotification, useUnifiedNotifications } from '../../services/unifiedNotificationService';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton, SmoothSpinner } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
 import DynamicHeader from '../../components/DynamicHeader';
 import { Ionicons } from '@expo/vector-icons';
@@ -219,7 +219,7 @@ export default function TeacherNotifs() {
 
       {activeTab === 'read' && (
         loading ? (
-          <View style={styles.centerContainer}><SmoothSpinner size="large" color="#8E24AA" /></View>
+          <RosterSkeleton rowCount={5} showFilters={false} />
         ) : (
           <FlatList
             data={safeNotifications}

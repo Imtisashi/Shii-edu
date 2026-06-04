@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Edu Shii",
+    "name": "Shii-Edu",
     "slug": "edu-shii",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -15,11 +15,11 @@
         "usesNonExemptEncryption": false
       },
       "infoPlist": {
-        "NSCameraUsageDescription": "Edu Shii uses the camera when you choose to capture institute media.",
-        "NSFaceIDUsageDescription": "Allow Edu Shii to use Face ID for secure institute sign-in.",
+        "NSCameraUsageDescription": "Shii-Edu uses the camera when you choose to capture institute media.",
+        "NSFaceIDUsageDescription": "Allow Shii-Edu to use Face ID for secure institute sign-in.",
         "NSLocationWhenInUseUsageDescription": "Edu-Hub uses location while a driver is actively broadcasting a campus vehicle route.",
-        "NSPhotoLibraryAddUsageDescription": "Edu Shii saves media only when you explicitly request it.",
-        "NSPhotoLibraryUsageDescription": "Edu Shii uses your photo library when you choose images to upload."
+        "NSPhotoLibraryAddUsageDescription": "Shii-Edu saves media only when you explicitly request it.",
+        "NSPhotoLibraryUsageDescription": "Shii-Edu uses your photo library when you choose images to upload."
       }
     },
     "android": {
@@ -64,9 +64,9 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "Allow Edu Shii to use the camera when you choose to capture institute media.",
+          "cameraPermission": "Allow Shii-Edu to use the camera when you choose to capture institute media.",
           "microphonePermission": false,
-          "photosPermission": "Allow Edu Shii to access photos you choose to upload."
+          "photosPermission": "Allow Shii-Edu to access photos you choose to upload."
         }
       ],
       [
@@ -87,13 +87,13 @@
         "expo-secure-store",
         {
           "configureAndroidBackup": true,
-          "faceIDPermission": "Allow Edu Shii to use Face ID for secure institute sign-in."
+          "faceIDPermission": "Allow Shii-Edu to use Face ID for secure institute sign-in."
         }
       ],
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Allow Edu Shii to use Face ID for secure institute sign-in."
+          "faceIDPermission": "Allow Shii-Edu to use Face ID for secure institute sign-in."
         }
       ]
     ]

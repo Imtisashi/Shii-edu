@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import DynamicHeader from '../../components/DynamicHeader';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton, SmoothSpinner } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
 import { authenticatedFetch } from '../../services/apiClient';
@@ -336,7 +336,7 @@ export default function CommunicationHub() {
         <View style={styles.workspace}>
           <View style={styles.conversationPane}>
             {loading ? (
-              <View style={styles.centerState}><SmoothSpinner color={colors.accent} /></View>
+              <RosterSkeleton rowCount={4} showFilters={false} style={styles.conversationSkeleton} />
             ) : (
               <FlashList
                 data={conversations}
@@ -405,6 +405,7 @@ const styles = StyleSheet.create({
   conversationName: { fontSize: 14, fontWeight: '900' },
   conversationPane: { flex: 0.38, minHeight: 150 },
   conversationPreview: { fontSize: 12, fontWeight: '700', marginTop: 3 },
+  conversationSkeleton: { minHeight: 260 },
   conversationRow: { alignItems: 'center', borderWidth: 1, flexDirection: 'row', marginBottom: 8, minHeight: 64, padding: 10 },
   dayChip: { alignItems: 'center', borderRadius: 8, borderWidth: 1, height: 36, justifyContent: 'center', width: 36 },
   dayChipText: { fontSize: 12, fontWeight: '900' },

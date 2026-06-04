@@ -52,6 +52,18 @@ supabase/.temp/
 !.env*.example
 campus-backend/.env
 
+# local AI / agent tooling
+.agents/
+skills-lock.json
+.aider*
+.claude/
+.codex/
+.continue/
+.cursor/
+.windsurf/
+.roo/
+.kilocode/
+
 # typescript
 *.tsbuildinfo
 

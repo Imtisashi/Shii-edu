@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, Image, Alert, Platform } from 'react-native';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton, SmoothSpinner } from '../../components/ui/LoadingState';
 import { collection, addDoc, serverTimestamp, query, where, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig'; 
 import { useAuth } from '../../contexts/AuthContext';
@@ -233,10 +233,7 @@ export default function UploadGallery() {
         )}
         ListEmptyComponent={
           loading ? (
-            <View style={styles.loadingState}>
-              <SmoothSpinner size="large" color="#F97316" />
-              <Text style={styles.loadingText}>Loading gallery...</Text>
-            </View>
+            <RosterSkeleton rowCount={6} showFilters={false} style={styles.embeddedSkeleton} />
           ) : (
             <View style={styles.emptyState}>
               <Ionicons name="images-outline" size={50} color={colors.muted} />
@@ -320,6 +317,7 @@ const baseStyles = StyleSheet.create({
   },
   loadingState: { alignItems: 'center', marginTop: 80 },
   loadingText: { marginTop: 12, color: '#B9C6DD', fontWeight: '800' },
+  embeddedSkeleton: { minHeight: 440 },
   emptyState: { alignItems: 'center', marginTop: 80, paddingHorizontal: 20 },
   emptyText: { marginTop: 10, color: '#F8FAFC', fontSize: 17, fontWeight: '900' },
   emptySub: { marginTop: 5, color: '#B9C6DD', fontSize: 13, textAlign: 'center' },

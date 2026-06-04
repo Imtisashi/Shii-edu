@@ -3,7 +3,7 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
 import { listSupabaseAssignments } from '../../services/supabaseTenantDataService';
@@ -177,10 +177,7 @@ export default function Assignments() {
   return (
     <View style={[styles.container, { backgroundColor: colors.page }]}>
       {loading ? (
-        <View style={styles.loadingState}>
-          <SmoothSpinner size={42} color={colors.amber} trackColor={colors.hairline} />
-          <Text style={[styles.loadingText, { color: colors.textSoft }]}>Loading tasks...</Text>
-        </View>
+        <RosterSkeleton rowCount={5} showFilters={false} />
       ) : (
         <FlatList
           data={tasks}

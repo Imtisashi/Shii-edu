@@ -3,7 +3,7 @@ import { FlatList, Linking, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton } from '../../components/ui/LoadingState';
 import StudentScreenScaffold, { EnterprisePanel, ScreenIntro } from '../../components/student/StudentScreenScaffold';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
@@ -18,14 +18,7 @@ const createdAtToMillis = (createdAt) => {
 };
 
 function LoadingState() {
-  const { colors } = useRootLayout();
-
-  return (
-    <StudentScreenScaffold accentVariant="bronze" scroll={false} style={styles.centerContent}>
-      <SmoothSpinner size={42} color="#F87171" trackColor={colors.hairline} />
-      <Text style={[styles.loadingText, { color: colors.textSoft }]}>Loading papers...</Text>
-    </StudentScreenScaffold>
-  );
+  return <RosterSkeleton rowCount={5} showFilters={false} />;
 }
 
 function PaperCard({ item }) {

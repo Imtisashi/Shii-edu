@@ -22,7 +22,7 @@ import {
   where,
 } from 'firebase/firestore';
 import DynamicHeader from '../../components/DynamicHeader';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton, SmoothSpinner } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../../firebaseConfig';
 import { getInstitutionProfile } from '../../services/institutionalProfile';
@@ -333,7 +333,7 @@ export default function CourseManager({ navigation }) {
 
         <Text style={styles.sectionTitle}>Published Courses</Text>
         {loading ? (
-          <SmoothSpinner color="#2563EB" />
+          <RosterSkeleton rowCount={4} showFilters={false} style={styles.embeddedSkeleton} />
         ) : (
           <FlatList
             data={courses}
@@ -351,6 +351,7 @@ export default function CourseManager({ navigation }) {
 const baseStyles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#02030A', overflow: 'hidden' },
   scrollContent: { padding: 16, paddingBottom: 110 },
+  embeddedSkeleton: { minHeight: 380 },
   card: { backgroundColor: '#0F172A', borderRadius: 8, padding: 18, borderWidth: 1, borderColor: '#334155', marginBottom: 22 },
   cardTitle: { fontSize: 20, fontWeight: '900', color: '#F8FAFC' },
   helperText: { color: '#B9C6DD', fontSize: 13, lineHeight: 19, marginTop: 6, marginBottom: 16 },

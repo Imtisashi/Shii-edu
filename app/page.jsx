@@ -8,6 +8,7 @@ import {
   Landmark,
   Layers3,
   LockKeyhole,
+  Mail,
   MessageSquareText,
   ShieldCheck,
   UploadCloud,
@@ -87,6 +88,9 @@ const legalRows = [
   ['Terms of Service', 'Role access, uploads, AI, transport, indemnity, liability limits', '/terms'],
 ];
 
+const onboardingMailto =
+  'mailto:sashimiofficials@gmail.com?subject=Institute%20onboarding%20request&body=Hello%20Shii-Edu%20team%2C%0A%0APlease%20contact%20us%20about%20registering%20our%20institute.%0A%0AInstitute%20name%3A%0AContact%20person%3A%0APhone%3A';
+
 function ShiiEduWordmark({ className = '' }) {
   return (
     <span className={`shii-wordmark ${className}`.trim()} aria-label="Shii-Edu">
@@ -165,6 +169,13 @@ export default function HomePage() {
               </a>
               <a className="landing-secondary-action" href="#workspace">
                 Explore workspace
+              </a>
+            </div>
+            <div className="landing-onboarding">
+              <span>Is your institute not registered? Contact us to onboard.</span>
+              <a className="landing-contact-action" href={onboardingMailto}>
+                <Mail size={17} aria-hidden="true" />
+                Contact for Registration
               </a>
             </div>
           </div>

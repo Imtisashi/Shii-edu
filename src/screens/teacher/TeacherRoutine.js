@@ -3,7 +3,7 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import DynamicHeader from '../../components/DynamicHeader';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../../firebaseConfig';
 import { getInstitutionProfile } from '../../services/institutionalProfile';
@@ -58,10 +58,7 @@ export default function TeacherRoutine() {
       <DynamicHeader title="My Routine" showBack />
 
       {loading ? (
-        <View style={styles.center}>
-          <SmoothSpinner color="#E11D48" />
-          <Text style={styles.loadingText}>Loading routine...</Text>
-        </View>
+        <RosterSkeleton rowCount={5} showFilters={false} />
       ) : (
         <FlatList
           data={groupedRoutine}

@@ -23,7 +23,7 @@ const linking = {
 const documentTitle = {
   formatter: (options) => {
     const routeTitle = options?.title;
-    return routeTitle && routeTitle !== 'Login' ? `${routeTitle} | Edu Shii` : 'Edu Shii';
+    return routeTitle && routeTitle !== 'Login' ? `${routeTitle} | Shii-Edu` : 'Shii-Edu';
   },
 };
 
@@ -56,7 +56,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: EDGE_BACKGROUND }}>
       <SafeAreaProvider>
-        <GlobalErrorBoundary appName="Edu Shii">
+        <GlobalErrorBoundary appName="Shii-Edu">
           <AuthProvider appMode="institute">
             <InstitutionProvider>
             <RootLayoutProvider>

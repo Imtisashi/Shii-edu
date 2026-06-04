@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { collection, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import DynamicHeader from '../../components/DynamicHeader';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton, SmoothSpinner } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
 import { useInstitution } from '../../contexts/InstitutionContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
@@ -278,9 +278,7 @@ export default function ReportsCenter() {
             </View>
             <View style={styles.listShell}>
               {loading ? (
-                <View style={styles.centerState}>
-                  <SmoothSpinner color={colors.accent} />
-                </View>
+                <RosterSkeleton rowCount={5} showFilters={false} style={styles.reportSkeleton} />
               ) : (
                 <FlashList
                   data={visibleStudents}
@@ -418,6 +416,9 @@ const styles = StyleSheet.create({
   rosterCard: {
     borderWidth: 1,
     padding: 18,
+  },
+  reportSkeleton: {
+    minHeight: 320,
   },
   rosterSummary: {
     alignItems: 'center',

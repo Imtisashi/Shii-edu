@@ -30,7 +30,7 @@ const linking = Object.freeze({
 const documentTitle = {
   formatter: (options) => {
     const routeTitle = options?.title;
-    return routeTitle ? `${routeTitle} | Edu Shii` : 'Edu Shii';
+    return routeTitle ? `${routeTitle} | Shii-Edu` : 'Shii-Edu';
   },
 };
 
@@ -110,11 +110,11 @@ function InstituteAppNavigator() {
   }
 
   return (
-    <AccessState
-      title="Unsupported Institute Role"
-      message="This account role is not enabled in the installed Edu Shii application."
-      onSignOut={logout}
-    />
+      <AccessState
+        title="Unsupported Institute Role"
+        message="This account role is not enabled in the installed Shii-Edu application."
+        onSignOut={logout}
+      />
   );
 }
 
@@ -177,7 +177,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <GlobalErrorBoundary appName="Edu Shii">
+        <GlobalErrorBoundary appName="Shii-Edu">
           <AuthProvider appMode="institute">
             <InstitutionProvider>
               <RootLayoutProvider>

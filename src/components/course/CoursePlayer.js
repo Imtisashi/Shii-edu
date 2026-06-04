@@ -21,6 +21,7 @@ import {
 } from '../../services/courseService';
 import { requestSignedPlaybackUrl } from '../../services/cloudinaryMediaService';
 import { useInstituteTheme } from '../../hooks/useInstituteTheme';
+import { RosterSkeleton } from '../ui/LoadingState';
 
 const SAVE_INTERVAL_MS = 10000;
 const COURSE_CARD = '#0F172A';
@@ -387,11 +388,7 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
   );
 
   if (loading) {
-    return (
-      <View style={styles.stateCard}>
-        <Text style={styles.stateTitle}>Loading course...</Text>
-      </View>
-    );
+    return <RosterSkeleton rowCount={4} showFilters={false} />;
   }
 
   if (error) {
@@ -681,7 +678,7 @@ const baseStyles = StyleSheet.create({
   stateTitle: { color: COURSE_TEXT, fontSize: 18, fontWeight: '900', textAlign: 'center', marginTop: Spacing.sm },
   stateText: { color: COURSE_TEXT_SOFT, textAlign: 'center', lineHeight: 21, marginTop: Spacing.xs },
   sheetBackdrop: { flex: 1, backgroundColor: '#020617', justifyContent: 'flex-end' },
-  sheet: { maxHeight: '82%', backgroundColor: '#070B16', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: Spacing.sm, borderWidth: 1, borderColor: COURSE_BORDER },
+  sheet: { maxHeight: '82%', backgroundColor: '#070B16', borderTopLeftRadius: 8, borderTopRightRadius: 8, paddingTop: Spacing.sm, borderWidth: 1, borderColor: COURSE_BORDER },
   sheetHandle: { width: 44, height: 5, borderRadius: 3, backgroundColor: COURSE_BORDER, alignSelf: 'center', marginBottom: Spacing.sm },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm },
   sheetTitle: { color: COURSE_TEXT, fontSize: 19, fontWeight: '900' },

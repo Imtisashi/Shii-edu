@@ -179,7 +179,7 @@ export default function ManageAdminUsers() {
   );
 
   if (loading) {
-    return <LoadingState label="Loading administrators..." color="#2563EB" />;
+    return <LoadingState variant="roster" />;
   }
 
   return (

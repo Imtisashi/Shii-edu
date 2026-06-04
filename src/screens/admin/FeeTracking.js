@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Platform, Alert, KeyboardAvoidingView, Keyboard } from 'react-native';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton, SmoothSpinner } from '../../components/ui/LoadingState';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
@@ -202,7 +202,7 @@ export default function FeeManagement() {
       {/* TAB: LEDGER */}
       {activeTab === 'ledger' && (
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {loading ? <SmoothSpinner size="large" color="#8B5CF6" style={{ marginTop: 40 }} /> : students.length === 0 ? <Text style={styles.emptyText}>No students enrolled.</Text> : (
+          {loading ? <RosterSkeleton rowCount={6} showFilters={false} style={styles.embeddedSkeleton} /> : students.length === 0 ? <Text style={styles.emptyText}>No students enrolled.</Text> : (
             students.map(student => {
               const isFullyPaid = student.totalFee > 0 && student.feePaid >= student.totalFee;
               const hasNoFees = student.totalFee === 0;
@@ -349,6 +349,7 @@ const baseStyles = StyleSheet.create({
   activeTabText: { color: '#fff' },
 
   scrollContent: { padding: 20, paddingBottom: 100 },
+  embeddedSkeleton: { minHeight: 520 },
   emptyText: { textAlign: 'center', color: '#94A3B8', marginTop: 20, fontStyle: 'italic' },
   
   studentCard: { backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1, padding: 20, marginBottom: 15 },

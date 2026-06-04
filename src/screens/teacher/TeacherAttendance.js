@@ -336,7 +336,7 @@ function TeacherAttendanceContent() {
       {loading ? (
         <AttendanceSkeleton
           accent="emerald"
-          label="Loading attendance roster..."
+          label="Preparing attendance roster..."
           rowCount={5}
         />
       ) : (

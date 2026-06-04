@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { sharedStackScreenOptions, sharedTabScreenOptions } from './animatedScreenOptions';
 import EdgeDrawerButton from '../components/navigation/EdgeDrawerButton';
 import EnterpriseTabBar from '../components/navigation/EnterpriseTabBar';
+import RoleDrawerContent from '../components/navigation/RoleDrawerContent';
 import { useRootLayout } from '../contexts/RootLayoutContext';
 
 // Import all Student Screens
@@ -24,6 +25,8 @@ import CoursePlayerScreen from '../screens/student/CoursePlayerScreen';
 import CommunicationHub from '../screens/shared/CommunicationHub';
 import FleetTrackingScreen from '../screens/shared/FleetTrackingScreen';
 import SyllabusTutor from '../screens/shared/SyllabusTutor';
+import AccountProfileScreen from '../screens/shared/AccountProfileScreen';
+import AccountSettingsScreen from '../screens/shared/AccountSettingsScreen';
 
 const Drawer = createDrawerNavigator();
 const Tab = createBottomTabNavigator();
@@ -65,6 +68,14 @@ export default function StudentNavigator() {
 
   return (
     <Drawer.Navigator
+      drawerContent={(props) => (
+        <RoleDrawerContent
+          {...props}
+          dashboardRoute="Home"
+          profileRoute="StudentProfile"
+          settingsRoute="StudentSettings"
+        />
+      )}
       screenOptions={({ navigation }) => ({
         ...sharedStackScreenOptions,
         drawerActiveBackgroundColor: colors.accentSoft,
@@ -177,6 +188,16 @@ export default function StudentNavigator() {
           <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={24} color={color} />
         )
       }} />
+      <Drawer.Screen
+        name="StudentProfile"
+        component={AccountProfileScreen}
+        options={{ drawerLabel: 'Profile', title: 'Profile' }}
+      />
+      <Drawer.Screen
+        name="StudentSettings"
+        component={AccountSettingsScreen}
+        options={{ drawerLabel: 'Settings', title: 'Settings' }}
+      />
     </Drawer.Navigator>
   );
 }

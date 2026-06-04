@@ -54,7 +54,7 @@ function SuperadminAppNavigator() {
   const { currentUser, userData, loading, logout, profileError } = useAuth();
 
   if (loading) {
-    return <LoadingState label="Preparing Edu-Hub Superadmin..." color="#38BDF8" />;
+    return <LoadingState />;
   }
 
   if (!currentUser) {

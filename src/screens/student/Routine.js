@@ -7,6 +7,7 @@ import StudentScreenScaffold, { EnterprisePanel, ScreenIntro } from '../../compo
 import { useAuth } from '../../contexts/AuthContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
 import { listSupabaseRoutines } from '../../services/supabaseTenantDataService';
+import { RosterSkeleton } from '../../components/ui/LoadingState';
 
 const sortByTime = (a, b) => String(a.time || '').localeCompare(String(b.time || ''), undefined, {
   numeric: true,
@@ -30,18 +31,7 @@ const mergeRoutineLists = (...lists) => {
 };
 
 function LoadingState() {
-  const { colors } = useRootLayout();
-
-  return (
-    <StudentScreenScaffold accentVariant="blue" scroll={false} style={styles.centerContent}>
-      <View style={[styles.loadingPanel, { backgroundColor: colors.cardStrong, borderColor: colors.hairline }]}>
-        <View style={[styles.loadingBlock, styles.loadingTitle, { backgroundColor: colors.pageElevated }]} />
-        <View style={[styles.loadingBlock, styles.loadingLine, { backgroundColor: colors.pageElevated }]} />
-        <View style={[styles.loadingBlock, styles.loadingLineShort, { backgroundColor: colors.pageElevated }]} />
-      </View>
-      <Text style={[styles.loadingText, { color: colors.textSoft }]}>Loading routine...</Text>
-    </StudentScreenScaffold>
-  );
+  return <RosterSkeleton rowCount={5} showFilters={false} />;
 }
 
 function RoutineCard({ item }) {

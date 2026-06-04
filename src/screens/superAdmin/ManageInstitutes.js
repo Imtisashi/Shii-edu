@@ -196,7 +196,7 @@ export default function ManageInstitutes() {
   };
 
   if (loading) {
-    return <LoadingState label="Loading institutes..." color="#2563EB" />;
+    return <LoadingState variant="roster" />;
   }
 
   return (

@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton } from '../../components/ui/LoadingState';
 import StudentScreenScaffold, { EnterprisePanel, ScreenIntro } from '../../components/student/StudentScreenScaffold';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
@@ -12,14 +12,7 @@ import StripePaymentButton from '../../components/payments/StripePaymentButton';
 const formatCurrency = (value) => `Rs. ${Number(value || 0).toLocaleString()}`;
 
 function LoadingState() {
-  const { colors } = useRootLayout();
-
-  return (
-    <StudentScreenScaffold accentVariant="bronze" scroll={false} style={styles.centerContent}>
-      <SmoothSpinner size={42} color={colors.bronze} trackColor={colors.hairline} />
-      <Text style={[styles.loadingText, { color: colors.textSoft }]}>Loading fee ledger...</Text>
-    </StudentScreenScaffold>
-  );
+  return <RosterSkeleton rowCount={4} showFilters={false} />;
 }
 
 function LedgerHero({ paid, pending, progress, total }) {

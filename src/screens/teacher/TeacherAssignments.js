@@ -3,7 +3,7 @@ import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import DynamicHeader from '../../components/DynamicHeader';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../../firebaseConfig';
 import { useInstituteTheme } from '../../hooks/useInstituteTheme';
@@ -51,9 +51,7 @@ export default function TeacherAssignments({ navigation }) {
       </TouchableOpacity>
 
       {loading ? (
-        <View style={styles.center}>
-          <SmoothSpinner color="#F59E0B" />
-        </View>
+        <RosterSkeleton rowCount={5} showFilters={false} />
       ) : (
         <FlatList
           data={assignments}

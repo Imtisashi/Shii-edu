@@ -29,7 +29,7 @@ function SkeletonBlock({ height, shimmerTranslate, style }) {
 
 export default function AttendanceSkeleton({
   accent = 'emerald',
-  label = 'Loading attendance...',
+  label = 'Preparing attendance...',
   rowCount = 4,
   showChart = true,
 }) {

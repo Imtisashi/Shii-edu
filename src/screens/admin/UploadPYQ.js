@@ -15,7 +15,7 @@ import { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp,
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { uploadInstitutionAsset } from '../../services/cloudinaryService';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton, SmoothSpinner } from '../../components/ui/LoadingState';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 import { useInstituteTheme } from '../../hooks/useInstituteTheme';
 import { pickSingleDocument } from '../../services/nativePickerService';
@@ -337,10 +337,7 @@ export default function UploadPYQ() {
         }
         ListEmptyComponent={
           loading ? (
-            <View style={styles.emptyState}>
-              <SmoothSpinner color="#2563EB" />
-              <Text style={styles.emptyText}>Loading papers...</Text>
-            </View>
+            <RosterSkeleton rowCount={5} showFilters={false} style={styles.embeddedSkeleton} />
           ) : (
             <View style={styles.emptyState}>
               <Ionicons name="document-attach-outline" size={44} color={colors.muted} />
@@ -463,6 +460,7 @@ const baseStyles = StyleSheet.create({
   },
   deleteButton: { backgroundColor: '#450A0A', borderColor: '#7F1D1D' },
   emptyState: { alignItems: 'center', padding: 28, backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1 },
+  embeddedSkeleton: { minHeight: 440 },
   emptyTitle: { color: '#F8FAFC', fontSize: 18, fontWeight: '900', marginTop: 12 },
   emptyText: { color: '#B9C6DD', fontSize: 14, textAlign: 'center', marginTop: 8 },
 });

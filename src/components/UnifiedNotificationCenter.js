@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useRootLayout } from '../contexts/RootLayoutContext';
 import { useUnifiedNotifications } from '../services/unifiedNotificationService';
-import { SmoothSpinner } from './ui/LoadingState';
+import { RosterSkeleton } from './ui/LoadingState';
 import StudentScreenScaffold, { EnterprisePanel, ScreenIntro } from './student/StudentScreenScaffold';
 
 const createdAtToMillis = (createdAt) => {
@@ -236,12 +236,7 @@ export default function UnifiedNotificationCenter() {
   );
 
   if (loading && sortedNotifications.length === 0) {
-    return (
-      <StudentScreenScaffold accentVariant="blue" scroll={false} style={styles.centerContent}>
-        <SmoothSpinner size={42} color={colors.accent} trackColor="#334155" />
-        <Text style={[styles.loadingText, { color: colors.textSoft }]}>Loading notifications...</Text>
-      </StudentScreenScaffold>
-    );
+    return <RosterSkeleton rowCount={5} showFilters={false} />;
   }
 
   return (

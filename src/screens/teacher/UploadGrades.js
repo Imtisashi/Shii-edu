@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, Alert, ScrollView } from 'react-native';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton } from '../../components/ui/LoadingState';
 import { collection, query, where, getDocs, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
@@ -147,12 +147,7 @@ export default function UploadGrades({ navigation }) {
   };
 
   if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <SmoothSpinner style={{ marginTop: 50 }} color="#8E24AA" />
-        <Text style={styles.loadingText}>Loading students...</Text>
-      </View>
-    );
+    return <RosterSkeleton rowCount={6} showFilters />;
   }
 
   return (
