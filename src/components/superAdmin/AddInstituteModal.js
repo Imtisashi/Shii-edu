@@ -11,7 +11,6 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { createInstituteAndAdmin } from '../../services/firebaseAdminService';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 import { SmoothSpinner } from '../ui/LoadingState';
@@ -19,18 +18,20 @@ import { SmoothSpinner } from '../ui/LoadingState';
 const initialForm = {
   instituteName: '',
   adminName: '',
-  adminEmail: '',
+  adminUserId: '',
   adminPassword: '',
 };
 
-const validateForm = ({ instituteName, adminName, adminEmail, adminPassword }) => {
+const validateForm = ({ instituteName, adminName, adminUserId, adminPassword }) => {
   const errors = {};
-  const cleanedEmail = adminEmail.trim().toLowerCase();
+  const cleanedAdminUserId = adminUserId.trim();
 
   if (!instituteName.trim()) errors.instituteName = 'Institute name is required.';
   if (!adminName.trim()) errors.adminName = 'Admin name is required.';
-  if (!cleanedEmail) errors.adminEmail = 'Admin email is required.';
-  else if (!/^\S+@\S+\.\S+$/.test(cleanedEmail)) errors.adminEmail = 'Enter a valid admin email.';
+  if (!cleanedAdminUserId) errors.adminUserId = 'Admin User ID is required.';
+  else if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(cleanedAdminUserId)) {
+    errors.adminUserId = 'Use only letters, numbers, dots, underscores, or hyphens.';
+  }
   if (!adminPassword) errors.adminPassword = 'Admin password is required.';
   else if (adminPassword.length < 8) errors.adminPassword = 'Use at least 8 characters.';
 
@@ -75,11 +76,10 @@ export default function AddInstituteModal({ visible, currentUser, onClose, onCre
   };
 
   const submit = async () => {
-    Haptics.selectionAsync();
     const nextTouched = {
       instituteName: true,
       adminName: true,
-      adminEmail: true,
+      adminUserId: true,
       adminPassword: true,
     };
     setTouched(nextTouched);
@@ -91,7 +91,7 @@ export default function AddInstituteModal({ visible, currentUser, onClose, onCre
     try {
       const result = await createInstituteAndAdmin({
         instituteName: form.instituteName.trim(),
-        adminEmail: form.adminEmail.trim().toLowerCase(),
+        adminUserId: form.adminUserId.trim(),
         adminPassword: form.adminPassword,
         adminName: form.adminName.trim(),
       }, currentUser);
@@ -197,24 +197,23 @@ export default function AddInstituteModal({ visible, currentUser, onClose, onCre
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Admin Email</Text>
-              <View style={[styles.inputContainer, touched.adminEmail && errors.adminEmail && styles.inputError]}>
-                <Ionicons name="mail-outline" size={20} color="#64748B" style={styles.icon} />
+              <Text style={styles.label}>Admin User ID</Text>
+              <View style={[styles.inputContainer, touched.adminUserId && errors.adminUserId && styles.inputError]}>
+                <Ionicons name="id-card-outline" size={20} color="#64748B" style={styles.icon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="admin@school.edu"
+                  placeholder="e.g. ADMIN-001"
                   placeholderTextColor="#94A3B8"
-                  value={form.adminEmail}
-                  onChangeText={(value) => setField('adminEmail', value)}
-                  onBlur={() => setTouched((prev) => ({ ...prev, adminEmail: true }))}
+                  value={form.adminUserId}
+                  onChangeText={(value) => setField('adminUserId', value)}
+                  onBlur={() => setTouched((prev) => ({ ...prev, adminUserId: true }))}
                   autoCapitalize="none"
                   autoCorrect={false}
-                  keyboardType="email-address"
                   returnKeyType="next"
                   editable={!submitting}
                 />
               </View>
-              {renderError('adminEmail')}
+              {renderError('adminUserId')}
             </View>
 
             <View style={styles.inputGroup}>
@@ -253,7 +252,7 @@ export default function AddInstituteModal({ visible, currentUser, onClose, onCre
             >
               {submitting ? (
                 <View style={styles.submitLoading}>
-                  <SmoothSpinner size={18} stroke={3} color="#FFFFFF" trackColor="rgba(255,255,255,0.28)" />
+                  <SmoothSpinner size={18} stroke={3} color="#FFFFFF" trackColor="#CBD5E1" />
                   <Text style={styles.submitText}>Creating...</Text>
                 </View>
               ) : (
@@ -294,7 +293,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15,23,42,0.66)',
+    backgroundColor: '#0F172A',
   },
   scrollContent: {
     flexGrow: 1,
@@ -311,13 +310,8 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 460,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    borderRadius: 8,
     padding: 24,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.18,
-    shadowRadius: 30,
-    elevation: 12,
   },
   cardMobile: {
     maxWidth: '100%',
@@ -330,7 +324,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: 42,
     height: 4,
-    borderRadius: 999,
+    borderRadius: 8,
     backgroundColor: '#CBD5E1',
     marginBottom: 16,
   },
@@ -342,7 +336,7 @@ const styles = StyleSheet.create({
   modalIcon: {
     width: 58,
     height: 58,
-    borderRadius: 18,
+    borderRadius: 8,
     backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
@@ -350,7 +344,7 @@ const styles = StyleSheet.create({
   closeButton: {
     width: 42,
     height: 42,
-    borderRadius: 14,
+    borderRadius: 8,
     backgroundColor: '#F8FAFC',
     alignItems: 'center',
     justifyContent: 'center',
@@ -374,7 +368,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF2F2',
     borderWidth: 1,
     borderColor: '#FECACA',
-    borderRadius: 14,
+    borderRadius: 8,
     padding: 12,
     marginBottom: 14,
   },
@@ -401,7 +395,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderRadius: 15,
+    borderRadius: 8,
   },
   inputError: {
     borderColor: '#FCA5A5',
@@ -431,7 +425,7 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     minHeight: 52,
-    borderRadius: 16,
+    borderRadius: 8,
     backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',

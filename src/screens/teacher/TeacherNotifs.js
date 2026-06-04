@@ -1,23 +1,61 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, ScrollView, Alert, Platform } from 'react-native';
+import {
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { z } from 'zod';
 import { createUnifiedNotification, useUnifiedNotifications } from '../../services/unifiedNotificationService';
 import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
 import DynamicHeader from '../../components/DynamicHeader';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { Colors } from '../../constants/theme';
+import { aiSmartCompose } from '../../services/aiService';
+import { useSingleFlightAction } from '../../hooks/useSingleFlightAction';
+import { useInstituteTheme } from '../../hooks/useInstituteTheme';
+
+const TARGET_LEVELS = ['Overall', 'Specific Dept', 'Specific Semester'];
+const NoticeSchema = z.object({
+  message: z.string().trim().min(8, 'Enter a complete notice message.').max(1200, 'Keep the notice under 1,200 characters.'),
+  title: z.string().trim().min(3, 'Enter a clear notice title.').max(120, 'Keep the title under 120 characters.'),
+});
+const SmartComposeSchema = z.object({
+  roughThought: z.string().trim().min(8, 'Add a little more detail before enhancing.').max(1800, 'Keep the rough thought under 1,800 characters.'),
+  targetLevel: z.enum(TARGET_LEVELS),
+});
+
+const showMessage = (title, message) => {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.alert(message || title);
+    return;
+  }
+  Alert.alert(title, message);
+};
+
+const getValidationMessage = (result, fallback) => (
+  result.success ? fallback : result.error.issues?.[0]?.message || fallback
+);
 
 export default function TeacherNotifs() {
   const { currentUser, userData } = useAuth();
+  const { colors, styles } = useInstituteTheme(baseStyles);
   const { notifications, loading, error, markAsRead, markAllAsRead } = useUnifiedNotifications({ limit: 100 });
 
   const [activeTab, setActiveTab] = useState('read');
   const [refreshing, setRefreshing] = useState(false);
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
+  const [roughThought, setRoughThought] = useState('');
   const [targetLevel, setTargetLevel] = useState('Overall');
-  const [sending, setSending] = useState(false);
+  const safeNotifications = Array.isArray(notifications) ? notifications : [];
 
   const formatDate = (createdAt) => {
     if (!createdAt) return 'Just now';
@@ -34,18 +72,66 @@ export default function TeacherNotifs() {
 
   const isRead = (item) => item.readBy?.includes(currentUser?.uid) || item.isRead === true;
 
-  const handleSendNotice = async () => {
-    if (!title.trim() || !message.trim()) {
-      return Alert.alert('Incomplete', 'Please provide a title and message.');
+  const enhanceNotice = async () => {
+    const validation = SmartComposeSchema.safeParse({
+      roughThought,
+      targetLevel,
+    });
+    if (!validation.success) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      showMessage('More Detail Needed', getValidationMessage(validation, 'Add a rough thought before enhancing.'));
+      return false;
     }
 
-    setSending(true);
+    if (!userData?.instituteId) {
+      showMessage('Missing Institute', 'Your profile is not linked to an institute.');
+      return false;
+    }
+
+    try {
+      const response = await aiSmartCompose({
+        instituteId: userData.instituteId,
+        roughThought: validation.data.roughThought,
+        targetLevel: validation.data.targetLevel,
+      });
+      setTitle(response.draft.title);
+      setMessage(response.draft.message);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      return true;
+    } catch (composeError) {
+      console.error('Smart Compose failed:', composeError);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      showMessage('Smart Compose Unavailable', composeError?.message || 'The notice could not be enhanced right now.');
+      return false;
+    }
+  };
+  const {
+    isPending: enhancing,
+    run: handleEnhanceNotice,
+  } = useSingleFlightAction(enhanceNotice, {
+    cooldownMs: 900,
+    haptic: 'medium',
+  });
+
+  const sendNotice = async () => {
+    const validation = NoticeSchema.safeParse({ title, message });
+    if (!validation.success) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      showMessage('Incomplete Notice', getValidationMessage(validation, 'Please provide a title and message.'));
+      return false;
+    }
+
+    if (!userData?.instituteId) {
+      showMessage('Missing Institute', 'Your profile is not linked to an institute.');
+      return false;
+    }
+
     try {
       await createUnifiedNotification({
-        title,
-        message,
+        title: validation.data.title,
+        message: validation.data.message,
         type: 'announcement',
-        targetRoles: ['student', 'teacher', 'admin'],
+        targetRoles: ['student'],
         instituteId: userData.instituteId,
         author: {
           uid: currentUser?.uid,
@@ -59,22 +145,29 @@ export default function TeacherNotifs() {
       });
 
       const successMsg = `Notification sent to ${targetLevel} successfully!`;
-      if (Platform.OS === 'web') window.alert(successMsg);
-      else Alert.alert('Success', successMsg);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      showMessage('Success', successMsg);
 
       setTitle('');
       setMessage('');
+      setRoughThought('');
       setTargetLevel('Overall');
       setActiveTab('read');
+      return true;
     } catch (sendError) {
       console.error('Failed to send teacher notification:', sendError);
-      const errMsg = 'Failed to send notice.';
-      if (Platform.OS === 'web') window.alert(errMsg);
-      else Alert.alert('Error', errMsg);
-    } finally {
-      setSending(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      showMessage('Send Failed', sendError?.message || 'Failed to send notice.');
+      return false;
     }
   };
+  const {
+    isPending: sending,
+    run: handleSendNotice,
+  } = useSingleFlightAction(sendNotice, {
+    cooldownMs: 1000,
+    haptic: 'medium',
+  });
 
   const renderNotice = ({ item }) => (
     <View style={[styles.notifCard, !isRead(item) && styles.unreadCard]}>
@@ -96,11 +189,10 @@ export default function TeacherNotifs() {
             style={styles.markAsReadBtn}
             onPress={(event) => {
               event.stopPropagation();
-              Haptics.selectionAsync();
               markAsRead(item.id);
             }}
           >
-            <Ionicons name="radio-button-off" size={16} color={Colors.textSecondary} />
+            <Ionicons name="radio-button-off" size={16} color={colors.textSoft} />
           </TouchableOpacity>
         )}
       </View>
@@ -130,13 +222,13 @@ export default function TeacherNotifs() {
           <View style={styles.centerContainer}><SmoothSpinner size="large" color="#8E24AA" /></View>
         ) : (
           <FlatList
-            data={notifications}
+            data={safeNotifications}
             keyExtractor={(item) => item.id}
             renderItem={renderNotice}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
             ListHeaderComponent={
-              notifications.length > 0 ? (
+              safeNotifications.length > 0 ? (
                 <TouchableOpacity style={styles.markAllBtn} onPress={markAllAsRead}>
                   <Ionicons name="checkmark-done" size={18} color="#8E24AA" />
                   <Text style={styles.markAllText}>Mark all as read</Text>
@@ -149,76 +241,166 @@ export default function TeacherNotifs() {
       )}
 
       {activeTab === 'upload' && (
-        <ScrollView contentContainerStyle={styles.uploadContent} keyboardShouldPersistTaps="handled">
-          {Platform.OS === 'web' && (
-            <TouchableOpacity onPress={handleRefresh} style={styles.refreshButtonWeb}>
-              <Ionicons name="refresh" size={20} color={refreshing ? Colors.primary : '#718096'} />
-              {refreshing && <Text style={styles.refreshTextWeb}>Updating...</Text>}
-            </TouchableOpacity>
-          )}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.flex}
+        >
+          <ScrollView contentContainerStyle={styles.uploadContent} keyboardShouldPersistTaps="handled">
+            {Platform.OS === 'web' && (
+              <TouchableOpacity accessibilityLabel="Refresh broadcasts" accessibilityRole="button" onPress={handleRefresh} style={styles.refreshButtonWeb}>
+                <Ionicons name="refresh" size={20} color={refreshing ? colors.text : colors.muted} />
+                {refreshing && <Text style={styles.refreshTextWeb}>Updating...</Text>}
+              </TouchableOpacity>
+            )}
 
-          <View style={styles.card}>
-            <Text style={styles.label}>Notice Title</Text>
-            <TextInput style={styles.input} placeholder="e.g., Extra Class Tomorrow" value={title} onChangeText={setTitle} />
-
-            <Text style={styles.label}>Message</Text>
-            <TextInput style={[styles.input, styles.textArea]} placeholder="Write the full notice here..." value={message} onChangeText={setMessage} multiline numberOfLines={4} textAlignVertical="top" />
-
-            <Text style={styles.label}>Target Audience</Text>
-            <View style={styles.chipContainer}>
-              {['Overall', 'Specific Dept', 'Specific Semester'].map((level) => (
-                <TouchableOpacity key={level} style={[styles.chip, targetLevel === level && styles.activeChip]} onPress={() => setTargetLevel(level)}>
-                  <Text style={[styles.chipText, targetLevel === level && styles.activeChipText]}>{level}</Text>
+            <View style={styles.card}>
+              <View style={styles.smartComposePanel}>
+                <View style={styles.smartComposeHeader}>
+                  <View style={styles.smartComposeIcon}>
+                    <Ionicons name="sparkles" size={20} color="#C4B5FD" />
+                  </View>
+                  <View style={styles.smartComposeCopy}>
+                    <Text style={styles.smartComposeTitle}>Smart Compose</Text>
+                    <Text style={styles.smartComposeText}>Turn a rough thought into a polished student notice, then review it before sending.</Text>
+                  </View>
+                </View>
+                <TextInput
+                  accessibilityLabel="Rough notice thought"
+                  editable={!enhancing}
+                  maxLength={1800}
+                  multiline
+                  numberOfLines={4}
+                  onChangeText={setRoughThought}
+                  placeholder="e.g., tell class 10 that tomorrow's science practical starts at 9 AM in lab 2 and they should bring their record books"
+                  placeholderTextColor={colors.muted}
+                  style={[styles.input, styles.roughThoughtInput]}
+                  textAlignVertical="top"
+                  value={roughThought}
+                />
+                <TouchableOpacity
+                  accessibilityLabel="Enhance notice with Smart Compose"
+                  accessibilityRole="button"
+                  disabled={enhancing}
+                  onPress={handleEnhanceNotice}
+                  style={[styles.enhanceButton, enhancing && styles.disabledButton]}
+                >
+                  {enhancing ? (
+                    <SmoothSpinner color="#FFFFFF" size={22} />
+                  ) : (
+                    <>
+                      <Ionicons name="sparkles-outline" size={18} color="#FFFFFF" />
+                      <Text style={styles.enhanceButtonText}>Enhance Draft</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
-              ))}
-            </View>
+              </View>
 
-            <TouchableOpacity style={styles.submitBtn} onPress={handleSendNotice} disabled={sending}>
-              {sending ? <SmoothSpinner color="#fff" /> : <Text style={styles.submitBtnText}>Broadcast Notification</Text>}
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
+              <Text style={styles.label}>Notice Title</Text>
+              <TextInput
+                accessibilityLabel="Notice title"
+                maxLength={120}
+                onChangeText={setTitle}
+                placeholder="e.g., Extra Class Tomorrow"
+                placeholderTextColor={colors.muted}
+                style={styles.input}
+                value={title}
+              />
+
+              <Text style={styles.label}>Message</Text>
+              <TextInput
+                accessibilityLabel="Notice message"
+                maxLength={1200}
+                multiline
+                numberOfLines={5}
+                onChangeText={setMessage}
+                placeholder="Write the full notice here..."
+                placeholderTextColor={colors.muted}
+                style={[styles.input, styles.textArea]}
+                textAlignVertical="top"
+                value={message}
+              />
+
+              <Text style={styles.label}>Target Audience</Text>
+              <View style={styles.chipContainer}>
+                {TARGET_LEVELS.map((level) => (
+                  <TouchableOpacity
+                    accessibilityLabel={`Target ${level}`}
+                    accessibilityRole="button"
+                    key={level}
+                    onPress={() => {
+                      setTargetLevel(level);
+                    }}
+                    style={[styles.chip, targetLevel === level && styles.activeChip]}
+                  >
+                    <Text style={[styles.chipText, targetLevel === level && styles.activeChipText]}>{level}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity
+                accessibilityLabel="Broadcast notification to students"
+                accessibilityRole="button"
+                disabled={sending}
+                onPress={handleSendNotice}
+                style={[styles.submitBtn, sending && styles.disabledButton]}
+              >
+                {sending ? <SmoothSpinner color="#fff" /> : <Text style={styles.submitBtnText}>Broadcast Notification</Text>}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
+const baseStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#02030A', overflow: 'hidden' },
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  tabContainer: { flexDirection: 'row', backgroundColor: '#FFFFFF', padding: 8, marginHorizontal: 16, marginTop: 16, borderRadius: 12 },
+  flex: { flex: 1 },
+  tabContainer: { flexDirection: 'row', backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1, padding: 8, marginHorizontal: 16, marginTop: 16 },
   tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 8 },
   activeTab: { backgroundColor: '#8E24AA' },
-  tabText: { fontSize: 16, fontWeight: '600', color: '#718096' },
+  tabText: { fontSize: 16, fontWeight: '800', color: '#8EA4C8' },
   activeTabText: { color: '#FFFFFF' },
   listContent: { padding: 16, paddingBottom: 80 },
-  notifCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 16, elevation: 2, borderLeftWidth: 4, borderLeftColor: '#8E24AA' },
-  unreadCard: { borderLeftColor: '#3B82F6' },
+  notifCard: { backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1, padding: 16, marginBottom: 16 },
+  unreadCard: { borderColor: '#3B82F6' },
   notifHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  notifTitle: { fontSize: 18, fontWeight: 'bold', color: '#2D3748', flex: 1 },
+  notifTitle: { fontSize: 18, fontWeight: '900', color: '#F8FAFC', flex: 1 },
   unreadTitle: { fontWeight: '900' },
-  notifDate: { fontSize: 12, color: '#A0AEC0' },
-  notifMessage: { fontSize: 15, color: '#4A5568', lineHeight: 22, marginBottom: 16 },
-  notifFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#EDF2F7', paddingTop: 12 },
-  notifSender: { fontSize: 12, fontWeight: '600', color: '#718096' },
-  targetBadge: { backgroundColor: '#F3E5F5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  targetBadgeText: { color: '#8E24AA', fontSize: 10, fontWeight: 'bold' },
-  markAsReadBtn: { padding: 6, borderRadius: 6, backgroundColor: '#F0F9FF' },
-  markAllBtn: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', paddingVertical: 8, paddingHorizontal: 12, marginBottom: 12, borderRadius: 8, backgroundColor: '#F3E5F5' },
+  notifDate: { fontSize: 12, color: '#8EA4C8', fontWeight: '800' },
+  notifMessage: { fontSize: 15, color: '#B9C6DD', lineHeight: 22, marginBottom: 16 },
+  notifFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#334155', paddingTop: 12 },
+  notifSender: { fontSize: 12, fontWeight: '800', color: '#8EA4C8' },
+  targetBadge: { backgroundColor: '#3B0764', borderColor: '#6D28D9', borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
+  targetBadgeText: { color: '#DDD6FE', fontSize: 10, fontWeight: 'bold' },
+  markAsReadBtn: { padding: 6, borderRadius: 8, backgroundColor: '#082F49', borderColor: '#075985', borderWidth: 1 },
+  markAllBtn: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', paddingVertical: 8, paddingHorizontal: 12, marginBottom: 12, borderRadius: 8, backgroundColor: '#3B0764', borderColor: '#6D28D9', borderWidth: 1 },
   markAllText: { marginLeft: 6, color: '#8E24AA', fontWeight: '700' },
-  emptyText: { textAlign: 'center', color: '#94A3B8', marginTop: 20 },
+  emptyText: { textAlign: 'center', color: '#B9C6DD', marginTop: 20, fontWeight: '800' },
   uploadContent: { padding: 16, paddingBottom: 80 },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 20, elevation: 2 },
-  label: { fontSize: 14, fontWeight: '600', color: '#4A5568', marginBottom: 8 },
-  input: { backgroundColor: '#F7FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, padding: 12, fontSize: 16, marginBottom: 16 },
+  card: { backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1, padding: 16, marginBottom: 20 },
+  disabledButton: { opacity: 0.7 },
+  enhanceButton: { alignItems: 'center', alignSelf: 'flex-start', backgroundColor: '#7C3AED', borderColor: '#334155', borderRadius: 8, borderWidth: 1, flexDirection: 'row', justifyContent: 'center', minHeight: 46, paddingHorizontal: 16 },
+  enhanceButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900', marginLeft: 7 },
+  label: { fontSize: 14, fontWeight: '800', color: '#B9C6DD', marginBottom: 8 },
+  input: { backgroundColor: '#020617', borderWidth: 1, borderColor: '#334155', borderRadius: 8, padding: 12, fontSize: 16, color: '#F8FAFC', marginBottom: 16, outlineStyle: 'none' },
+  roughThoughtInput: { marginBottom: 12, minHeight: 98 },
+  smartComposeCopy: { flex: 1, minWidth: 0 },
+  smartComposeHeader: { alignItems: 'center', flexDirection: 'row', marginBottom: 12 },
+  smartComposeIcon: { alignItems: 'center', backgroundColor: '#1E1B4B', borderColor: '#6D28D9', borderRadius: 8, borderWidth: 1, height: 44, justifyContent: 'center', marginRight: 12, width: 44 },
+  smartComposePanel: { backgroundColor: '#1E1B4B', borderColor: '#6D28D9', borderRadius: 8, borderWidth: 1, marginBottom: 18, padding: 14 },
+  smartComposeText: { color: '#B9C6DD', fontSize: 12, fontWeight: '700', lineHeight: 18, marginTop: 3 },
+  smartComposeTitle: { color: '#F8FAFC', fontSize: 16, fontWeight: '900' },
   textArea: { minHeight: 100 },
   chipContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16 },
-  chip: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, marginRight: 8, marginBottom: 8 },
+  chip: { borderWidth: 1, borderColor: '#334155', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8, marginRight: 8, marginBottom: 8, backgroundColor: '#111827' },
   activeChip: { backgroundColor: '#8E24AA', borderColor: '#8E24AA' },
-  chipText: { color: '#4A5568', fontSize: 14 },
+  chipText: { color: '#B9C6DD', fontSize: 14, fontWeight: '800' },
   activeChipText: { color: '#FFFFFF', fontWeight: 'bold' },
-  submitBtn: { backgroundColor: '#8E24AA', borderRadius: 12, paddingVertical: 16, alignItems: 'center', elevation: 3 },
+  submitBtn: { backgroundColor: '#8E24AA', borderColor: '#334155', borderRadius: 8, borderWidth: 1, paddingVertical: 16, alignItems: 'center'},
   submitBtnText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
-  refreshButtonWeb: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', backgroundColor: 'rgba(74, 144, 226, 0.1)', padding: 8, borderRadius: 20, marginBottom: 12 },
+  refreshButtonWeb: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', backgroundColor: '#082F49', padding: 8, borderRadius: 8, marginBottom: 12 },
   refreshTextWeb: { marginLeft: 8, fontSize: 12, color: '#4A90E2' },
 });

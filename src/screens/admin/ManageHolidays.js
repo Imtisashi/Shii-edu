@@ -6,6 +6,7 @@ import DynamicHeader from '../../components/DynamicHeader';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, where } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
+import { useInstituteTheme } from '../../hooks/useInstituteTheme';
 
 const showAlert = (title, message) => {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -26,6 +27,7 @@ const createdAtToMillis = (createdAt) => {
 
 export default function ManageHolidays() {
   const { userData } = useAuth();
+  const { colors, styles } = useInstituteTheme(baseStyles);
   const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -157,7 +159,7 @@ export default function ManageHolidays() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="calendar-clear-outline" size={60} color="#CBD5E0" />
+              <Ionicons name="calendar-clear-outline" size={60} color={colors.muted} />
               <Text style={styles.emptyText}>No holidays declared yet.</Text>
             </View>
           }
@@ -174,17 +176,17 @@ export default function ManageHolidays() {
 
       {/* Add Holiday Modal */}
       <Modal
-        animationType="slide"
         transparent={true}
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
+        animationType="slide"
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Declare New Holiday</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#2D3748" />
+                <Ionicons name="close" size={24} color={colors.textSoft} />
               </TouchableOpacity>
             </View>
 
@@ -192,6 +194,7 @@ export default function ManageHolidays() {
             <TextInput 
               style={styles.input}
               placeholder="e.g. Winter Break"
+              placeholderTextColor={colors.muted}
               value={holidayName}
               onChangeText={setHolidayName}
             />
@@ -200,6 +203,7 @@ export default function ManageHolidays() {
             <TextInput 
               style={styles.input}
               placeholder="e.g. Dec 24 - Jan 2"
+              placeholderTextColor={colors.muted}
               value={holidayDate}
               onChangeText={setHolidayDate}
             />
@@ -219,38 +223,41 @@ export default function ManageHolidays() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
+const baseStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#02030A', overflow: 'hidden' },
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   
   listContent: { padding: 16, paddingBottom: 130 },
   card: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    backgroundColor: '#0F172A',
+    borderColor: '#334155',
+    borderWidth: 1,
+    borderRadius: 8,
     padding: 16,
     marginBottom: 12,
     alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
   },
   iconContainer: {
     width: 50,
     height: 50,
-    borderRadius: 25,
-    backgroundColor: '#FCE4EC',
+    borderRadius: 8,
+    backgroundColor: '#4C0519',
+    borderColor: '#BE185D',
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
   },
   infoContainer: { flex: 1 },
-  title: { fontSize: 16, fontWeight: 'bold', color: '#2D3748', marginBottom: 4 },
-  date: { fontSize: 14, color: '#718096', marginBottom: 8 },
-  badge: { alignSelf: 'flex-start', backgroundColor: '#EDF2F7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  badgeText: { fontSize: 11, color: '#4A5568', fontWeight: '600' },
+  title: { fontSize: 16, fontWeight: '900', color: '#F8FAFC', marginBottom: 4 },
+  date: { fontSize: 14, color: '#B9C6DD', marginBottom: 8 },
+  badge: { alignSelf: 'flex-start', backgroundColor: '#111827', borderColor: '#334155', borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
+  badgeText: { fontSize: 11, color: '#B9C6DD', fontWeight: '800' },
   deleteBtn: { padding: 8 },
 
   emptyContainer: { alignItems: 'center', marginTop: 60 },
-  emptyText: { marginTop: 16, fontSize: 16, color: '#718096' },
+  emptyText: { marginTop: 16, fontSize: 16, color: '#B9C6DD', fontWeight: '800' },
 
   fab: {
     position: 'absolute',
@@ -259,28 +266,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#C2185B',
     width: 60,
     height: 60,
-    borderRadius: 30,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#C2185B', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
   },
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: '#020617',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0F172A',
+    borderColor: '#334155',
+    borderWidth: 1,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
     minHeight: 350,
   },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#2D3748' },
-  label: { fontSize: 14, fontWeight: 'bold', color: '#4A5568', marginBottom: 8 },
-  input: { backgroundColor: '#F7FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, padding: 12, fontSize: 16, color: '#2D3748', marginBottom: 20 },
-  submitBtn: { backgroundColor: '#2D3748', borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
+  modalTitle: { fontSize: 20, fontWeight: '900', color: '#F8FAFC' },
+  label: { fontSize: 14, fontWeight: 'bold', color: '#B9C6DD', marginBottom: 8 },
+  input: { backgroundColor: '#020617', borderWidth: 1, borderColor: '#334155', borderRadius: 8, padding: 12, fontSize: 16, color: '#F8FAFC', marginBottom: 20, outlineStyle: 'none' },
+  submitBtn: { backgroundColor: '#C2185B', borderColor: '#334155', borderRadius: 8, borderWidth: 1, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
   submitBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
 });

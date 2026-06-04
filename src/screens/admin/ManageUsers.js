@@ -1,87 +1,236 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Image, Alert, Platform } from 'react-native';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Alert,
+  FlatList,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
-import { useAuth } from '../../contexts/AuthContext';
 import DynamicHeader from '../../components/DynamicHeader';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { useAuth } from '../../contexts/AuthContext';
+import { useRootLayout } from '../../contexts/RootLayoutContext';
+import { listSupabaseUsers } from '../../services/supabaseTenantDataService';
+
+const normalizeRole = (role) => String(role || '').trim().toLowerCase();
+
+const getUserIdentifier = (user) => (
+  user?.loginId ||
+  user?.uniqueId ||
+  user?.studentId ||
+  user?.teacherCode ||
+  user?.id ||
+  'No ID'
+);
+
+const getInitials = (name) => {
+  const words = String(name || 'User').trim().split(/\s+/).filter(Boolean);
+  return words.slice(0, 2).map((word) => word.charAt(0).toUpperCase()).join('') || 'U';
+};
+
+const getTeacherAssignments = (user, isSchool) => {
+  if (isSchool) {
+    const assignedClass = user?.assignedClass || user?.class || user?.teachingScope?.classes?.[0] || null;
+    const assignedSection = user?.assignedSection || user?.section || user?.teachingScope?.sections?.[0] || null;
+    return { primary: assignedClass, secondary: assignedSection };
+  }
+
+  const assignedDepartment = user?.assignedDept || user?.dept || user?.department ||
+    user?.teachingScope?.departments?.[0] || null;
+  const assignedSemester = user?.assignedSem || user?.sem || user?.semester ||
+    user?.teachingScope?.semesters?.[0] || null;
+  return { primary: assignedDepartment, secondary: assignedSemester };
+};
 
 export default function ManageUsers({ navigation }) {
-  const { userData } = useAuth();
-  
-  const [activeTab, setActiveTab] = useState('students'); // 'students' or 'teachers'
+  const { currentUser, userData } = useAuth();
+  const { colors, maxContentWidth, radii, spacing } = useRootLayout();
+  const [activeTab, setActiveTab] = useState('students');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
-  
+  const [errorMessage, setErrorMessage] = useState('');
   const [students, setStudents] = useState([]);
   const [teachers, setTeachers] = useState([]);
-  const [displayData, setDisplayData] = useState([]);
+  const [parents, setParents] = useState([]);
+  const [drivers, setDrivers] = useState([]);
 
-  const instType = userData?.instituteData?.type || 'school';
+  const instType = String(
+    userData?.instituteData?.institutionType ||
+    userData?.instituteData?.type ||
+    'school'
+  ).toLowerCase();
+  const isSchool = instType.includes('school');
+  const instituteModeLabel = isSchool ? 'School' : 'College';
 
-  // --- 1. FETCH LIVE DATA ---
   useEffect(() => {
-    if (!userData?.instituteId) return;
+    if (!userData?.instituteId) {
+      setStudents([]);
+      setTeachers([]);
+      setParents([]);
+      setDrivers([]);
+      setErrorMessage('Your administrator profile is not linked to an institute.');
+      setLoading(false);
+      return undefined;
+    }
 
-    const q = query(
-      collection(db, "users"),
-      where("instituteId", "==", userData.instituteId)
-    );
+    setLoading(true);
+    setErrorMessage('');
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedStudents = [];
-      const fetchedTeachers = [];
+    let cancelled = false;
+    let unsubscribeFirestore = null;
 
-      snapshot.docs.forEach(doc => {
-        const data = { id: doc.id, ...doc.data() };
-        if (data.role === 'student') fetchedStudents.push(data);
-        if (data.role === 'teacher') fetchedTeachers.push(data);
+    const applyUsers = (users) => {
+        const fetchedStudents = [];
+        const fetchedTeachers = [];
+        const fetchedParents = [];
+        const fetchedDrivers = [];
+
+        users.forEach((data) => {
+          const role = normalizeRole(data.role);
+          if (role === 'student') fetchedStudents.push(data);
+          if (role === 'teacher') fetchedTeachers.push(data);
+          if (role === 'parent') fetchedParents.push(data);
+          if (role === 'driver') fetchedDrivers.push(data);
+        });
+
+        const byName = (a, b) => String(a.name || '').localeCompare(String(b.name || ''));
+        fetchedStudents.sort(byName);
+        fetchedTeachers.sort(byName);
+        fetchedParents.sort(byName);
+        fetchedDrivers.sort(byName);
+
+        setStudents(fetchedStudents);
+        setTeachers(fetchedTeachers);
+        setParents(fetchedParents);
+        setDrivers(fetchedDrivers);
+        setErrorMessage('');
+        setLoading(false);
+    };
+
+    const startFirestoreFallback = () => {
+      const usersQuery = query(
+        collection(db, 'users'),
+        where('instituteId', '==', userData.instituteId)
+      );
+
+      unsubscribeFirestore = onSnapshot(
+        usersQuery,
+        (snapshot) => {
+          if (cancelled) return;
+          applyUsers(snapshot.docs.map((document) => ({ id: document.id, ...document.data(), dataSource: 'firestore' })));
+        },
+        (error) => {
+          if (cancelled) return;
+          console.error('User database query failed:', error);
+          setStudents([]);
+          setTeachers([]);
+          setParents([]);
+          setDrivers([]);
+          setErrorMessage(error.message || 'The institute directory could not be loaded.');
+          setLoading(false);
+        }
+      );
+    };
+
+    listSupabaseUsers(currentUser)
+      .then(({ users }) => {
+        if (cancelled) return;
+        applyUsers(Array.isArray(users) ? users : []);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.warn('Supabase directory bridge failed, falling back to Firestore:', error);
+        startFirestoreFallback();
       });
 
-      // Sort alphabetically
-      fetchedStudents.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-      fetchedTeachers.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    return () => {
+      cancelled = true;
+      if (typeof unsubscribeFirestore === 'function') unsubscribeFirestore();
+    };
+  }, [currentUser, userData?.instituteId]);
 
-      setStudents(fetchedStudents);
-      setTeachers(fetchedTeachers);
-      setLoading(false);
+  const displayData = useMemo(() => {
+    const sourceData = {
+      students,
+      teachers,
+      parents,
+      drivers,
+    }[activeTab] || [];
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+    if (!normalizedSearch) return sourceData;
+
+    return sourceData.filter((user) => {
+      const searchableValues = [
+        user.name,
+        getUserIdentifier(user),
+        user.class,
+        user.section,
+        user.dept,
+        user.department,
+        user.sem,
+        user.semester,
+        user.degree,
+        user.linkedStudentName,
+        user.linkedStudentUserId,
+        user.vehicleId,
+        user.routeName,
+      ];
+
+      return searchableValues.some((value) => (
+        String(value || '').toLowerCase().includes(normalizedSearch)
+      ));
     });
-
-    return () => unsubscribe();
-  }, [userData]);
-
-  // --- 2. HANDLE TABS & SEARCH ---
-  useEffect(() => {
-    const sourceData = activeTab === 'students' ? students : teachers;
-    
-    if (searchQuery.trim() === '') {
-      setDisplayData(sourceData);
-    } else {
-      const lowerCaseText = searchQuery.toLowerCase();
-      const filtered = sourceData.filter(
-        user => 
-          (user.name && user.name.toLowerCase().includes(lowerCaseText)) || 
-          (user.email && user.email.toLowerCase().includes(lowerCaseText)) ||
-          (user.teacherCode && user.teacherCode.toLowerCase().includes(lowerCaseText))
-      );
-      setDisplayData(filtered);
-    }
-  }, [activeTab, searchQuery, students, teachers]);
+  }, [activeTab, drivers, parents, searchQuery, students, teachers]);
 
   const showUserDetails = (item) => {
-    const roleLabel = activeTab === 'students' ? 'Student' : 'Teacher';
-    const academicLines = activeTab === 'students'
-      ? (instType === 'school'
-        ? [`Class: ${item.class || 'N/A'}`, `Section: ${item.section || 'N/A'}`]
-        : [`Department: ${item.dept || 'N/A'}`, `Semester: ${item.sem || 'N/A'}`])
-      : [`Teacher Code: ${item.teacherCode || 'N/A'}`, `Degree: ${item.degree || 'Faculty'}`];
+    const roleLabel = {
+      students: 'Student',
+      teachers: 'Teacher',
+      parents: 'Parent',
+      drivers: 'Driver',
+    }[activeTab] || 'User';
+    const identifier = getUserIdentifier(item);
+    const teacherAssignments = getTeacherAssignments(item, isSchool);
+    const academicLines = activeTab === 'parents'
+      ? [
+        `Linked student: ${item.linkedStudentName || 'Not linked'}`,
+        `Student ID: ${item.linkedStudentUserId || 'Not linked'}`,
+        `Relationship: ${item.relationship || 'Parent / Guardian'}`,
+      ]
+      : activeTab === 'drivers'
+        ? [
+          `Vehicle ID: ${item.vehicleId || 'Not assigned'}`,
+          `Route: ${item.routeName || 'Not assigned'}`,
+          `Fleet status: ${item.fleetStatus || 'offline'}`,
+        ]
+        : activeTab === 'students'
+      ? (isSchool
+        ? [`Class: ${item.class || 'Not assigned'}`, `Section: ${item.section || 'Not assigned'}`]
+        : [
+          `Department: ${item.dept || item.department || 'Not assigned'}`,
+          `Semester: ${item.sem || item.semester || 'Not assigned'}`,
+        ])
+      : (isSchool
+        ? [
+          `Class assignment: ${teacherAssignments.primary || 'Not assigned'}`,
+          `Section assignment: ${teacherAssignments.secondary || 'Not assigned'}`,
+        ]
+        : [
+          `Department: ${teacherAssignments.primary || 'Not assigned'}`,
+          `Semester: ${teacherAssignments.secondary || 'Not assigned'}`,
+        ]);
 
     const message = [
       `Name: ${item.name || 'Unnamed user'}`,
-      `Email: ${item.email || 'No email'}`,
+      `User ID: ${identifier}`,
       `Role: ${roleLabel}`,
-      `User ID: ${item.uniqueId || item.id || 'N/A'}`,
       ...academicLines,
     ].join('\n');
 
@@ -93,185 +242,468 @@ export default function ManageUsers({ navigation }) {
     Alert.alert('User Details', message);
   };
 
-  // --- 3. RENDER CARD ---
-  const renderUserCard = ({ item }) => {
-    const initials = item.name ? item.name.charAt(0).toUpperCase() : 'U';
-    
-    let primaryBadge = '';
-    let secondaryBadge = '';
-    
-    if (activeTab === 'students') {
-      primaryBadge = instType === 'school' ? `Class ${item.class || 'N/A'}` : (item.dept || 'N/A');
-      secondaryBadge = instType === 'school' ? `Sec ${item.section || 'N/A'}` : `Sem ${item.sem || 'N/A'}`;
-    } else {
-      primaryBadge = `Code: ${item.teacherCode || 'N/A'}`;
-      secondaryBadge = item.degree || 'Faculty';
+  const getBadges = (item) => {
+    if (activeTab === 'parents') {
+      return [
+        item.linkedStudentUserId ? `Student ${item.linkedStudentUserId}` : 'Student unlinked',
+        item.relationship || 'Guardian',
+      ];
     }
 
+    if (activeTab === 'drivers') {
+      return [
+        item.vehicleId || 'Vehicle unassigned',
+        item.routeName || 'Route unassigned',
+      ];
+    }
+
+    if (activeTab === 'students') {
+      return isSchool
+        ? [`Class ${item.class || 'Unassigned'}`, `Section ${item.section || 'Unassigned'}`]
+        : [
+          item.dept || item.department || 'Department unassigned',
+          `Semester ${item.sem || item.semester || 'Unassigned'}`,
+        ];
+    }
+
+    const teacherAssignments = getTeacherAssignments(item, isSchool);
+    return isSchool
+      ? [
+        teacherAssignments.primary ? `Class ${teacherAssignments.primary}` : 'Faculty',
+        teacherAssignments.secondary ? `Section ${teacherAssignments.secondary}` : 'Unassigned',
+      ]
+      : [
+        teacherAssignments.primary || 'Faculty',
+        teacherAssignments.secondary ? `Semester ${teacherAssignments.secondary}` : 'Unassigned',
+      ];
+  };
+
+  const renderUserCard = ({ item }) => {
+    const identifier = getUserIdentifier(item);
+    const [primaryBadge, secondaryBadge] = getBadges(item);
+    const imageUrl = item.photoURL || item.photoUrl || item.profilePic || null;
+
     return (
-      <View style={styles.card}>
-        
-        {/* Live Avatar or Fallback */}
-        {item.profilePic ? (
-          <Image source={{ uri: item.profilePic }} style={styles.avatarImage} />
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: colors.cardStrong,
+            borderColor: colors.hairline,
+            borderRadius: radii.card,
+          },
+        ]}
+      >
+        {imageUrl ? (
+          <Image
+            accessibilityLabel={`${item.name || 'User'} profile picture`}
+            cachePolicy="memory-disk"
+            contentFit="cover"
+            source={{ uri: imageUrl }}
+            style={styles.avatarImage}
+            transition={160}
+          />
         ) : (
-          <View style={styles.avatarFallback}>
-            <Text style={styles.avatarInitials}>{initials}</Text>
+          <View
+            style={[
+              styles.avatarFallback,
+              { backgroundColor: colors.deepBlueSoft, borderColor: colors.accentSoft },
+            ]}
+          >
+            <Text style={[styles.avatarInitials, { color: colors.accent }]}>
+              {getInitials(item.name)}
+            </Text>
           </View>
         )}
-        
+
         <View style={styles.infoContainer}>
-          <Text style={styles.userName}>{item.name}</Text>
-          <Text style={styles.identifier}>{item.email}</Text>
+          <Text numberOfLines={1} style={[styles.userName, { color: colors.text }]}>
+            {item.name || 'Unnamed user'}
+          </Text>
+          <Text numberOfLines={1} style={[styles.identifier, { color: colors.textSoft }]}>
+            ID: {identifier}
+          </Text>
           <View style={styles.badgeRow}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{primaryBadge}</Text>
+            <View style={[styles.badge, { backgroundColor: colors.card, borderColor: colors.hairline }]}>
+              <Text style={[styles.badgeText, { color: colors.textSoft }]}>{primaryBadge}</Text>
             </View>
-            <View style={[styles.badge, styles.secondaryBadge]}>
-              <Text style={[styles.badgeText, styles.secondaryBadgeText]}>{secondaryBadge}</Text>
+            <View style={[styles.badge, { backgroundColor: colors.deepBlueSoft, borderColor: colors.accentSoft }]}>
+              <Text style={[styles.badgeText, { color: colors.accent }]}>{secondaryBadge}</Text>
             </View>
           </View>
         </View>
-        
-        {/* Context Menu Button */}
+
         <TouchableOpacity
-          style={styles.actionBtn}
-          onPress={() => showUserDetails(item)}
           accessibilityLabel={`View ${item.name || 'user'} details`}
+          onPress={() => showUserDetails(item)}
+          style={[styles.actionBtn, { backgroundColor: colors.card, borderColor: colors.hairline }]}
         >
-          <Ionicons name="ellipsis-vertical" size={20} color="#A0AEC0" />
+          <Ionicons name="ellipsis-vertical" size={18} color={colors.textSoft} />
         </TouchableOpacity>
       </View>
     );
   };
 
+  const emptyTitle = errorMessage
+    ? 'Directory unavailable'
+    : `No ${activeTab} found`;
+  const emptyBody = errorMessage ||
+    (searchQuery.trim()
+      ? 'Try a different name, User ID, or academic assignment.'
+      : `Create the first ${activeTab === 'students' ? 'student' : 'teacher'} profile for this institute.`);
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.page }]}>
       <DynamicHeader title="User Database" />
-      
-      {/* Tab Switcher */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'students' && styles.activeTab]}
-          onPress={() => setActiveTab('students')}
+
+      <View
+        style={[
+          styles.controls,
+          {
+            maxWidth: maxContentWidth,
+            paddingHorizontal: spacing.pageX,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.summaryPanel,
+            {
+              backgroundColor: colors.cardStrong,
+              borderColor: colors.hairline,
+              borderRadius: radii.card,
+            },
+          ]}
         >
-          <Text style={[styles.tabText, activeTab === 'students' && styles.activeTabText]}>Students ({students.length})</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'teachers' && styles.activeTab]}
-          onPress={() => setActiveTab('teachers')}
-        >
-          <Text style={[styles.tabText, activeTab === 'teachers' && styles.activeTabText]}>Teachers ({teachers.length})</Text>
-        </TouchableOpacity>
+          <View style={styles.summaryCopy}>
+            <Text style={[styles.eyebrow, { color: colors.muted }]}>Directory control</Text>
+            <Text style={[styles.summaryTitle, { color: colors.text }]}>
+              {students.length + teachers.length + parents.length + drivers.length} people synced
+            </Text>
+            <Text style={[styles.summarySubtitle, { color: colors.textSoft }]}>
+              Search and manage institute profiles by their User ID.
+            </Text>
+          </View>
+          <View style={[styles.modePill, { backgroundColor: colors.deepBlueSoft, borderColor: colors.accentSoft }]}>
+            <Ionicons
+              color={colors.accent}
+              name={isSchool ? 'school-outline' : 'business-outline'}
+              size={15}
+            />
+            <Text style={[styles.modePillText, { color: colors.accent }]}>{instituteModeLabel}</Text>
+          </View>
+        </View>
+
+        <View style={[styles.tabContainer, { backgroundColor: colors.card, borderColor: colors.hairline }]}>
+          {[
+            { id: 'students', label: 'Students', count: students.length },
+            { id: 'teachers', label: 'Teachers', count: teachers.length },
+            { id: 'parents', label: 'Parents', count: parents.length },
+            { id: 'drivers', label: 'Drivers', count: drivers.length },
+          ].map((tab) => {
+            const selected = activeTab === tab.id;
+            return (
+              <TouchableOpacity
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                key={tab.id}
+                onPress={() => setActiveTab(tab.id)}
+                style={[
+                  styles.tab,
+                  selected && {
+                    backgroundColor: colors.deepBlueSoft,
+                    borderColor: colors.accentSoft,
+                  },
+                ]}
+              >
+                <Text style={[styles.tabText, { color: selected ? colors.accent : colors.muted }]}>
+                  {tab.label} ({tab.count})
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <View style={[styles.searchContainer, { backgroundColor: colors.cardStrong, borderColor: colors.hairline }]}>
+          <Ionicons color={colors.muted} name="search" size={20} style={styles.searchIcon} />
+          <TextInput
+            autoCapitalize="none"
+            autoCorrect={false}
+            onChangeText={setSearchQuery}
+            placeholder={`Search ${activeTab} by name or User ID...`}
+            placeholderTextColor={colors.muted}
+            style={[styles.searchInput, { color: colors.text }]}
+            value={searchQuery}
+          />
+          {searchQuery.length > 0 ? (
+            <TouchableOpacity
+              accessibilityLabel="Clear directory search"
+              onPress={() => setSearchQuery('')}
+              style={styles.clearSearchButton}
+            >
+              <Ionicons color={colors.muted} name="close-circle" size={20} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#A0AEC0" style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder={`Search ${activeTab} by name or email...`}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholderTextColor="#A0AEC0"
-        />
-        {searchQuery.length > 0 && (
-          <Ionicons name="close-circle" size={20} color="#A0AEC0" onPress={() => setSearchQuery('')} />
-        )}
-      </View>
-
-      {/* List */}
       {loading ? (
         <View style={styles.centerContainer}>
-          <SmoothSpinner size="large" color="#3B82F6" />
+          <SmoothSpinner color={colors.accent} size="large" />
+          <Text style={[styles.loadingText, { color: colors.textSoft }]}>Syncing institute directory...</Text>
         </View>
       ) : (
         <FlatList
+          contentContainerStyle={[
+            styles.listContent,
+            {
+              maxWidth: maxContentWidth,
+              paddingHorizontal: spacing.pageX,
+            },
+          ]}
           data={displayData}
           keyExtractor={(item) => item.id}
-          renderItem={renderUserCard}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="people-outline" size={60} color="#CBD5E0" />
-              <Text style={styles.emptyText}>No users found in this category.</Text>
+          keyboardShouldPersistTaps="handled"
+          ListEmptyComponent={(
+          <View style={[styles.emptyContainer, { backgroundColor: colors.card, borderColor: colors.hairline }]}>
+              <View style={[styles.emptyIcon, { backgroundColor: colors.deepBlueSoft, borderColor: colors.accentSoft }]}>
+                <Ionicons color={colors.accent} name="people-outline" size={30} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>{emptyTitle}</Text>
+              <Text style={[styles.emptyText, { color: colors.textSoft }]}>{emptyBody}</Text>
             </View>
-          }
+          )}
+          renderItem={renderUserCard}
+          showsVerticalScrollIndicator={false}
         />
       )}
-      <TouchableOpacity 
-        style={styles.fab} 
+
+      <TouchableOpacity
+        accessibilityLabel="Add institute user"
         onPress={() => navigation.navigate('AddUser')}
+        style={[
+          styles.fab,
+          {
+            backgroundColor: colors.deepBlue,
+            borderColor: colors.cardStrong,
+          },
+        ]}
       >
-        <Ionicons name="add" size={30} color="#fff" />
+        <Ionicons color="#FFFFFF" name="add" size={30} />
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
-  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#E2E8F0',
-    margin: 16,
-    borderRadius: 12,
-    padding: 4,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
+  actionBtn: {
     alignItems: 'center',
     borderRadius: 8,
-  },
-  activeTab: { backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
-  tabText: { fontSize: 15, fontWeight: '600', color: '#718096' },
-  activeTabText: { color: '#3B82F6' }, // Admin Blue
-
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    paddingHorizontal: 12,
-    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
   },
-  searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, paddingVertical: 12, fontSize: 16, color: '#2D3748', outlineStyle: 'none' },
-
-  listContent: { paddingHorizontal: 16, paddingBottom: 130 },
-  card: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+  avatarFallback: {
     alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 48,
+    justifyContent: 'center',
+    marginRight: 12,
+    width: 48,
   },
-  
-  // Avatar Styles
-  avatarImage: { width: 50, height: 50, borderRadius: 25, marginRight: 16 },
-  avatarFallback: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-  avatarInitials: { fontSize: 20, fontWeight: 'bold', color: '#3B82F6' },
-  
-  infoContainer: { flex: 1, minWidth: 0 },
-  userName: { fontSize: 16, fontWeight: 'bold', color: '#2D3748', marginBottom: 2 },
-  identifier: { fontSize: 13, color: '#718096', marginBottom: 8 },
-  badgeRow: { flexDirection: 'row', flexWrap: 'wrap' },
-  badge: { backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginRight: 8 },
-  badgeText: { fontSize: 11, color: '#475569', fontWeight: '600' },
-  secondaryBadge: { backgroundColor: '#EFF6FF' },
-  secondaryBadgeText: { color: '#2563EB' },
-  actionBtn: { padding: 8 },
-  
-  emptyContainer: { alignItems: 'center', marginTop: 60 },
-  emptyText: { marginTop: 16, fontSize: 16, color: '#718096' },
-  fab: { position: 'absolute', bottom: 88, right: 20, backgroundColor: '#3B82F6', width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5 },
+  avatarImage: {
+    borderRadius: 8,
+    height: 48,
+    marginRight: 12,
+    width: 48,
+  },
+  avatarInitials: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  badge: {
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 4,
+    marginRight: 7,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  card: {
+    alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
+    marginBottom: 10,
+    padding: 12,
+  },
+  centerContainer: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  clearSearchButton: {
+    alignItems: 'center',
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  container: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  controls: {
+    alignSelf: 'center',
+    width: '100%',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 28,
+    padding: 22,
+  },
+  emptyIcon: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 58,
+    justifyContent: 'center',
+    width: 58,
+  },
+  emptyText: {
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 19,
+    marginTop: 7,
+    maxWidth: 320,
+    textAlign: 'center',
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginTop: 14,
+  },
+  eyebrow: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0,
+  },
+  fab: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    bottom: 88,
+    height: 54,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 20,
+    width: 54,
+  },
+  identifier: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  infoContainer: {
+    flex: 1,
+    minWidth: 0,
+  },
+  listContent: {
+    alignSelf: 'center',
+    paddingBottom: 150,
+    width: '100%',
+  },
+  loadingText: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 12,
+  },
+  modePill: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    marginLeft: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  modePillText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  searchContainer: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    marginBottom: 14,
+    paddingHorizontal: 12,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    outlineStyle: 'none',
+    paddingVertical: 13,
+  },
+  summaryCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  summaryPanel: {
+    alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    padding: 16,
+  },
+  summarySubtitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 17,
+    marginTop: 5,
+  },
+  summaryTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginTop: 3,
+  },
+  tab: {
+    alignItems: 'center',
+    borderColor: 'transparent',
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+    paddingVertical: 10,
+  },
+  tabContainer: {
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    marginVertical: 12,
+    padding: 4,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
 });

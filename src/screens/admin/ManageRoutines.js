@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Platform, KeyboardAvoidingView } from 'react-native';
 import { SmoothSpinner } from '../../components/ui/LoadingState';
-import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, deleteDoc, doc, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore';
 import Papa from 'papaparse';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import DynamicHeader from '../../components/DynamicHeader';
+import { useInstituteTheme } from '../../hooks/useInstituteTheme';
+import { createSupabaseRoutine, deleteSupabaseRoutine, listSupabaseRoutines, listSupabaseUsers } from '../../services/supabaseTenantDataService';
 
 export default function ManageRoutines() {
-  const { userData } = useAuth();
-  const instType = userData?.instituteData?.type || 'school';
+  const { currentUser, userData } = useAuth();
+  const { colors, styles } = useInstituteTheme(baseStyles);
+  const instType = String(userData?.instituteData?.institutionType || userData?.instituteData?.type || 'school').toLowerCase();
 
   const [teachers, setTeachers] = useState([]);
   const [routines, setRoutines] = useState([]);
@@ -31,21 +34,78 @@ export default function ManageRoutines() {
 
   // 1. Fetch Teachers & Routines
   useEffect(() => {
-    if (!userData?.instituteId) return;
+    if (!userData?.instituteId) {
+      setLoading(false);
+      return undefined;
+    }
+
+    let didCancel = false;
+    let supabaseRoutines = [];
+    let firestoreRoutines = [];
+    const publishRoutines = () => {
+      if (didCancel) return;
+      const byId = new Map();
+      [...supabaseRoutines, ...firestoreRoutines].forEach((routine) => {
+        if (!routine) return;
+        byId.set(String(routine.supabaseId || routine.id), routine);
+      });
+      setRoutines(Array.from(byId.values()));
+      setLoading(false);
+    };
+
+    if (currentUser) {
+      listSupabaseUsers(currentUser)
+        .then((result) => {
+          const teacherList = (Array.isArray(result?.users) ? result.users : [])
+            .filter((profile) => String(profile?.role || '').toLowerCase() === 'teacher')
+            .map((profile) => ({
+              ...profile,
+              id: profile.id || profile.uid || profile.supabaseId,
+              name: profile.name || profile.fullName || 'Unnamed Teacher',
+            }));
+          if (!didCancel && teacherList.length > 0) setTeachers(teacherList);
+        })
+        .catch((error) => console.warn('Supabase teacher roster unavailable, using Firestore fallback:', error));
+
+      listSupabaseRoutines(currentUser)
+        .then((result) => {
+          supabaseRoutines = Array.isArray(result?.routines) ? result.routines : [];
+          publishRoutines();
+        })
+        .catch((error) => {
+          console.warn('Supabase routines unavailable, using Firestore fallback:', error);
+          publishRoutines();
+        });
+    }
 
     // Fetch Teachers
     const tQ = query(collection(db, "users"), where("instituteId", "==", userData.instituteId), where("role", "==", "teacher"));
-    const unsubT = onSnapshot(tQ, (snap) => setTeachers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const unsubT = onSnapshot(tQ, (snap) => {
+      if (!didCancel) {
+        setTeachers((previous) => previous.length ? previous : snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      }
+    }, (error) => {
+      console.warn('Teacher list for routine fallback failed:', error);
+      setTeachers([]);
+    });
 
     // Fetch Routines
     const rQ = query(collection(db, "routines"), where("instituteId", "==", userData.instituteId));
     const unsubR = onSnapshot(rQ, (snap) => {
-      setRoutines(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setLoading(false);
+      firestoreRoutines = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      publishRoutines();
+    }, (error) => {
+      console.warn('Routine Firestore fallback failed:', error);
+      firestoreRoutines = [];
+      publishRoutines();
     });
 
-    return () => { unsubT(); unsubR(); };
-  }, [userData]);
+    return () => {
+      didCancel = true;
+      unsubT();
+      unsubR();
+    };
+  }, [currentUser, userData?.instituteId]);
 
   // 2. Save Routine to Database
   const handleAssignRoutine = async () => {
@@ -66,9 +126,13 @@ export default function ManageRoutines() {
         ? { class: primary, section: secondary }
         : { dept: primary, sem: secondary };
 
-      await addDoc(collection(db, "routines"), {
+      const routineRef = doc(collection(db, "routines"));
+      const routinePayload = {
+        id: routineRef.id,
+        legacyFirestoreId: routineRef.id,
         instituteId: userData.instituteId,
         teacherId: selectedTeacher.id,
+        teacherSupabaseId: selectedTeacher.supabaseId || null,
         teacherUid: selectedTeacher.uid || selectedTeacher.id,
         teacherName: selectedTeacher.name,
         day: day,
@@ -77,8 +141,32 @@ export default function ManageRoutines() {
         targetPrimary: primary,
         targetSecondary: secondary,
         ...scopeFields,
+      };
+
+      let saved = false;
+      let lastError = null;
+
+      try {
+        await createSupabaseRoutine(currentUser, routinePayload);
+        saved = true;
+      } catch (supabaseError) {
+        lastError = supabaseError;
+        console.warn('Supabase routine save failed, using Firestore fallback:', supabaseError);
+      }
+
+      try {
+        await setDoc(routineRef, {
+          ...routinePayload,
+          dataSource: saved ? 'supabase+firebase' : 'firebase',
         createdAt: serverTimestamp()
       });
+        saved = true;
+      } catch (firebaseError) {
+        lastError = firebaseError;
+        console.warn('Firestore routine mirror failed:', firebaseError);
+      }
+
+      if (!saved) throw lastError || new Error('Routine save failed.');
 
       setTime(''); setSubject(''); setPrimaryTag(''); setSecondaryTag('');
       if (Platform.OS === 'web') {
@@ -100,6 +188,9 @@ export default function ManageRoutines() {
 
   const handleDelete = async (routineId) => {
     try {
+      await deleteSupabaseRoutine(currentUser, routineId).catch((error) => {
+        console.warn('Supabase routine delete failed, removing Firestore fallback only:', error);
+      });
       await deleteDoc(doc(db, "routines", routineId));
     } catch (error) {
       console.error("Delete failed", error);
@@ -107,13 +198,22 @@ export default function ManageRoutines() {
   };
 
   const resolveTeacher = (row) => {
-    const teacherNeedle = String(row.teacherEmail || row.TeacherEmail || row.email || row.teacher || row.Teacher || row.teacherName || row.TeacherName || row.teacherCode || row.TeacherCode || '').trim().toLowerCase();
+    const teacherNeedle = String(
+      row.teacherId ||
+      row.TeacherId ||
+      row.teacherID ||
+      row.TeacherID ||
+      row.teacherCode ||
+      row.TeacherCode ||
+      row.teacher ||
+      row.Teacher ||
+      ''
+    ).trim().toLowerCase();
     if (!teacherNeedle) return null;
 
     return teachers.find((teacher) => {
       const candidates = [
-        teacher.email,
-        teacher.name,
+        teacher.loginId,
         teacher.teacherCode,
         teacher.uniqueId,
         teacher.id,
@@ -268,22 +368,22 @@ export default function ManageRoutines() {
           <View style={styles.row}>
             <View style={{flex: 1, marginRight: 10}}>
               <Text style={styles.label}>TimeSlot</Text>
-              <TextInput style={styles.input} placeholder="e.g. 10:00 AM" value={time} onChangeText={setTime} />
+              <TextInput style={styles.input} placeholder="e.g. 10:00 AM" placeholderTextColor={colors.muted} value={time} onChangeText={setTime} />
             </View>
             <View style={{flex: 1}}>
               <Text style={styles.label}>Subject</Text>
-              <TextInput style={styles.input} placeholder="e.g. Physics" value={subject} onChangeText={setSubject} />
+              <TextInput style={styles.input} placeholder="e.g. Physics" placeholderTextColor={colors.muted} value={subject} onChangeText={setSubject} />
             </View>
           </View>
 
           <View style={styles.row}>
             <View style={{flex: 1, marginRight: 10}}>
               <Text style={styles.label}>{instType === 'school' ? 'Target Class' : 'Target Dept'}</Text>
-              <TextInput style={styles.input} placeholder={instType === 'school' ? 'e.g. 10' : 'e.g. CSE'} value={primaryTag} onChangeText={setPrimaryTag} />
+              <TextInput style={styles.input} placeholder={instType === 'school' ? 'e.g. 10' : 'e.g. CSE'} placeholderTextColor={colors.muted} value={primaryTag} onChangeText={setPrimaryTag} />
             </View>
             <View style={{flex: 1}}>
               <Text style={styles.label}>{instType === 'school' ? 'Section' : 'Semester'}</Text>
-              <TextInput style={styles.input} placeholder={instType === 'school' ? 'e.g. A' : 'e.g. 3'} value={secondaryTag} onChangeText={setSecondaryTag} />
+              <TextInput style={styles.input} placeholder={instType === 'school' ? 'e.g. A' : 'e.g. 3'} placeholderTextColor={colors.muted} value={secondaryTag} onChangeText={setSecondaryTag} />
             </View>
           </View>
 
@@ -295,7 +395,7 @@ export default function ManageRoutines() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Automatic Routine Uploader</Text>
           <Text style={styles.helperText}>
-            Paste CSV rows and upload the master schedule in one shot. Headers: day,time,subject,teacherEmail,{instType === 'school' ? 'class,section' : 'dept,sem'}.
+            Paste CSV rows and upload the master schedule in one shot. Headers: day,time,subject,teacherId,{instType === 'school' ? 'class,section' : 'dept,sem'}.
           </Text>
           <TextInput
             style={[styles.input, styles.bulkInput]}
@@ -305,8 +405,9 @@ export default function ManageRoutines() {
             textAlignVertical="top"
             autoCapitalize="none"
             placeholder={instType === 'school'
-              ? "day,time,subject,teacherEmail,class,section\nMonday,10:00 AM,Physics,teacher@school.edu,10,A"
-              : "day,time,subject,teacherEmail,dept,sem\nMonday,10:00 AM,Data Structures,prof@college.edu,CSE,3"}
+              ? "day,time,subject,teacherId,class,section\nMonday,10:00 AM,Physics,TCH-001,10,A"
+              : "day,time,subject,teacherId,dept,sem\nMonday,10:00 AM,Data Structures,FAC-CSE-01,CSE,3"}
+            placeholderTextColor={colors.muted}
           />
           <TouchableOpacity style={styles.submitBtn} onPress={handleBulkUpload} disabled={isBulkSaving}>
             {isBulkSaving ? <SmoothSpinner color="#fff" /> : <Text style={styles.submitText}>Upload CSV Routine</Text>}
@@ -340,31 +441,31 @@ export default function ManageRoutines() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+const baseStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#02030A', overflow: 'hidden' },
   scrollContent: { padding: 16, paddingBottom: 80 },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, elevation: 3, marginBottom: 25 },
-  cardTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B', marginBottom: 20 },
-  helperText: { color: '#64748B', fontSize: 13, lineHeight: 19, marginTop: -12, marginBottom: 16 },
-  label: { fontSize: 13, fontWeight: 'bold', color: '#475569', marginBottom: 8, textTransform: 'uppercase' },
+  card: { backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1, padding: 20, marginBottom: 25 },
+  cardTitle: { fontSize: 18, fontWeight: '900', color: '#F8FAFC', marginBottom: 20 },
+  helperText: { color: '#B9C6DD', fontSize: 13, lineHeight: 19, marginTop: -12, marginBottom: 16 },
+  label: { fontSize: 13, fontWeight: 'bold', color: '#8EA4C8', marginBottom: 8, textTransform: 'uppercase' },
   chipRow: { flexDirection: 'row', marginBottom: 20 },
-  chip: { backgroundColor: '#F1F5F9', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, marginRight: 10, borderWidth: 1, borderColor: '#E2E8F0' },
+  chip: { backgroundColor: '#111827', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, marginRight: 10, borderWidth: 1, borderColor: '#334155' },
   activeChip: { backgroundColor: '#3B82F6', borderColor: '#3B82F6' },
-  chipText: { color: '#64748B', fontWeight: '600' },
+  chipText: { color: '#B9C6DD', fontWeight: '800' },
   activeChipText: { color: '#fff' },
   row: { flexDirection: 'row' },
-  input: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 12, fontSize: 15, marginBottom: 15 },
+  input: { backgroundColor: '#020617', borderWidth: 1, borderColor: '#334155', borderRadius: 8, color: '#F8FAFC', padding: 12, fontSize: 15, marginBottom: 15, outlineStyle: 'none' },
   bulkInput: { minHeight: 150, fontFamily: Platform.OS === 'web' ? 'monospace' : undefined },
-  submitBtn: { backgroundColor: '#3B82F6', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 5 },
+  submitBtn: { backgroundColor: '#3B82F6', borderColor: '#334155', borderWidth: 1, paddingVertical: 16, borderRadius: 8, alignItems: 'center', marginTop: 5},
   submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: '#1E293B', marginBottom: 15, marginLeft: 5 },
-  emptyText: { color: '#94A3B8', fontStyle: 'italic', marginLeft: 5 },
-  routineCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, elevation: 1, borderLeftWidth: 4, borderLeftColor: '#3B82F6' },
+  sectionTitle: { fontSize: 16, fontWeight: '900', color: '#F8FAFC', marginBottom: 15, marginLeft: 5 },
+  emptyText: { color: '#B9C6DD', fontWeight: '800', marginLeft: 5 },
+  routineCard: { backgroundColor: '#0F172A', borderColor: '#3B82F6', borderRadius: 8, borderWidth: 1, padding: 16, marginBottom: 12 },
   routineHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  dayBadge: { backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-  dayText: { color: '#2563EB', fontWeight: 'bold', fontSize: 12 },
-  routineTeacher: { fontSize: 16, fontWeight: 'bold', color: '#1E293B' },
-  routineDetails: { fontSize: 14, color: '#475569', marginTop: 4 },
+  dayBadge: { backgroundColor: '#082F49', borderColor: '#075985', borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
+  dayText: { color: '#67E8F9', fontWeight: 'bold', fontSize: 12 },
+  routineTeacher: { fontSize: 16, fontWeight: '900', color: '#F8FAFC' },
+  routineDetails: { fontSize: 14, color: '#B9C6DD', marginTop: 4 },
   routineTarget: { fontSize: 12, color: '#10B981', fontWeight: 'bold', marginTop: 8 }
 });

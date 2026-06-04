@@ -1,53 +1,20 @@
-import { Platform, useWindowDimensions } from 'react-native';
-
-const MAX_CONTENT_WIDTH = 1120;
-const WIDE_CONTENT_WIDTH = 1280;
+import { useAspectRatioLayout } from './useAspectRatioLayout';
 
 export default function useResponsiveLayout() {
-  const { width, height, fontScale } = useWindowDimensions();
-  const shortestSide = Math.min(width, height);
-  const isWeb = Platform.OS === 'web';
-  const isDesktop = isWeb && width >= 1024;
-  const isTablet = !isDesktop && width >= 768;
-  const isMobile = !isDesktop && !isTablet;
-  const isCompact = width < 380;
-  const isNarrowPhone = width < 430;
-  const deviceType = isDesktop ? 'desktop' : isTablet ? 'tablet' : 'mobile';
-
-  const horizontalPadding = isDesktop ? 32 : isTablet ? 24 : isCompact ? 14 : 16;
-  const maxContentWidth = width >= 1360 ? WIDE_CONTENT_WIDTH : MAX_CONTENT_WIDTH;
-  const dashboardColumns = isDesktop ? 3 : isTablet ? 3 : 2;
-  const listColumns = isDesktop ? 2 : 1;
-  const galleryColumns = isDesktop ? 5 : isTablet ? 4 : isCompact ? 2 : 3;
-  const heroHeight = isDesktop ? 360 : isCompact ? 252 : isNarrowPhone ? 280 : 310;
-  const touchTarget = isDesktop ? 44 : isCompact ? 44 : 48;
-
-  const availableWidth = Math.min(width - horizontalPadding * 2, maxContentWidth);
+  const layout = useAspectRatioLayout();
+  const heroHeight = layout.scaleHeight(
+    layout.isDesktop ? 360 : layout.isCompact ? 252 : layout.isNarrowPhone ? 280 : 310,
+    { min: layout.isDesktop ? 320 : 238, max: layout.isDesktop ? 420 : 340 }
+  );
   const chartWidth = (maxWidth = 520) => Math.max(
     280,
-    Math.min(availableWidth - (isDesktop ? 48 : 0), maxWidth)
+    Math.min(layout.availableWidth - (layout.isDesktop ? layout.space(48) : 0), maxWidth)
   );
 
   return {
-    width,
-    height,
-    fontScale,
-    shortestSide,
-    isWeb,
-    isDesktop,
-    isTablet,
-    isMobile,
-    isCompact,
-    isNarrowPhone,
-    deviceType,
-    horizontalPadding,
-    maxContentWidth,
-    availableWidth,
-    dashboardColumns,
-    listColumns,
-    galleryColumns,
+    ...layout,
+    deviceType: layout.deviceClass,
     heroHeight,
-    touchTarget,
     chartWidth,
   };
 }

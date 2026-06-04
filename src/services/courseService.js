@@ -82,7 +82,8 @@ export const subscribeToLearnerCourse = ({ courseId, userData, onCourse, onError
 
   const coursesQuery = query(
     collection(db, 'courses'),
-    where('instituteId', '==', profile.instituteId)
+    where('instituteId', '==', profile.instituteId),
+    where('published', '==', true)
   );
 
   return onSnapshot(coursesQuery, (snapshot) => {
@@ -109,8 +110,8 @@ export const subscribeToLessonProgress = ({ userId, courseId, lessonId, onProgre
   }, onError);
 };
 
-export const subscribeToCourseProgressList = ({ userId, courseId, onProgressList, onError }) => {
-  if (!userId || !courseId) {
+export const subscribeToCourseProgressList = ({ userId, instituteId, courseId, onProgressList, onError }) => {
+  if (!userId || !instituteId || !courseId) {
     onProgressList([]);
     return () => {};
   }
@@ -118,6 +119,7 @@ export const subscribeToCourseProgressList = ({ userId, courseId, onProgressList
   const progressQuery = query(
     collection(db, 'courseProgress'),
     where('userId', '==', userId),
+    where('instituteId', '==', instituteId),
     where('courseId', '==', courseId)
   );
 

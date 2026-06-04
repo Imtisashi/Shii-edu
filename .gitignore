@@ -5,10 +5,19 @@ node_modules/
 
 # Expo
 .expo/
+.expo-live-web/
 dist/
 web-build/
+.next/
 expo-env.d.ts
 .vercel/
+apps/**/.expo-*/
+public/_expo/
+public/assets/
+public/expo-index.html
+public/favicon.ico
+public/favicon.png
+public/metadata.json
 
 # Native
 .kotlin/
@@ -26,7 +35,11 @@ expo-env.d.ts
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+*.log
 *-smoke.png
+supabase/*-import.sql
+supabase/firebase-import.sql
+supabase/.temp/
 
 # macOS
 .DS_Store

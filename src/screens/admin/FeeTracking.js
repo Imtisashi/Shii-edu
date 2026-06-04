@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Platform, Alert, KeyboardAvoidingView, Keyboard } from 'react-native';
 import { SmoothSpinner } from '../../components/ui/LoadingState';
-import { collection, query, where, onSnapshot, doc, updateDoc, writeBatch, increment } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { useInstituteTheme } from '../../hooks/useInstituteTheme';
+import { authenticatedFetch } from '../../services/apiClient';
+import { createIdempotencyKey } from '../../utils/idempotencyKey';
+import { showNativeMessage } from '../../utils/userFeedback';
 
 const showAlert = (title, message) => {
   if (Platform.OS === 'web') window.alert(`${title}\n\n${message}`);
@@ -12,7 +16,8 @@ const showAlert = (title, message) => {
 };
 
 export default function FeeManagement() {
-  const { userData } = useAuth();
+  const { currentUser, userData } = useAuth();
+  const { colors, styles } = useInstituteTheme(baseStyles);
   
   const [activeTab, setActiveTab] = useState('ledger'); // 'ledger' or 'allocate'
   const [students, setStudents] = useState([]);
@@ -23,19 +28,36 @@ export default function FeeManagement() {
   const [feeTitle, setFeeTitle] = useState('');
   const [feeType, setFeeType] = useState(''); // e.g., Monthly, Exam, Lab
   const [feeAmount, setFeeAmount] = useState('');
-  const [targetGroup, setTargetGroup] = useState('All'); // 'All', '11', 'Computer Science', etc.
+  const [targetScope, setTargetScope] = useState('all');
+  const [targetGroup, setTargetGroup] = useState('');
   const [isAllocating, setIsAllocating] = useState(false);
+  const allocationIdempotencyKeyRef = React.useRef(null);
 
   // Payment Modal State
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const instType = userData?.instituteData?.type || 'school';
+  const instType = String(userData?.instituteData?.institutionType || userData?.instituteData?.type || 'school').toLowerCase();
+  const isSchool = instType.includes('school');
+  const targetScopes = isSchool
+    ? [
+      { id: 'all', label: 'Entire Institute' },
+      { id: 'class', label: 'Class' },
+      { id: 'section', label: 'Section' },
+    ]
+    : [
+      { id: 'all', label: 'Entire Institute' },
+      { id: 'department', label: 'Department' },
+      { id: 'semester', label: 'Semester' },
+    ];
 
   // --- 1. FETCH STUDENTS & CALCULATE REVENUE ---
   useEffect(() => {
-    if (!userData?.instituteId) return;
+    if (!userData?.instituteId) {
+      setLoading(false);
+      return undefined;
+    }
 
     const q = query(
       collection(db, "users"),
@@ -61,6 +83,11 @@ export default function FeeManagement() {
       setStudents(studentList);
       setStats({ totalIncome: income, totalPending: pending });
       setLoading(false);
+    }, (error) => {
+      console.error('Fee ledger query failed:', error);
+      setStudents([]);
+      setStats({ totalIncome: 0, totalPending: 0 });
+      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -75,13 +102,20 @@ export default function FeeManagement() {
 
     setIsProcessing(true);
     try {
-      await updateDoc(doc(db, "users", selectedStudent.id), {
-        feePaid: increment(amount)
+      const result = await authenticatedFetch('/api/admin/fees/record-payment', currentUser, {
+        method: 'POST',
+        retryCount: 0,
+        body: {
+          studentUid: selectedStudent.id,
+          amount,
+          currency: 'INR',
+        },
       });
+      showAlert("Payment Recorded", `Allocated Rs. ${Number(result.amount).toLocaleString()} across ${result.allocatedInvoices} invoice(s).`);
       setSelectedStudent(null);
       setPaymentAmount('');
-    } catch (_error) {
-      showAlert("Error", "Could not process payment.");
+    } catch (error) {
+      showAlert("Error", error.message || "Could not process payment.");
     } finally {
       setIsProcessing(false);
     }
@@ -90,64 +124,54 @@ export default function FeeManagement() {
   // --- 3. BULK ALLOCATE FEES ---
   const handleAllocateFees = async () => {
     Keyboard.dismiss();
-    if (!feeTitle || !feeType || !feeAmount) {
+    if (!feeTitle || !feeType || !feeAmount || (targetScope !== 'all' && !targetGroup.trim())) {
       return showAlert("Incomplete", "Please fill in all fee details.");
     }
 
     setIsAllocating(true);
+    if (!allocationIdempotencyKeyRef.current) {
+      allocationIdempotencyKeyRef.current = createIdempotencyKey('fee-assignment');
+    }
     try {
-      // Find target students
-      let targetStudents = students;
-      if (targetGroup.toLowerCase() !== 'all') {
-        const target = targetGroup.toLowerCase();
-        targetStudents = students.filter(s => {
-          if (instType === 'school') return (s.class && s.class.toLowerCase() === target) || (s.section && s.section.toLowerCase() === target);
-          else return (s.dept && s.dept.toLowerCase() === target) || (s.sem && s.sem.toLowerCase() === target);
-        });
-      }
-
-      if (targetStudents.length === 0) {
-        setIsAllocating(false);
-        return showAlert("No Match", "No students found matching that target group.");
-      }
-
-      // Batch Update
-      const batch = writeBatch(db);
-      const amountNum = parseInt(feeAmount);
-      
-      const feeItem = {
-        title: feeTitle.trim(),
-        type: feeType.trim(),
-        amount: amountNum,
-        dateAdded: new Date().toISOString()
-      };
-
-      targetStudents.forEach(student => {
-        const studentRef = doc(db, "users", student.id);
-        const currentBreakdown = student.feeBreakdown || [];
-        batch.update(studentRef, {
-          totalFee: increment(amountNum),
-          feeBreakdown: [...currentBreakdown, feeItem]
-        });
+      const result = await authenticatedFetch('/api/admin/fees/assign', currentUser, {
+        method: 'POST',
+        timeoutMs: 60000,
+        retryCount: 0,
+        body: {
+          instituteId: userData.instituteId,
+          title: feeTitle.trim(),
+          feeType: feeType.trim(),
+          amount: Number(feeAmount),
+          currency: 'INR',
+          idempotencyKey: allocationIdempotencyKeyRef.current,
+          targetScope,
+          targetValue: targetScope === 'all' ? '' : targetGroup.trim(),
+        },
       });
 
-      await batch.commit();
+      if (result.background) {
+        showNativeMessage('Processing in Background', 'Fee invoices are being generated safely. Students and parents will be notified when the job completes.');
+        setFeeTitle(''); setFeeType(''); setFeeAmount(''); setTargetGroup(''); setTargetScope('all');
+        setActiveTab('ledger');
+        return;
+      }
 
-      showAlert("Success", `Allocated Rs. ${amountNum} to ${targetStudents.length} students.`);
-      setFeeTitle(''); setFeeType(''); setFeeAmount(''); setTargetGroup('All');
+      showAlert("Success", `Allocated Rs. ${Number(result.amount).toLocaleString()} to ${result.assignedStudents} students.`);
+      setFeeTitle(''); setFeeType(''); setFeeAmount(''); setTargetGroup(''); setTargetScope('all');
       setActiveTab('ledger');
 
     } catch (error) {
       showAlert("Error", "Failed to allocate fees.");
       console.error(error);
     } finally {
+      allocationIdempotencyKeyRef.current = null;
       setIsAllocating(false);
     }
   };
 
   // --- RENDER ---
   return (
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: '#F1F5F9' }]}>
+    <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.page }]}>
       
       <View style={styles.heroSection}>
         <Text style={styles.headerTitle}>Financial Ledger</Text>
@@ -189,7 +213,7 @@ export default function FeeManagement() {
                   <View style={styles.studentHeader}>
                     <View>
                       <Text style={styles.studentName}>{student.name}</Text>
-                      <Text style={styles.studentDetails}>{instType === 'school' ? `Class ${student.class} - Sec ${student.section}` : `${student.dept} - Sem ${student.sem}`}</Text>
+                      <Text style={styles.studentDetails}>{isSchool ? `Class ${student.class} - Sec ${student.section}` : `${student.dept} - Sem ${student.sem}`}</Text>
                     </View>
                     {hasNoFees ? (
                       <View style={styles.neutralBadge}><Text style={styles.neutralText}>NO DUES</Text></View>
@@ -232,22 +256,48 @@ export default function FeeManagement() {
             </View>
 
             <Text style={styles.label}>Fee Title</Text>
-            <TextInput style={styles.input} placeholder="e.g. April Tuition Fee" value={feeTitle} onChangeText={setFeeTitle} />
+            <TextInput style={styles.input} placeholder="e.g. April Tuition Fee" placeholderTextColor={colors.muted} value={feeTitle} onChangeText={setFeeTitle} />
 
             <View style={styles.row}>
               <View style={{flex: 1, marginRight: 10}}>
                 <Text style={styles.label}>Fee Type</Text>
-                <TextInput style={styles.input} placeholder="Monthly, Exam, etc." value={feeType} onChangeText={setFeeType} />
+                <TextInput style={styles.input} placeholder="Monthly, Exam, etc." placeholderTextColor={colors.muted} value={feeType} onChangeText={setFeeType} />
               </View>
               <View style={{flex: 1}}>
                 <Text style={styles.label}>Amount (Rs.)</Text>
-                <TextInput style={styles.input} placeholder="e.g. 5000" keyboardType="numeric" value={feeAmount} onChangeText={setFeeAmount} />
+                <TextInput style={styles.input} placeholder="e.g. 5000" placeholderTextColor={colors.muted} keyboardType="numeric" value={feeAmount} onChangeText={setFeeAmount} />
               </View>
             </View>
 
             <Text style={styles.label}>Target Group</Text>
-            <Text style={styles.hint}>Type ALL for everyone, or a specific Class/Dept (e.g. 11 or Computer Science)</Text>
-            <TextInput style={styles.input} placeholder="All" value={targetGroup} onChangeText={setTargetGroup} />
+            <View style={styles.scopeRow}>
+              {targetScopes.map((scopeOption) => (
+                <TouchableOpacity
+                  key={scopeOption.id}
+                  onPress={() => {
+                    setTargetScope(scopeOption.id);
+                    if (scopeOption.id === 'all') setTargetGroup('');
+                  }}
+                  style={[styles.scopeChip, targetScope === scopeOption.id && styles.scopeChipActive]}
+                >
+                  <Text style={[styles.scopeChipText, targetScope === scopeOption.id && styles.scopeChipTextActive]}>{scopeOption.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {targetScope !== 'all' && (
+              <>
+                <Text style={styles.hint}>
+                  Enter the exact {targetScope} label used on student profiles.
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder={isSchool ? (targetScope === 'class' ? 'e.g. 10' : 'e.g. A') : (targetScope === 'department' ? 'e.g. CSE' : 'e.g. 3')}
+                  placeholderTextColor={colors.muted}
+                  value={targetGroup}
+                  onChangeText={setTargetGroup}
+                />
+              </>
+            )}
 
             <TouchableOpacity style={styles.allocateBtn} onPress={handleAllocateFees} disabled={isAllocating}>
               {isAllocating ? <SmoothSpinner color="#fff" /> : <Text style={styles.allocateText}>Bulk Allocate Fees</Text>}
@@ -262,13 +312,13 @@ export default function FeeManagement() {
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Record Payment</Text>
-              <TouchableOpacity onPress={() => setSelectedStudent(null)}><Ionicons name="close-circle" size={28} color="#CBD5E0" /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setSelectedStudent(null)}><Ionicons name="close-circle" size={28} color={colors.muted} /></TouchableOpacity>
             </View>
-            <Text style={styles.modalSub}>Receiving from <Text style={{fontWeight: 'bold', color: '#1E293B'}}>{selectedStudent.name}</Text></Text>
+            <Text style={styles.modalSub}>Receiving from <Text style={styles.modalStudentName}>{selectedStudent.name}</Text></Text>
             
             <View style={styles.inputWrapper}>
               <Text style={styles.currencySymbol}>Rs.</Text>
-              <TextInput style={styles.modalInput} placeholder="0" keyboardType="numeric" value={paymentAmount} onChangeText={setPaymentAmount} autoFocus />
+              <TextInput style={styles.modalInput} placeholder="0" placeholderTextColor={colors.muted} keyboardType="numeric" value={paymentAmount} onChangeText={setPaymentAmount} autoFocus />
             </View>
 
             <TouchableOpacity style={styles.submitBtn} onPress={handleRecordPayment} disabled={isProcessing}>
@@ -282,17 +332,17 @@ export default function FeeManagement() {
   );
 }
 
-const styles = StyleSheet.create({
-  heroSection: { backgroundColor: '#0F172A', paddingTop: 40, paddingBottom: 20, paddingHorizontal: 25, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, elevation: 5, zIndex: 10 },
+const baseStyles = StyleSheet.create({
+  heroSection: { backgroundColor: '#0F172A', borderBottomColor: '#334155', borderBottomLeftRadius: 30, borderBottomRightRadius: 30, borderBottomWidth: 1, paddingTop: 40, paddingBottom: 20, paddingHorizontal: 25, zIndex: 10 },
   headerTitle: { color: '#F8FAFC', fontSize: 26, fontWeight: '900' },
   headerSub: { color: '#94A3B8', fontSize: 13, marginTop: 4 },
-  statsRow: { flexDirection: 'row', backgroundColor: '#1E293B', marginTop: 20, borderRadius: 16, padding: 20, justifyContent: 'space-between' },
+  statsRow: { flexDirection: 'row', backgroundColor: '#020617', borderColor: '#334155', borderRadius: 8, borderWidth: 1, marginTop: 20, padding: 20, justifyContent: 'space-between' },
   statBox: { flex: 1 },
   statLabel: { color: '#64748B', fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase' },
   statNumberIncome: { color: '#10B981', fontSize: 22, fontWeight: '900', marginTop: 5 },
   statNumberPending: { color: '#F43F5E', fontSize: 22, fontWeight: '900', marginTop: 5 },
   statDivider: { width: 1, backgroundColor: '#334155', marginHorizontal: 15 },
-  tabContainer: { flexDirection: 'row', backgroundColor: '#1E293B', marginTop: 20, borderRadius: 12, padding: 5 },
+  tabContainer: { flexDirection: 'row', backgroundColor: '#020617', borderColor: '#334155', borderRadius: 8, borderWidth: 1, marginTop: 20, padding: 5 },
   tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
   activeTab: { backgroundColor: '#8B5CF6' },
   tabText: { color: '#94A3B8', fontWeight: 'bold' },
@@ -301,42 +351,48 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 20, paddingBottom: 100 },
   emptyText: { textAlign: 'center', color: '#94A3B8', marginTop: 20, fontStyle: 'italic' },
   
-  studentCard: { backgroundColor: '#fff', padding: 20, borderRadius: 16, marginBottom: 15, elevation: 2 },
+  studentCard: { backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1, padding: 20, marginBottom: 15 },
   studentHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  studentName: { fontSize: 16, fontWeight: 'bold', color: '#1E293B' },
-  studentDetails: { fontSize: 12, color: '#64748B', marginTop: 2 },
-  paidBadge: { backgroundColor: '#D1FAE5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  studentName: { fontSize: 16, fontWeight: '900', color: '#F8FAFC' },
+  studentDetails: { fontSize: 12, color: '#B9C6DD', marginTop: 2 },
+  paidBadge: { backgroundColor: '#052E2B', borderColor: '#047857', borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
   paidText: { color: '#059669', fontSize: 10, fontWeight: '900' },
-  dueBadge: { backgroundColor: '#FFE4E6', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  dueBadge: { backgroundColor: '#450A0A', borderColor: '#7F1D1D', borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
   dueText: { color: '#E11D48', fontSize: 10, fontWeight: '900' },
-  neutralBadge: { backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  neutralText: { color: '#64748B', fontSize: 10, fontWeight: '900' },
-  progressContainer: { height: 6, backgroundColor: '#F1F5F9', borderRadius: 3, marginTop: 15, overflow: 'hidden' },
+  neutralBadge: { backgroundColor: '#111827', borderColor: '#334155', borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
+  neutralText: { color: '#B9C6DD', fontSize: 10, fontWeight: '900' },
+  progressContainer: { height: 6, backgroundColor: '#334155', borderRadius: 3, marginTop: 15, overflow: 'hidden' },
   progressBar: { height: '100%', borderRadius: 3 },
   feeDetailsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
-  feeText: { fontSize: 13, color: '#64748B' },
-  boldText: { fontWeight: 'bold', color: '#1E293B' },
-  payBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F3FF', paddingVertical: 12, borderRadius: 10, marginTop: 15 },
+  feeText: { fontSize: 13, color: '#B9C6DD' },
+  boldText: { fontWeight: 'bold', color: '#F8FAFC' },
+  payBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1E1B4B', borderColor: '#6D28D9', borderRadius: 8, borderWidth: 1, paddingVertical: 12, marginTop: 15 },
   payBtnText: { color: '#8B5CF6', fontWeight: 'bold', marginLeft: 8 },
 
-  formCard: { backgroundColor: '#fff', borderRadius: 20, padding: 20, elevation: 3 },
-  formHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', paddingBottom: 15 },
-  formTitle: { fontSize: 18, fontWeight: 'bold', color: '#1E293B', marginLeft: 10 },
-  label: { fontSize: 14, fontWeight: 'bold', color: '#334155', marginBottom: 8 },
-  hint: { fontSize: 11, color: '#94A3B8', marginBottom: 8, fontStyle: 'italic' },
-  input: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 15, fontSize: 16, marginBottom: 20 },
+  formCard: { backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1, padding: 20 },
+  formHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, borderBottomWidth: 1, borderBottomColor: '#334155', paddingBottom: 15 },
+  formTitle: { fontSize: 18, fontWeight: '900', color: '#F8FAFC', marginLeft: 10 },
+  label: { fontSize: 14, fontWeight: 'bold', color: '#B9C6DD', marginBottom: 8 },
+  hint: { fontSize: 11, color: '#8EA4C8', marginBottom: 8, fontWeight: '800' },
+  input: { backgroundColor: '#020617', borderWidth: 1, borderColor: '#334155', borderRadius: 8, color: '#F8FAFC', padding: 15, fontSize: 16, marginBottom: 20, outlineStyle: 'none' },
   row: { flexDirection: 'row' },
-  allocateBtn: { backgroundColor: '#8B5CF6', paddingVertical: 18, borderRadius: 12, alignItems: 'center', marginTop: 10 },
+  scopeRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
+  scopeChip: { backgroundColor: '#111827', borderColor: '#334155', borderRadius: 8, borderWidth: 1, marginBottom: 8, marginRight: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  scopeChipActive: { backgroundColor: '#1E1B4B', borderColor: '#6D28D9' },
+  scopeChipText: { color: '#B9C6DD', fontSize: 12, fontWeight: '900' },
+  scopeChipTextActive: { color: '#DDD6FE' },
+  allocateBtn: { backgroundColor: '#8B5CF6', paddingVertical: 18, borderRadius: 8, alignItems: 'center', marginTop: 10 },
   allocateText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 
-  modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15, 23, 42, 0.7)', justifyContent: 'center', alignItems: 'center', zIndex: 100, padding: 20 },
-  modalCard: { backgroundColor: '#fff', width: '100%', maxWidth: 400, borderRadius: 24, padding: 25, elevation: 10 },
+  modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center', zIndex: 100, padding: 20 },
+  modalCard: { backgroundColor: '#0F172A', borderColor: '#334155', borderWidth: 1, width: '100%', maxWidth: 400, borderRadius: 8, padding: 25 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  modalTitle: { fontSize: 20, fontWeight: '900', color: '#1E293B' },
-  modalSub: { fontSize: 14, color: '#64748B', marginTop: 10, marginBottom: 20 },
-  inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 15 },
+  modalTitle: { fontSize: 20, fontWeight: '900', color: '#F8FAFC' },
+  modalSub: { fontSize: 14, color: '#B9C6DD', marginTop: 10, marginBottom: 20 },
+  modalStudentName: { fontWeight: 'bold', color: '#F8FAFC' },
+  inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#020617', borderWidth: 1, borderColor: '#334155', borderRadius: 8, paddingHorizontal: 15 },
   currencySymbol: { fontSize: 24, fontWeight: 'bold', color: '#94A3B8', marginRight: 10 },
-  modalInput: { flex: 1, fontSize: 28, fontWeight: 'bold', color: '#1E293B', paddingVertical: 15, outlineStyle: 'none' },
-  submitBtn: { backgroundColor: '#8B5CF6', paddingVertical: 18, borderRadius: 12, alignItems: 'center', marginTop: 25 },
+  modalInput: { flex: 1, fontSize: 28, fontWeight: 'bold', color: '#F8FAFC', paddingVertical: 15, outlineStyle: 'none' },
+  submitBtn: { backgroundColor: '#8B5CF6', paddingVertical: 18, borderRadius: 8, alignItems: 'center', marginTop: 25 },
   submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
 });

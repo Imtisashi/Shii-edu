@@ -1,19 +1,7 @@
-import React, { useMemo, useRef } from 'react';
-import {
-  View, Text, StyleSheet, TouchableOpacity,
-  ImageBackground, Animated, Platform, Image, StatusBar
-} from 'react-native';
-import { BlurView } from 'expo-blur';
-import * as Haptics from 'expo-haptics';
+import React, { useCallback, useMemo } from 'react';
 import { useNavigation } from '@react-navigation/native';
+import HomeDashboardScreen from '../home/HomeDashboardScreen';
 import { useAuth } from '../../contexts/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
-import PremiumActionCard from '../../components/ui/PremiumActionCard';
-import useResponsiveLayout from '../../hooks/useResponsiveLayout';
-import { Colors } from '../../constants/theme';
-
-const USE_NATIVE_DRIVER = Platform.OS !== 'web';
-const ENABLE_SCROLL_MOTION = Platform.OS !== 'web';
 
 const isTargetedToStudent = (notification) => {
   const targets = notification?.targetRoles || [];
@@ -45,345 +33,187 @@ const formatNotificationDate = (createdAt) => {
   return Number.isNaN(parsed.getTime()) ? 'Just now' : parsed.toLocaleDateString();
 };
 
+const buildMeta = (userData) => {
+  const institutionType = (
+    userData?.instituteData?.institutionType ||
+    userData?.instituteData?.type ||
+    userData?.institutionType ||
+    'school'
+  ).toString().toLowerCase();
+  const isSchool = institutionType.includes('school');
+
+  if (isSchool) {
+    return [
+      userData?.class ? `Class ${userData.class}` : 'Class pending',
+      userData?.section ? `Section ${userData.section}` : 'Section pending',
+    ];
+  }
+
+  return [
+    userData?.dept || userData?.department ? (userData.dept || userData.department) : 'Department pending',
+    userData?.sem || userData?.semester ? `Semester ${userData.sem || userData.semester}` : 'Semester pending',
+  ];
+};
+
 export default function StudentHome() {
   const navigation = useNavigation();
-  const { userData, logout, notifications } = useAuth();
-  const layout = useResponsiveLayout();
+  const { logout, notifications, userData } = useAuth();
 
-  // Calculate unread notification count for students
-  const unreadCount = userData?.role === 'student' && notifications
-    ? notifications.filter(notif =>
-        !(notif.readBy?.includes(userData.uid) || notif.isRead === true) &&
-        isTargetedToStudent(notif)
-      ).length
-    : 0;
-
-  const openStudentScreen = (screen, params) => {
+  const openStudentScreen = useCallback((screen, params) => {
     const parentNavigation = navigation.getParent?.();
     const targetNavigation = parentNavigation || navigation;
     targetNavigation.navigate(screen, params);
-  };
+  }, [navigation]);
 
-  const openNotifications = () => openStudentScreen('Notifications');
+  const openMenu = useCallback(() => {
+    const parentNavigation = navigation.getParent?.();
+    if (parentNavigation?.openDrawer) {
+      parentNavigation.openDrawer();
+      return;
+    }
 
-  // Luxury Scroll Animation Values
-  const scrollY = useRef(new Animated.Value(0)).current;
+    navigation.openDrawer?.();
+  }, [navigation]);
 
-  const studentName = userData?.name || "Student";
-  const initials = studentName.charAt(0).toUpperCase();
-  const instituteName = userData?.instituteData?.name || "Shii Edu";
-  const compactCards = layout.isMobile;
+  const openNotifications = useCallback(() => {
+    openStudentScreen('Notifications');
+  }, [openStudentScreen]);
 
-  const instTypeStr = (userData?.instituteData?.type || 'school').toLowerCase();
-  const isSchool = instTypeStr.includes('school');
-  const p1 = isSchool ? `Class ${userData?.class || 'N/A'}` : (userData?.dept || 'N/A');
-  const p2 = isSchool ? `Sec ${userData?.section || 'N/A'}` : `Sem ${userData?.sem || 'N/A'}`;
-  const recentBroadcasts = useMemo(
-    () => (notifications || []).filter((item) => isTargetedToStudent(item) && isBroadcast(item)).slice(0, 3),
-    [notifications]
+  const studentName = userData?.name || userData?.displayName || 'Student';
+  const instituteName = userData?.instituteData?.name || userData?.instituteName || 'Edu Shii';
+  const userRole = userData?.role;
+  const userUid = userData?.uid;
+
+  const unreadCount = useMemo(() => {
+    if (userRole !== 'student' || !notifications) return 0;
+
+    return notifications.filter((notification) => {
+      const alreadyRead = notification.readBy?.includes(userUid) || notification.isRead === true;
+      return !alreadyRead && isTargetedToStudent(notification);
+    }).length;
+  }, [notifications, userRole, userUid]);
+
+  const notices = useMemo(
+    () => (notifications || [])
+      .filter((item) => isTargetedToStudent(item) && isBroadcast(item))
+      .slice(0, 3)
+      .map((item, index) => ({
+        id: item.id || `notice-${index}`,
+        meta: `${getAuthorName(item.author)} - ${formatNotificationDate(item.createdAt)}`,
+        onPress: openNotifications,
+        title: item.title || 'Campus broadcast',
+      })),
+    [notifications, openNotifications]
   );
 
-  // Interpolations for Luxury Parallax & Glass Header
-  const headerOpacity = ENABLE_SCROLL_MOTION ? scrollY.interpolate({
-    inputRange: [50, 120],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  }) : 0;
+  const primaryActions = useMemo(() => [
+    {
+      color: '#F7C948',
+      icon: 'school',
+      key: 'grades',
+      onPress: () => openStudentScreen('Grades'),
+      softColor: '#422006',
+      subtitle: 'Results, marksheets, and academic progress.',
+      title: 'Grades',
+    },
+    {
+      color: '#16A34A',
+      icon: 'bar-chart',
+      key: 'attendance',
+      onPress: () => openStudentScreen('Attendance'),
+      softColor: '#052E2B',
+      subtitle: 'Daily presence, trends, and missed sessions.',
+      title: 'Attendance',
+    },
+    {
+      color: '#2563EB',
+      icon: 'play-circle',
+      key: 'courses',
+      onPress: () => openStudentScreen('Courses'),
+      softColor: '#082F49',
+      subtitle: 'Lessons, videos, and institute resources.',
+      title: 'Courses',
+    },
+    {
+      color: '#B7791F',
+      icon: 'wallet',
+      key: 'fees',
+      onPress: () => openStudentScreen('Fee Payment'),
+      softColor: '#431407',
+      subtitle: 'Invoices, dues, receipts, and payment status.',
+      title: 'Fees',
+    },
+  ], [openStudentScreen]);
 
-  const heroTranslateY = ENABLE_SCROLL_MOTION ? scrollY.interpolate({
-    inputRange: [-100, 0, 200],
-    outputRange: [0, 0, 100],
-    extrapolate: 'clamp',
-  }) : 0;
-
-  const heroScale = ENABLE_SCROLL_MOTION ? scrollY.interpolate({
-    inputRange: [-100, 0],
-    outputRange: [1.15, 1],
-    extrapolate: 'clamp',
-  }) : 1;
+  const secondaryActions = useMemo(() => [
+    {
+      color: '#A78BFA',
+      icon: 'calendar',
+      key: 'routine',
+      onPress: () => openStudentScreen('Routine'),
+      softColor: '#1E1B4B',
+      subtitle: 'Timetable',
+      title: 'Routine',
+    },
+    {
+      color: '#67E8F9',
+      icon: 'document-text',
+      key: 'pyqs',
+      onPress: () => openStudentScreen('PYQs'),
+      softColor: '#082F49',
+      subtitle: 'Previous papers',
+      title: 'PYQs',
+    },
+    {
+      color: '#F472B6',
+      icon: 'images',
+      key: 'gallery',
+      onPress: () => openStudentScreen('Gallery'),
+      softColor: '#500724',
+      subtitle: 'Campus media',
+      title: 'Gallery',
+    },
+    {
+      color: '#2DD4BF',
+      icon: 'chatbubbles',
+      key: 'messages',
+      onPress: () => openStudentScreen('CommunicationHub'),
+      softColor: '#134E4A',
+      subtitle: 'Office-hour messages',
+      title: 'Messages',
+    },
+    {
+      color: '#4ADE80',
+      icon: 'bus',
+      key: 'fleet',
+      onPress: () => openStudentScreen('Live Fleet'),
+      softColor: '#14532D',
+      subtitle: 'Live institute vehicles',
+      title: 'Fleet',
+    },
+    {
+      color: '#818CF8',
+      icon: 'sparkles',
+      key: 'syllabus-tutor',
+      onPress: () => openStudentScreen('SyllabusTutor'),
+      softColor: '#312E81',
+      subtitle: 'Strict syllabus answers',
+      title: 'Syllabus AI',
+    },
+  ], [openStudentScreen]);
 
   return (
-    <View style={[styles.luxuryContainer, { backgroundColor: Colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
-
-      {/* STICKY LUXURY GLASS HEADER */}
-      <Animated.View pointerEvents="none" style={[styles.luxuryGlassHeader, { opacity: headerOpacity }]}>
-        {Platform.OS === 'ios' ? (
-          <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
-        ) : (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.08)' }]} />
-        )}
-        <View style={styles.luxuryGlassHeaderContent}>
-          <Text style={styles.luxuryGlassTitle}>{instituteName}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={styles.luxuryGlassAvatar}>
-              <Text style={styles.luxuryGlassAvatarText}>{initials}</Text>
-            </View>
-            {/* Notification Badge */}
-            {userData && userData.role === 'student' && (
-              <TouchableOpacity style={styles.luxuryNotificationBadgeContainer} onPress={openNotifications}>
-                <Ionicons name="notifications-outline" size={layout.isCompact ? 20 : 24} color={Colors.textSecondary} />
-                {unreadCount > 0 && (
-                  <View style={styles.luxuryNotificationBadge}>
-                    <Text style={styles.luxuryNotificationBadgeText}>{unreadCount}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </Animated.View>
-
-      <Animated.ScrollView
-        style={styles.luxuryScrollView}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        onScroll={ENABLE_SCROLL_MOTION ? Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: USE_NATIVE_DRIVER }) : undefined}
-        scrollEventThrottle={16}
-        contentContainerStyle={[styles.luxuryScrollContent, layout.isDesktop && styles.luxuryScrollContentDesktop]}
-      >
-        {/* PARALLAX HERO SECTION */}
-        <Animated.View
-          style={[
-            styles.luxuryHeroContainer,
-            { height: layout.heroHeight },
-            layout.isDesktop && styles.luxuryHeroContainerDesktop,
-            layout.isDesktop && { maxWidth: layout.maxContentWidth },
-            ENABLE_SCROLL_MOTION && { transform: [{ translateY: heroTranslateY }, { scale: heroScale }] },
-          ]}
-        >
-           <ImageBackground
-            source={{ uri: userData?.instituteData?.heroImage || 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1000&auto=format&fit=crop' }}             style={styles.luxuryHeroImage}
-           >
-             <View style={[styles.luxuryHeroGradient, layout.isMobile && styles.luxuryHeroGradientMobile, layout.isDesktop && styles.luxuryHeroGradientDesktop]}>
-               <Text style={[styles.luxuryInstituteHeading, layout.isMobile && styles.luxuryInstituteHeadingMobile]} numberOfLines={1}>{instituteName}</Text>
-               <View style={[styles.luxuryProfileRow, layout.isMobile && styles.luxuryProfileRowMobile]}>
-                  {userData?.profilePic ? (
-                    <Image source={{ uri: userData.profilePic }} style={[styles.luxuryAvatarImage, layout.isMobile && styles.luxuryAvatarImageMobile]} />
-                  ) : (
-                    <View style={[styles.luxuryAvatarFallback, layout.isMobile && styles.luxuryAvatarFallbackMobile]}><Text style={[styles.luxuryAvatarInitials, layout.isMobile && styles.luxuryAvatarInitialsMobile]}>{initials}</Text></View>
-                  )}
-                  <View style={styles.luxuryGreetingBlock}>
-                    <Text style={[styles.luxuryGreeting, layout.isMobile && styles.luxuryGreetingMobile]}>Welcome back,</Text>
-                    <Text style={[styles.luxuryGreetingName, layout.isMobile && styles.luxuryGreetingNameMobile]} numberOfLines={1}>{studentName}</Text>
-                  </View>
-               </View>
-
-               <View style={[styles.luxuryPillContainer, layout.isMobile && styles.luxuryPillContainerMobile]}>
-                 <View style={[styles.luxuryPillBadge, layout.isMobile && styles.luxuryPillBadgeMobile]}><Text style={[styles.luxuryPillText, layout.isMobile && styles.luxuryPillTextMobile]} numberOfLines={1}>{p1}</Text></View>
-                 <View style={[styles.luxuryPillBadge, layout.isMobile && styles.luxuryPillBadgeMobile]}><Text style={[styles.luxuryPillText, layout.isMobile && styles.luxuryPillTextMobile]} numberOfLines={1}>{p2}</Text></View>
-               </View>
-             </View>
-           </ImageBackground>
-        </Animated.View>
-
-        <View style={[styles.luxuryBodyContent, layout.isMobile && styles.luxuryBodyContentMobile, layout.isDesktop && styles.luxuryBodyContentDesktop, layout.isDesktop && { maxWidth: layout.maxContentWidth }]}>
-          <Text style={[styles.luxurySectionTitle, layout.isMobile && styles.luxurySectionTitleMobile]}>Dashboard</Text>
-
-          <View style={[styles.luxuryGridContainer, layout.isDesktop && styles.luxuryGridContainerDesktop]}>
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Grades" icon="school" color={Colors.accent} bgColor={Colors.surface} delay={100} onPress={() => openStudentScreen('Grades')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Attendance" icon="bar-chart" color={Colors.success} bgColor={Colors.surface} delay={200} onPress={() => openStudentScreen('Attendance')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Courses" icon="play-circle" color={Colors.primary} bgColor={Colors.surface} delay={300} onPress={() => openStudentScreen('Courses')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title={layout.isMobile ? 'Fees' : 'Fee Ledger'} icon="wallet" color={Colors.warning} bgColor={Colors.surface} delay={400} onPress={() => openStudentScreen('Fee Payment')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Routine" icon="calendar" color={Colors.secondary} bgColor={Colors.surface} delay={500} onPress={() => openStudentScreen('Routine')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="PYQs" icon="document-text" color={Colors.primaryVariant} bgColor={Colors.surface} delay={600} onPress={() => openStudentScreen('PYQs')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Gallery" icon="images" color={Colors.accentVariant} bgColor={Colors.surface} delay={700} onPress={() => openStudentScreen('Gallery')} />
-          </View>
-
-          <Text style={[styles.luxurySectionTitle, layout.isMobile && styles.luxurySectionTitleMobile]}>Recent Broadcasts</Text>
-          <View style={[styles.luxuryNoticeContainer, layout.isMobile && styles.luxuryNoticeContainerMobile]}>
-            {recentBroadcasts.length === 0 ? (
-              <Text style={styles.luxuryEmptyNotices}>No recent announcements.</Text>
-            ) : (
-              recentBroadcasts.map((item, index) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[styles.luxuryMiniNotice, index === recentBroadcasts.length - 1 && { borderBottomWidth: 0 }]}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    openNotifications();
-                  }}
-                  accessibilityLabel={`Open notice ${item.title || 'details'}`}
-                >
-                  <View style={styles.luxuryNoticeIconCage}>
-                    <Ionicons name="notifications" size={16} color={Colors.accent} />
-                  </View>
-                  <View style={styles.luxuryNoticeTextBlock}>
-                    <Text style={styles.luxuryMiniNoticeTitle} numberOfLines={1}>{item.title || 'Campus broadcast'}</Text>
-                    <Text style={styles.luxuryMiniNoticeMeta}>{getAuthorName(item.author)} - {formatNotificationDate(item.createdAt)}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={16} color={Colors.border} />
-                </TouchableOpacity>
-              ))
-            )}
-          </View>
-
-          <TouchableOpacity style={[styles.luxuryLogoutBtn, layout.isMobile && styles.luxuryLogoutBtnMobile]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); logout(); }}>
-            <Ionicons name="log-out-outline" size={layout.isCompact ? 18 : 20} color={Colors.error} />
-            <Text style={styles.luxuryLogoutBtnText}>Secure Sign Out</Text>
-          </TouchableOpacity>
-        </View>
-      </Animated.ScrollView>
-    </View>
+    <HomeDashboardScreen
+      displayName={studentName}
+      instituteName={instituteName}
+      notices={notices}
+      onLogout={logout}
+      onOpenMenu={openMenu}
+      onOpenNotifications={openNotifications}
+      primaryActions={primaryActions}
+      profileMeta={buildMeta(userData)}
+      secondaryActions={secondaryActions}
+      unreadCount={unreadCount}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F4F4F5' }, // Enterprise subtle gray
-  scrollView: { flex: 1 },
-  
-  // Glass Header
-  glassHeader: { position: 'absolute', top: 0, left: 0, right: 0, height: Platform.OS === 'ios' ? 100 : 80, zIndex: 100, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
-  glassHeaderContent: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingHorizontal: 20, paddingBottom: 15 },
-  glassTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', letterSpacing: 0 },
-  glassAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#3B82F6', justifyContent: 'center', alignItems: 'center' },
-  glassAvatarText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-
-  scrollContent: { paddingBottom: 120 },
-  scrollContentDesktop: { alignItems: 'center', paddingBottom: 80 },
-  
-  // Parallax Hero
-  heroContainer: { height: 320, width: '100%', backgroundColor: '#0F172A' },
-  heroContainerDesktop: { width: '100%', alignSelf: 'center', borderRadius: 28, overflow: 'hidden', marginTop: 24 },
-  heroImage: { width: '100%', height: '100%', justifyContent: 'flex-end' },
-  heroGradient: { backgroundColor: 'rgba(0,0,0,0.6)', width: '100%', height: '100%', padding: 24, justifyContent: 'flex-end' },
-  heroGradientDesktop: { padding: 36 },
-  heroGradientMobile: { padding: 18 },
-  instituteHeading: { fontSize: 16, fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 20 },
-  instituteHeadingMobile: { fontSize: 12, lineHeight: 16, marginBottom: 14, letterSpacing: 1 },
-  profileRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  profileRowMobile: { marginBottom: 12 },
-  greetingBlock: { marginLeft: 16, flex: 1, minWidth: 0 },
-  avatarFallback: { width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)' },
-  avatarFallbackMobile: { width: 56, height: 56, borderRadius: 28 },
-  avatarInitials: { fontSize: 28, fontWeight: 'bold', color: '#fff' },
-  avatarInitialsMobile: { fontSize: 22 },
-  avatarImage: { width: 70, height: 70, borderRadius: 35, borderWidth: 2, borderColor: '#fff' },
-  avatarImageMobile: { width: 56, height: 56, borderRadius: 28 },
-  greeting: { fontSize: 16, color: '#E2E8F0', fontWeight: '500' },
-  greetingMobile: { fontSize: 13 },
-  greetingName: { fontSize: 32, fontWeight: '900', color: '#FFFFFF', marginTop: 2, letterSpacing: 0 },
-  greetingNameMobile: { fontSize: 24, lineHeight: 30 },
-  
-  pillContainer: { flexDirection: 'row', flexWrap: 'wrap' },
-  pillContainerMobile: { marginTop: 2 },
-  pillBadge: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', marginRight: 10 },
-  pillBadgeMobile: { paddingHorizontal: 10, paddingVertical: 6, marginRight: 8, marginBottom: 8 },
-  pillText: { color: '#ffffff', fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
-  pillTextMobile: { fontSize: 12, letterSpacing: 0.2 },
-  
-  // Body
-  bodyContent: { padding: 20, marginTop: -20, backgroundColor: '#F4F4F5', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
-  bodyContentMobile: { paddingHorizontal: 16, paddingTop: 18 },
-  bodyContentDesktop: { width: '100%', alignSelf: 'center', marginTop: 18, borderRadius: 0, paddingHorizontal: 0 },
-  sectionTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', marginBottom: 16, marginTop: 10, letterSpacing: 0 },
-  sectionTitleMobile: { fontSize: 18, marginBottom: 12 },
-  
-  gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 },
-  gridContainerDesktop: { alignContent: 'flex-start' },
-  
-  // Notices
-  noticeContainer: { backgroundColor: '#fff', borderRadius: 24, padding: 16, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.03, shadowRadius: 15, marginBottom: 30 },
-  noticeContainerMobile: { borderRadius: 18, padding: 12 },
-  miniNotice: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  noticeIconCage: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-  noticeTextBlock: { flex: 1, minWidth: 0 },
-  miniNoticeTitle: { fontWeight: '700', fontSize: 15, color: '#1E293B', marginBottom: 4 },
-  miniNoticeMeta: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
-  emptyNotices: { color: '#94A3B8', fontStyle: 'italic', textAlign: 'center', paddingVertical: 20 },
-
-  logoutBtn: { backgroundColor: '#fff', flexDirection: 'row', padding: 20, borderRadius: 20, alignItems: 'center', justifyContent: 'center', shadowColor: '#EF4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 2 },
-  logoutBtnMobile: { padding: 16, borderRadius: 17 },
-  logoutBtnText: { color: '#EF4444', fontWeight: 'bold', fontSize: 16, marginLeft: 10 },
-
-  // Notification Badge Styles
-  notificationBadgeContainer: { position: 'relative', marginLeft: 12 },
-  notificationBadge: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: '#EF4444',
-    borderRadius: 12,
-    minWidth: 18,
-    height: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  notificationBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-
-  luxuryContainer: { flex: 1, backgroundColor: '#F4F4F5' },
-  luxuryScrollView: { flex: 1 },
-  luxuryGlassHeader: { position: 'absolute', top: 0, left: 0, right: 0, height: Platform.OS === 'ios' ? 100 : 80, zIndex: 100, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
-  luxuryGlassHeaderContent: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingHorizontal: 20, paddingBottom: 15 },
-  luxuryGlassTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', letterSpacing: 0 },
-  luxuryGlassAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#3B82F6', justifyContent: 'center', alignItems: 'center' },
-  luxuryGlassAvatarText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-  luxuryScrollContent: { paddingBottom: 120 },
-  luxuryScrollContentDesktop: { alignItems: 'center', paddingBottom: 80 },
-  luxuryHeroContainer: { height: 320, width: '100%', backgroundColor: '#0F172A' },
-  luxuryHeroContainerDesktop: { width: '100%', alignSelf: 'center', borderRadius: 28, overflow: 'hidden', marginTop: 24 },
-  luxuryHeroImage: { width: '100%', height: '100%', justifyContent: 'flex-end' },
-  luxuryHeroGradient: { backgroundColor: 'rgba(0,0,0,0.6)', width: '100%', height: '100%', padding: 24, justifyContent: 'flex-end' },
-  luxuryHeroGradientDesktop: { padding: 36 },
-  luxuryHeroGradientMobile: { padding: 18 },
-  luxuryInstituteHeading: { fontSize: 16, fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 20 },
-  luxuryInstituteHeadingMobile: { fontSize: 12, lineHeight: 16, marginBottom: 14, letterSpacing: 1 },
-  luxuryProfileRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  luxuryProfileRowMobile: { marginBottom: 12 },
-  luxuryGreetingBlock: { marginLeft: 16, flex: 1, minWidth: 0 },
-  luxuryAvatarFallback: { width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)' },
-  luxuryAvatarFallbackMobile: { width: 56, height: 56, borderRadius: 28 },
-  luxuryAvatarInitials: { fontSize: 28, fontWeight: 'bold', color: '#fff' },
-  luxuryAvatarInitialsMobile: { fontSize: 22 },
-  luxuryAvatarImage: { width: 70, height: 70, borderRadius: 35, borderWidth: 2, borderColor: '#fff' },
-  luxuryAvatarImageMobile: { width: 56, height: 56, borderRadius: 28 },
-  luxuryGreeting: { fontSize: 16, color: '#E2E8F0', fontWeight: '500' },
-  luxuryGreetingMobile: { fontSize: 13 },
-  luxuryGreetingName: { fontSize: 32, fontWeight: '900', color: '#FFFFFF', marginTop: 2, letterSpacing: 0 },
-  luxuryGreetingNameMobile: { fontSize: 24, lineHeight: 30 },
-  luxuryPillContainer: { flexDirection: 'row', flexWrap: 'wrap' },
-  luxuryPillContainerMobile: { marginTop: 2 },
-  luxuryPillBadge: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', marginRight: 10 },
-  luxuryPillBadgeMobile: { paddingHorizontal: 10, paddingVertical: 6, marginRight: 8, marginBottom: 8 },
-  luxuryPillText: { color: '#ffffff', fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
-  luxuryPillTextMobile: { fontSize: 12, letterSpacing: 0.2 },
-  luxuryBodyContent: { padding: 20, marginTop: -20, backgroundColor: '#F4F4F5', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
-  luxuryBodyContentMobile: { paddingHorizontal: 16, paddingTop: 18 },
-  luxuryBodyContentDesktop: { width: '100%', alignSelf: 'center', marginTop: 18, borderRadius: 0, paddingHorizontal: 0 },
-  luxurySectionTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', marginBottom: 16, marginTop: 10, letterSpacing: 0 },
-  luxurySectionTitleMobile: { fontSize: 18, marginBottom: 12 },
-  luxuryGridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 },
-  luxuryGridContainerDesktop: { alignContent: 'flex-start' },
-  luxuryNoticeContainer: { backgroundColor: '#fff', borderRadius: 24, padding: 16, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.03, shadowRadius: 15, marginBottom: 30 },
-  luxuryNoticeContainerMobile: { borderRadius: 18, padding: 12 },
-  luxuryMiniNotice: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  luxuryNoticeIconCage: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-  luxuryNoticeTextBlock: { flex: 1, minWidth: 0 },
-  luxuryMiniNoticeTitle: { fontWeight: '700', fontSize: 15, color: '#1E293B', marginBottom: 4 },
-  luxuryMiniNoticeMeta: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
-  luxuryEmptyNotices: { color: '#94A3B8', fontStyle: 'italic', textAlign: 'center', paddingVertical: 20 },
-  luxuryLogoutBtn: { backgroundColor: '#fff', flexDirection: 'row', padding: 20, borderRadius: 20, alignItems: 'center', justifyContent: 'center', shadowColor: '#EF4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 2 },
-  luxuryLogoutBtnMobile: { padding: 16, borderRadius: 17 },
-  luxuryLogoutBtnText: { color: '#EF4444', fontWeight: 'bold', fontSize: 16, marginLeft: 10 },
-  luxuryNotificationBadgeContainer: { position: 'relative', marginLeft: 12 },
-  luxuryNotificationBadge: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: '#EF4444',
-    borderRadius: 12,
-    minWidth: 18,
-    height: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  luxuryNotificationBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-});

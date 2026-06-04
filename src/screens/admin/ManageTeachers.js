@@ -6,12 +6,14 @@ import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import DynamicHeader from '../../components/DynamicHeader';
+import { useInstituteTheme } from '../../hooks/useInstituteTheme';
 
 export default function ManageTeachers() {
   const { userData } = useAuth();
+  const { colors, styles } = useInstituteTheme(baseStyles);
   
   // BULLETPROOF DETECTION
-  const instTypeStr = (userData?.instituteData?.type || 'school').toLowerCase();
+  const instTypeStr = String(userData?.instituteData?.institutionType || userData?.instituteData?.type || 'school').toLowerCase();
   const isSchool = instTypeStr.includes('school');
 
   const [activeTab, setActiveTab] = useState('roster'); // 'roster' or 'assign'
@@ -24,10 +26,20 @@ export default function ManageTeachers() {
   const [isClassTeacher, setIsClassTeacher] = useState(false);
   const [primaryTag, setPrimaryTag] = useState(''); // Holds either Class OR Dept
   const [secondaryTag, setSecondaryTag] = useState(''); // Holds either Section OR Sem
+  const getTeacherId = (teacher) => (
+    teacher?.loginId ||
+    teacher?.uniqueId ||
+    teacher?.teacherCode ||
+    teacher?.id ||
+    'ID pending'
+  );
 
   // 1. Fetch Live Faculty Data
   useEffect(() => {
-    if (!userData?.instituteId) return;
+    if (!userData?.instituteId) {
+      setLoading(false);
+      return undefined;
+    }
 
     const q = query(
       collection(db, "users"), 
@@ -39,6 +51,10 @@ export default function ManageTeachers() {
       const fetchedTeachers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       fetchedTeachers.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
       setTeachers(fetchedTeachers);
+      setLoading(false);
+    }, (error) => {
+      console.error('Faculty roster query failed:', error);
+      setTeachers([]);
       setLoading(false);
     });
 
@@ -135,6 +151,17 @@ export default function ManageTeachers() {
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <DynamicHeader title="Faculty Roster" showBack={true} />
 
+      <View style={styles.summaryPanel}>
+        <View>
+          <Text style={styles.eyebrow}>Faculty command</Text>
+          <Text style={styles.summaryTitle}>{teachers.length} active educators</Text>
+        </View>
+        <View style={styles.modePill}>
+          <Ionicons name={isSchool ? 'school-outline' : 'business-outline'} size={15} color="#34D399" />
+          <Text style={styles.modePillText}>{isSchool ? 'Class Teacher' : 'Batch Advisor'} model</Text>
+        </View>
+      </View>
+
       <View style={styles.tabContainer}>
         <TouchableOpacity style={[styles.tab, activeTab === 'roster' && styles.activeTab]} onPress={() => setActiveTab('roster')}>
           <Text style={[styles.tabText, activeTab === 'roster' && styles.activeTabText]}>Teacher Directory</Text>
@@ -157,11 +184,11 @@ export default function ManageTeachers() {
                 </View>
                 <View style={styles.infoBox}>
                   <Text style={styles.teacherName}>{t.name}</Text>
-                  <Text style={styles.teacherEmail}>{t.email}</Text>
+                  <Text style={styles.teacherEmail}>ID: {getTeacherId(t)}</Text>
                   
                   {t.isClassTeacher ? (
                     <View style={styles.classTeacherBadge}>
-                      <Ionicons name="star" size={12} color="#D97706" style={{marginRight: 4}} />
+                      <Ionicons name="star" size={12} color="#F7C948" style={{marginRight: 4}} />
                       <Text style={styles.classTeacherText}>{getTeacherBadgeText(t)}</Text>
                     </View>
                   ) : (
@@ -220,6 +247,7 @@ export default function ManageTeachers() {
                         <TextInput 
                           style={styles.input} 
                           placeholder={isSchool ? 'e.g. 10' : 'e.g. CSE'} 
+                          placeholderTextColor={colors.muted}
                           value={primaryTag} 
                           onChangeText={setPrimaryTag} 
                         />
@@ -229,6 +257,7 @@ export default function ManageTeachers() {
                         <TextInput 
                           style={styles.input} 
                           placeholder={isSchool ? 'e.g. A' : 'e.g. 3'} 
+                          placeholderTextColor={colors.muted}
                           value={secondaryTag} 
                           onChangeText={setSecondaryTag} 
                         />
@@ -250,45 +279,86 @@ export default function ManageTeachers() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  tabContainer: { flexDirection: 'row', backgroundColor: '#E2E8F0', margin: 16, borderRadius: 12, padding: 4 },
+const baseStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#020617', overflow: 'hidden' },
+  summaryPanel: {
+    alignItems: 'center',
+    backgroundColor: '#0F172A',
+    borderColor: '#334155',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+  },
+  eyebrow: {
+    color: '#8EA4C8',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0,
+    textTransform: 'uppercase',
+  },
+  summaryTitle: {
+    color: '#F8FAFC',
+    fontSize: 20,
+    fontWeight: '900',
+    marginTop: 3,
+  },
+  modePill: {
+    alignItems: 'center',
+    backgroundColor: '#064E3B',
+    borderColor: '#047857',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  modePillText: {
+    color: '#D1FAE5',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  tabContainer: { flexDirection: 'row', backgroundColor: '#0F172A', borderColor: '#334155', borderWidth: 1, margin: 16, borderRadius: 8, padding: 4 },
   tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 8 },
-  activeTab: { backgroundColor: '#FFFFFF', elevation: 2 },
-  tabText: { fontSize: 15, fontWeight: '600', color: '#718096' },
-  activeTabText: { color: '#10B981' },
+  activeTab: { backgroundColor: '#047857', borderColor: '#047857', borderWidth: 1 },
+  tabText: { fontSize: 15, fontWeight: '800', color: '#8EA4C8' },
+  activeTabText: { color: '#F8FAFC' },
   scrollContent: { padding: 16, paddingBottom: 80 },
-  emptyText: { color: '#94A3B8', fontStyle: 'italic', textAlign: 'center', marginTop: 20 },
+  emptyText: { color: '#B9C6DD', fontWeight: '800', textAlign: 'center', marginTop: 20 },
   
-  teacherCard: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, elevation: 1, alignItems: 'center' },
-  avatarCage: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#ECFDF5', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
-  avatarText: { fontSize: 20, fontWeight: 'bold', color: '#10B981' },
-  infoBox: { flex: 1 },
-  teacherName: { fontSize: 16, fontWeight: 'bold', color: '#1E293B', marginBottom: 2 },
-  teacherEmail: { fontSize: 12, color: '#64748B', marginBottom: 8 },
-  classTeacherBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, alignSelf: 'flex-start' },
-  classTeacherText: { color: '#D97706', fontSize: 11, fontWeight: 'bold' },
-  subjectTeacherBadge: { backgroundColor: '#F1F5F9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, alignSelf: 'flex-start' },
-  subjectTeacherText: { color: '#64748B', fontSize: 11, fontWeight: 'bold' },
+  teacherCard: { flexDirection: 'row', backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1, padding: 14, marginBottom: 10, alignItems: 'center' },
+  avatarCage: { width: 44, height: 44, borderRadius: 8, backgroundColor: '#064E3B', borderColor: '#047857', borderWidth: 1, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  avatarText: { fontSize: 20, fontWeight: 'bold', color: '#34D399' },
+  infoBox: { flex: 1, minWidth: 0 },
+  teacherName: { fontSize: 16, fontWeight: '900', color: '#F8FAFC', marginBottom: 2 },
+  teacherEmail: { fontSize: 12, color: '#B9C6DD', marginBottom: 8 },
+  classTeacherBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#422006', borderColor: '#A16207', borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 5, alignSelf: 'flex-start' },
+  classTeacherText: { color: '#F7C948', fontSize: 11, fontWeight: 'bold' },
+  subjectTeacherBadge: { backgroundColor: '#111827', borderColor: '#334155', borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 5, alignSelf: 'flex-start' },
+  subjectTeacherText: { color: '#B9C6DD', fontSize: 11, fontWeight: 'bold' },
 
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, elevation: 3 },
-  cardTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B', marginBottom: 20 },
-  label: { fontSize: 13, fontWeight: 'bold', color: '#475569', marginBottom: 8, textTransform: 'uppercase' },
+  card: { backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1, padding: 20 },
+  cardTitle: { fontSize: 20, fontWeight: '900', color: '#F8FAFC', marginBottom: 20 },
+  label: { fontSize: 13, fontWeight: 'bold', color: '#8EA4C8', marginBottom: 8, textTransform: 'uppercase' },
   chipRow: { flexDirection: 'row', marginBottom: 25 },
-  chip: { backgroundColor: '#F1F5F9', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, marginRight: 10, borderWidth: 1, borderColor: '#E2E8F0' },
+  chip: { backgroundColor: '#111827', paddingHorizontal: 14, paddingVertical: 9, borderRadius: 8, marginRight: 8, borderWidth: 1, borderColor: '#334155' },
   activeChip: { backgroundColor: '#10B981', borderColor: '#10B981' },
-  chipText: { color: '#64748B', fontWeight: '600' },
+  chipText: { color: '#B9C6DD', fontWeight: '800' },
   activeChipText: { color: '#fff' },
   
-  formArea: { borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 20 },
-  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F8FAFC', padding: 15, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 20 },
-  switchTitle: { fontSize: 15, fontWeight: 'bold', color: '#1E293B' },
-  switchSub: { fontSize: 12, color: '#64748B', marginTop: 4, lineHeight: 18 },
+  formArea: { borderTopWidth: 1, borderTopColor: '#334155', paddingTop: 20 },
+  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111827', padding: 15, borderRadius: 8, borderWidth: 1, borderColor: '#334155', marginBottom: 20 },
+  switchTitle: { fontSize: 15, fontWeight: 'bold', color: '#F8FAFC' },
+  switchSub: { fontSize: 12, color: '#B9C6DD', marginTop: 4, lineHeight: 18 },
   
-  targetBox: { backgroundColor: '#ECFDF5', padding: 15, borderRadius: 12, marginBottom: 20, borderWidth: 1, borderColor: '#A7F3D0' },
+  targetBox: { backgroundColor: '#052E2B', padding: 15, borderRadius: 8, marginBottom: 20, borderWidth: 1, borderColor: '#047857' },
   row: { flexDirection: 'row', marginBottom: 10 },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#D1FAE5', borderRadius: 10, padding: 12, fontSize: 15, color: '#1E293B' },
+  input: { backgroundColor: '#020617', borderWidth: 1, borderColor: '#334155', borderRadius: 8, padding: 12, fontSize: 15, color: '#F8FAFC', outlineStyle: 'none' },
   
-  submitBtn: { backgroundColor: '#10B981', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 10 },
+  submitBtn: { backgroundColor: '#047857', paddingVertical: 15, borderRadius: 8, alignItems: 'center', marginTop: 10 },
   submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 });

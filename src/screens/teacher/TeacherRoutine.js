@@ -7,6 +7,7 @@ import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../../firebaseConfig';
 import { getInstitutionProfile } from '../../services/institutionalProfile';
+import { useInstituteTheme } from '../../hooks/useInstituteTheme';
 
 const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -18,6 +19,7 @@ const sortRoutine = (a, b) => {
 
 export default function TeacherRoutine() {
   const { userData } = useAuth();
+  const { colors, styles } = useInstituteTheme(baseStyles);
   const profile = getInstitutionProfile(userData);
   const [routine, setRoutine] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -83,7 +85,7 @@ export default function TeacherRoutine() {
           )}
           ListEmptyComponent={(
             <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={52} color="#CBD5E1" />
+              <Ionicons name="calendar-outline" size={52} color={colors.muted} />
               <Text style={styles.emptyTitle}>No routine assigned yet</Text>
               <Text style={styles.emptyText}>When admin uploads the master routine, your classes will appear here automatically.</Text>
             </View>
@@ -94,19 +96,19 @@ export default function TeacherRoutine() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+const baseStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#02030A', overflow: 'hidden' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { color: '#64748B', fontWeight: '800', marginTop: 10 },
+  loadingText: { color: '#B9C6DD', fontWeight: '800', marginTop: 10 },
   listContent: { padding: 16, paddingBottom: 100 },
-  card: { flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0' },
-  dayBadge: { backgroundColor: '#FFE4E6', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9, alignSelf: 'flex-start', marginRight: 14 },
-  dayText: { color: '#BE123C', fontWeight: '900', fontSize: 12 },
+  card: { flexDirection: 'row', backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1, padding: 16, marginBottom: 12 },
+  dayBadge: { backgroundColor: '#4C0519', borderColor: '#9F1239', borderRadius: 8, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 9, alignSelf: 'flex-start', marginRight: 14 },
+  dayText: { color: '#FB7185', fontWeight: '900', fontSize: 12 },
   info: { flex: 1, minWidth: 0 },
-  subject: { color: '#0F172A', fontSize: 17, fontWeight: '900' },
-  time: { color: '#475569', marginTop: 4, fontWeight: '700' },
-  target: { color: '#10B981', marginTop: 6, fontSize: 12, fontWeight: '900' },
+  subject: { color: '#F8FAFC', fontSize: 17, fontWeight: '900' },
+  time: { color: '#B9C6DD', marginTop: 4, fontWeight: '700' },
+  target: { color: '#34D399', marginTop: 6, fontSize: 12, fontWeight: '900' },
   emptyState: { alignItems: 'center', marginTop: 90, paddingHorizontal: 28 },
-  emptyTitle: { color: '#0F172A', fontSize: 18, fontWeight: '900', marginTop: 14 },
-  emptyText: { color: '#64748B', textAlign: 'center', lineHeight: 21, marginTop: 6 },
+  emptyTitle: { color: '#F8FAFC', fontSize: 18, fontWeight: '900', marginTop: 14 },
+  emptyText: { color: '#B9C6DD', textAlign: 'center', lineHeight: 21, marginTop: 6 },
 });

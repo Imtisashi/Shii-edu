@@ -5,8 +5,12 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../../firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
+import useResponsiveLayout from '../../hooks/useResponsiveLayout';
+import BrandLogo from '../../components/BrandLogo';
+import EnterpriseAuthBackground from '../../components/auth/EnterpriseAuthBackground';
 
 export default function RegisterScreen({ navigation, route }) {
+  const layout = useResponsiveLayout();
   const { instituteId, role, uniqueId, email: inviteEmail } = route.params || {};
   const navigateToLogin = React.useCallback(() => {
     if (navigation.canGoBack()) {
@@ -106,175 +110,308 @@ export default function RegisterScreen({ navigation, route }) {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        {invitationError ? (
-          <View style={styles.invalidInviteCard}>
-            <Ionicons name="alert-circle-outline" size={34} color="#EF4444" />
-            <Text style={styles.invalidInviteTitle}>Invite Required</Text>
-            <Text style={styles.invalidInviteText}>{invitationError}</Text>
-            <TouchableOpacity style={styles.btn} onPress={navigateToLogin}>
-              <Text style={styles.btnText}>Back to Login</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-        {instituteData && (
-          <View style={styles.instituteHeader}>
-            <Text style={styles.instituteName}>{instituteData.name}</Text>
-            <Text style={styles.instituteRole}>
-              Registering as: {role.charAt(0).toUpperCase() + role.slice(1)}
-            </Text>
-          </View>
-        )}
-
-        <Text style={styles.title}>Create Your Account</Text>
-
-        {/* Name Input */}
-        <View style={styles.inputContainer}>
-          <Ionicons name="person-outline" size={20} color="#94A3B8" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Full Name"
-            value={name}
-            onChangeText={setName}
-            autoCapitalize="words"
-            returnKeyType="next"
-          />
-        </View>
-
-        {/* Email Input (read-only if invited) */}
-        <View style={styles.inputContainer}>
-          <Ionicons name="mail-outline" size={20} color="#94A3B8" style={styles.icon} />
-          <TextInput
-            style={[styles.input, inviteEmail && styles.inputReadOnly]}
-            placeholder="Email Address"
-            value={email}
-            onChangeText={inviteEmail ? undefined : setEmail} // Only allow edit if not invited
-            autoCapitalize="none"
-            keyboardType="email-address"
-            returnKeyType="next"
-          />
-        </View>
-
-        {/* Password Inputs */}
-        <View style={styles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={20} color="#94A3B8" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            returnKeyType="next"
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={20} color="#94A3B8" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Confirm Password"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-            returnKeyType="go"
-            onSubmitEditing={handleRegister}
-          />
-        </View>
-
-        {/* Role and Unique ID (read-only display) */}
-        {instituteData && (
-          <View style={styles.readOnlySection}>
-            <Text style={styles.readOnlyLabel}>Your Role:</Text>
-            <Text style={styles.readOnlyValue}>
-              {role.charAt(0).toUpperCase() + role.slice(1)}
-            </Text>
-          </View>
-        )}
-
-        {uniqueId && role !== 'instituteAdmin' && instituteData && (
-          <View style={styles.readOnlySection}>
-            <Text style={styles.readOnlyLabel}>Your ID:</Text>
-            <Text style={styles.readOnlyValue}>
-              {uniqueId}
-            </Text>
-          </View>
-        )}
-
-        <TouchableOpacity
-          style={[styles.btn, !instituteData || loading && { backgroundColor: '#A0AEC0' }]}
-          onPress={handleRegister}
-          disabled={!instituteData || loading}
+    <EnterpriseAuthBackground>
+      <KeyboardAvoidingView style={styles.keyboardRoot} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.container,
+            layout.isMobile && styles.containerMobile,
+            layout.isCompact && styles.containerCompact,
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {loading ? <SmoothSpinner color="#fff" /> : <Text style={styles.btnText}>Create Account</Text>}
-        </TouchableOpacity>
-
-        <View style={styles.optionsRow}>
-          <TouchableOpacity onPress={navigateToLogin} disabled={loading}>
-            <Text style={styles.backLink}>{"< Back to Login"}</Text>
-          </TouchableOpacity>
-        </View>
-          </>
-        )}
-      </ScrollView>
-
-      {/* Success Modal */}
-      <Modal
-        animationType="slide"
-        transparent={false}
-        visible={showSuccessModal}
-        onRequestClose={handleSuccessModalClose}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Ionicons name="checkmark-circle-outline" size={28} color="#10B981" />
-              <Text style={styles.modalTitle}>Account Created</Text>
-            </View>
-            <View style={styles.modalBody}>
-              <Text style={styles.modalMessage}>
-                Your account has been created successfully! You can now log in.
+          <View style={[styles.card, layout.isMobile && styles.cardMobile, layout.isCompact && styles.cardCompact]}>
+            <View style={styles.brandHeader}>
+              <View style={styles.logoCage}>
+                <BrandLogo size={48} />
+              </View>
+              <Text style={styles.eyebrow}>Secure Campus Invitation</Text>
+              <Text style={styles.title}>{invitationError ? 'Invite Required' : 'Create Your Account'}</Text>
+              <Text style={styles.subtitle}>
+                {invitationError
+                  ? 'This registration route only works with a valid invitation.'
+                  : 'Your access will be linked to the inviting institute.'}
               </Text>
-              <TouchableOpacity
-                style={styles.modalBtn}
-                onPress={handleSuccessModalClose}
-              >
-                <Text style={styles.modalBtnText}>Go to Login</Text>
-              </TouchableOpacity>
+            </View>
+
+            {invitationError ? (
+              <View style={styles.invalidInviteCard}>
+                <View style={styles.invalidInviteIcon}>
+                  <Ionicons name="alert-circle-outline" size={30} color="#FCA5A5" />
+                </View>
+                <Text style={styles.invalidInviteText}>{invitationError}</Text>
+                <TouchableOpacity style={styles.btn} onPress={navigateToLogin}>
+                  <Text style={styles.btnText}>Back to Login</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                {instituteData && (
+                  <View style={styles.instituteHeader}>
+                    <View style={styles.instituteIcon}>
+                      <Ionicons name="school-outline" size={20} color="#67E8F9" />
+                    </View>
+                    <View style={styles.instituteCopy}>
+                      <Text style={styles.instituteName} numberOfLines={1}>{instituteData.name}</Text>
+                      <Text style={styles.instituteRole}>
+                        Registering as {role.charAt(0).toUpperCase() + role.slice(1)}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                <Text style={styles.label}>Full Name</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="person-outline" size={20} color="#CBD5E1" style={styles.icon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Your full name"
+                    placeholderTextColor="#94A3B8"
+                    value={name}
+                    onChangeText={setName}
+                    autoCapitalize="words"
+                    returnKeyType="next"
+                  />
+                </View>
+
+                <Text style={styles.label}>Email Address</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="mail-outline" size={20} color="#CBD5E1" style={styles.icon} />
+                  <TextInput
+                    style={[styles.input, inviteEmail && styles.inputReadOnly]}
+                    placeholder="your@email.com"
+                    placeholderTextColor="#94A3B8"
+                    value={email}
+                    onChangeText={inviteEmail ? undefined : setEmail}
+                    editable={!inviteEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    returnKeyType="next"
+                  />
+                </View>
+
+                <Text style={styles.label}>Password</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="lock-closed-outline" size={20} color="#CBD5E1" style={styles.icon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Minimum 6 characters"
+                    placeholderTextColor="#94A3B8"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                    returnKeyType="next"
+                  />
+                </View>
+
+                <Text style={styles.label}>Confirm Password</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="lock-closed-outline" size={20} color="#CBD5E1" style={styles.icon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Repeat your password"
+                    placeholderTextColor="#94A3B8"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry
+                    returnKeyType="go"
+                    onSubmitEditing={handleRegister}
+                  />
+                </View>
+
+                {instituteData && (
+                  <View style={styles.accessGrid}>
+                    <View style={styles.readOnlySection}>
+                      <Text style={styles.readOnlyLabel}>Role</Text>
+                      <Text style={styles.readOnlyValue}>
+                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                      </Text>
+                    </View>
+
+                    {uniqueId && role !== 'instituteAdmin' ? (
+                      <View style={styles.readOnlySection}>
+                        <Text style={styles.readOnlyLabel}>Campus ID</Text>
+                        <Text style={styles.readOnlyValue}>{uniqueId}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                )}
+
+                <TouchableOpacity
+                  style={[styles.btn, (!instituteData || loading) && styles.btnDisabled]}
+                  onPress={handleRegister}
+                  disabled={!instituteData || loading}
+                >
+                  {loading ? <SmoothSpinner color="#fff" /> : <Text style={styles.btnText}>Create Account</Text>}
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.backButton} onPress={navigateToLogin} disabled={loading}>
+                  <Ionicons name="arrow-back-outline" size={16} color="#C4B5FD" />
+                  <Text style={styles.backLink}>Back to Login</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </ScrollView>
+
+        <Modal
+          animationType="fade"
+          transparent
+          visible={showSuccessModal}
+          onRequestClose={handleSuccessModalClose}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <View style={styles.successIcon}>
+                  <Ionicons name="checkmark-circle-outline" size={30} color="#A7F3D0" />
+                </View>
+                <Text style={styles.modalTitle}>Account Created</Text>
+              </View>
+              <View style={styles.modalBody}>
+                <Text style={styles.modalMessage}>
+                  Your account is ready. You can now sign in with your campus credentials.
+                </Text>
+                <TouchableOpacity style={styles.modalBtn} onPress={handleSuccessModalClose}>
+                  <Text style={styles.modalBtnText}>Go to Login</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-    </KeyboardAvoidingView>
+        </Modal>
+      </KeyboardAvoidingView>
+    </EnterpriseAuthBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 25, justifyContent: 'flex-start', backgroundColor: '#fff' },
-  invalidInviteCard: { marginTop: 80, padding: 24, borderRadius: 24, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA', alignItems: 'center' },
-  invalidInviteTitle: { fontSize: 22, fontWeight: 'bold', color: '#991B1B', marginTop: 12 },
-  invalidInviteText: { fontSize: 15, color: '#7F1D1D', textAlign: 'center', marginTop: 10, lineHeight: 22 },
-  instituteHeader: { marginBottom: 20, padding: 15, backgroundColor: '#F0F9FF', borderRadius: 12 },
-  instituteName: { fontSize: 20, fontWeight: 'bold', color: '#1E40AF', textAlign: 'center' },
-  instituteRole: { fontSize: 16, color: '#3B82F6', textAlign: 'center', marginTop: 5 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#1E293B', marginBottom: 20, textAlign: 'center' },
-  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 14, marginBottom: 12 },
+  keyboardRoot: { flex: 1, backgroundColor: 'transparent' },
+  scrollView: { flex: 1, backgroundColor: 'transparent' },
+  container: { flexGrow: 1, padding: 24, justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' },
+  containerMobile: { padding: 18 },
+  containerCompact: { padding: 14 },
+  card: {
+    width: '100%',
+    maxWidth: 520,
+    backgroundColor: '#0F172A',
+    borderRadius: 8,
+    padding: 28,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  cardMobile: { padding: 20, borderRadius: 8 },
+  cardCompact: { padding: 16, borderRadius: 8 },
+  brandHeader: { alignItems: 'center', marginBottom: 24 },
+  logoCage: {
+    backgroundColor: '#111827',
+    padding: 8,
+    borderRadius: 8,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  eyebrow: { color: '#C4B5FD', fontSize: 11, fontWeight: '900', letterSpacing: 1.2, textTransform: 'uppercase' },
+  title: { fontSize: 26, fontWeight: '900', color: '#F8FAFC', marginTop: 8, textAlign: 'center' },
+  subtitle: { fontSize: 14, color: '#CBD5E1', marginTop: 7, lineHeight: 21, textAlign: 'center' },
+  invalidInviteCard: {
+    padding: 18,
+    borderRadius: 8,
+    backgroundColor: '#450A0A',
+    borderWidth: 1,
+    borderColor: '#7F1D1D',
+    alignItems: 'center',
+  },
+  invalidInviteIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 8,
+    backgroundColor: '#450A0A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  invalidInviteText: { fontSize: 15, color: '#FECACA', textAlign: 'center', marginTop: 14, lineHeight: 22 },
+  instituteHeader: {
+    marginBottom: 20,
+    padding: 14,
+    backgroundColor: '#082F49',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#075985',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  instituteIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 8,
+    backgroundColor: '#082F49',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  instituteCopy: { flex: 1, minWidth: 0 },
+  instituteName: { fontSize: 17, fontWeight: '900', color: '#F8FAFC' },
+  instituteRole: { fontSize: 13, color: '#93C5FD', marginTop: 3, fontWeight: '700' },
+  label: { fontSize: 12, fontWeight: '900', color: '#E2E8F0', marginBottom: 7, textTransform: 'uppercase', letterSpacing: 0.7 },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#020617',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 8,
+    marginBottom: 16,
+  },
   icon: { paddingHorizontal: 15 },
-  input: { flex: 1, paddingVertical: 16, fontSize: 16, color: '#1E293B', outlineStyle: 'none' },
-  inputReadOnly: { backgroundColor: '#F1F5F9', color: '#64748B' },
-  btn: { backgroundColor: '#8B5CF6', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 20 },
-  btnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  optionsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 25 },
-  backLink: { color: '#64748B', fontWeight: '500' },
-  readOnlySection: { marginVertical: 10, padding: 12, backgroundColor: '#F0F9FF', borderRadius: 10 },
-  readOnlyLabel: { fontSize: 14, color: '#64748B', marginBottom: 4 },
-  readOnlyValue: { fontSize: 16, fontWeight: '600', color: '#1E293B' },
-  modalContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalContent: { width: '85%', maxWidth: 400, backgroundColor: '#fff', borderRadius: 24, padding: 24, elevation: 10 },
+  input: { flex: 1, minWidth: 0, paddingVertical: 15, fontSize: 16, color: '#F8FAFC', outlineStyle: 'none' },
+  inputReadOnly: { color: '#A5B4FC' },
+  accessGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 2 },
+  readOnlySection: {
+    flexGrow: 1,
+    minWidth: 140,
+    padding: 12,
+    backgroundColor: '#1E1B4B',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#6D28D9',
+  },
+  readOnlyLabel: { fontSize: 11, color: '#A5B4FC', marginBottom: 4, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.7 },
+  readOnlyValue: { fontSize: 15, fontWeight: '800', color: '#F8FAFC' },
+  btn: {
+    backgroundColor: '#7C3AED',
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  btnDisabled: { opacity: 0.52 },
+  btnText: { color: '#FFFFFF', fontWeight: '900', fontSize: 16 },
+  backButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, marginTop: 4 },
+  backLink: { color: '#C4B5FD', fontWeight: '800', marginLeft: 6 },
+  modalContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#020617', padding: 20 },
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: '#0F172A',
+    borderRadius: 8,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
   modalHeader: { alignItems: 'center', marginBottom: 16 },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1E293B' },
-  modalMessage: { fontSize: 16, color: '#64748B', textAlign: 'center', marginVertical: 20 },
-  modalBtn: { backgroundColor: '#8B5CF6', paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 16 },
-  modalBtnText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
+  successIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 8,
+    backgroundColor: '#052E2B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  modalTitle: { fontSize: 21, fontWeight: '900', color: '#F8FAFC' },
+  modalMessage: { fontSize: 15, color: '#CBD5E1', textAlign: 'center', marginVertical: 18, lineHeight: 22 },
+  modalBtn: { backgroundColor: '#2563EB', paddingVertical: 14, borderRadius: 8, alignItems: 'center', marginTop: 12 },
+  modalBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
 });

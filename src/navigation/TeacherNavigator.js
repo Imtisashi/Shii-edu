@@ -1,6 +1,7 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { sharedStackScreenOptions } from './animatedScreenOptions';
+import { useRootLayout } from '../contexts/RootLayoutContext';
 
 // ==========================================
 // 1. IMPORT ALL 10 TEACHER SCREENS
@@ -17,6 +18,9 @@ import UploadGrades from '../screens/teacher/UploadGrades';
 import TeacherProfileSettings from '../screens/teacher/TeacherProfileSettings';
 import CourseManager from '../screens/teacher/CourseManager';
 import UploadPYQ from '../screens/admin/UploadPYQ';
+import ReportsCenter from '../screens/shared/ReportsCenter';
+import CommunicationHub from '../screens/shared/CommunicationHub';
+import SyllabusTutor from '../screens/shared/SyllabusTutor';
 
 // Import GalleryView from student folder (since the Teacher Grid uses it)
 import GalleryView from '../screens/student/GalleryView';
@@ -24,8 +28,16 @@ import GalleryView from '../screens/student/GalleryView';
 const Stack = createStackNavigator();
 
 export default function TeacherNavigator() {
+  const { colors } = useRootLayout();
+
   return (
-    <Stack.Navigator screenOptions={{ ...sharedStackScreenOptions, headerShown: false }}>
+    <Stack.Navigator
+      screenOptions={{
+        ...sharedStackScreenOptions,
+        cardStyle: { backgroundColor: colors.page },
+        headerShown: false,
+      }}
+    >
       
       {/* THE MAIN DASHBOARD */}
       <Stack.Screen name="TeacherHome" component={TeacherHome} />
@@ -45,6 +57,9 @@ export default function TeacherNavigator() {
       <Stack.Screen name="UploadAssignment" component={UploadAssignment} />
       <Stack.Screen name="UploadGrades" component={UploadGrades} />
       <Stack.Screen name="TeacherProfile" component={TeacherProfileSettings} />
+      <Stack.Screen name="ReportsCenter" component={ReportsCenter} />
+      <Stack.Screen name="CommunicationHub" component={CommunicationHub} />
+      <Stack.Screen name="SyllabusTutor" component={SyllabusTutor} />
 
     </Stack.Navigator>
   );

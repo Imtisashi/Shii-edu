@@ -1,13 +1,20 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, Image, Alert, Platform } from 'react-native';
 import { SmoothSpinner } from '../../components/ui/LoadingState';
-import * as ImagePicker from 'expo-image-picker';
 import { collection, addDoc, serverTimestamp, query, where, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig'; 
 import { useAuth } from '../../contexts/AuthContext';
 import { uploadInstitutionAsset } from '../../services/cloudinaryService';
+import { pickImageFromLibrary } from '../../services/nativePickerService';
+import {
+  createSupabaseGalleryItem,
+  deleteSupabaseGalleryItem,
+  listSupabaseGallery,
+} from '../../services/supabaseTenantDataService';
+import { showNativeError } from '../../utils/userFeedback';
 import { Ionicons } from '@expo/vector-icons';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
+import { useInstituteTheme } from '../../hooks/useInstituteTheme';
 
 const showAlert = (title, message) => {
   if (Platform.OS === 'web') window.alert(`${title}\n\n${message}`);
@@ -25,6 +32,7 @@ const createdAtToMillis = (createdAt) => {
 export default function UploadGallery() {
   const { currentUser, userData } = useAuth();
   const layout = useResponsiveLayout();
+  const { colors, styles } = useInstituteTheme(baseStyles);
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -39,25 +47,48 @@ export default function UploadGallery() {
   useEffect(() => {
     if (!userData?.instituteId) return;
 
-    const q = query(
-      collection(db, "gallery"),
-      where("instituteId", "==", userData.instituteId)
-    );
+    let cancelled = false;
+    let unsubscribeFirestore = null;
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs
-        .map(document => ({ id: document.id, ...document.data() }))
-        .sort((a, b) => createdAtToMillis(b.createdAt) - createdAtToMillis(a.createdAt));
-      setImages(list);
-      setLoading(false);
-    }, (error) => {
-      console.error("Gallery Fetch Error:", error);
-      setLoading(false);
-      showAlert("Gallery Unavailable", "Could not load gallery items. Please check your connection and access permissions.");
-    });
+    const startFirestoreFallback = () => {
+      const q = query(
+        collection(db, "gallery"),
+        where("instituteId", "==", userData.instituteId)
+      );
 
-    return () => unsubscribe();
-  }, [userData]);
+      unsubscribeFirestore = onSnapshot(q, (snapshot) => {
+        if (cancelled) return;
+        const list = snapshot.docs
+          .map(document => ({ id: document.id, ...document.data(), dataSource: 'firestore' }))
+          .sort((a, b) => createdAtToMillis(b.createdAt) - createdAtToMillis(a.createdAt));
+        setImages(list);
+        setLoading(false);
+      }, (error) => {
+        if (cancelled) return;
+        console.error("Gallery Fetch Error:", error);
+        setLoading(false);
+        showAlert("Gallery Unavailable", "Could not load gallery items. Please check your connection and access permissions.");
+      });
+    };
+
+    setLoading(true);
+    listSupabaseGallery(currentUser)
+      .then(({ images: supabaseImages }) => {
+        if (cancelled) return;
+        setImages(Array.isArray(supabaseImages) ? supabaseImages : []);
+        setLoading(false);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.warn('Supabase gallery bridge failed, falling back to Firestore:', error);
+        startFirestoreFallback();
+      });
+
+    return () => {
+      cancelled = true;
+      if (typeof unsubscribeFirestore === 'function') unsubscribeFirestore();
+    };
+  }, [currentUser, userData?.instituteId]);
 
   const handlePickAndUpload = async () => {
     if (!userData?.instituteId) {
@@ -65,70 +96,86 @@ export default function UploadGallery() {
       return;
     }
 
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') return showAlert('Permission Denied', 'Need gallery access to upload photos.');
+    setUploading(true);
+    try {
+      const asset = await pickImageFromLibrary({
+        allowsEditing: true,
+        quality: 0.78,
+      });
+      if (!asset) return;
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.7,
-      base64: Platform.OS === 'web',
-    });
-
-    if (!result.canceled) {
-      setUploading(true);
-      try {
-        if (!currentUser?.uid) {
-          throw new Error('A signed-in admin is required to upload gallery media.');
-        }
-
-        const uploadResult = await uploadInstitutionAsset({
-          asset: result.assets[0],
-          folder: `institutions/${userData.instituteId}/gallery`,
-          resourceType: 'image',
-          deliveryType: 'upload',
-          context: {
-            module: 'gallery',
-            instituteId: userData.instituteId,
-            uploadedBy: currentUser.uid,
-          },
-        });
-
-        if (!uploadResult?.secureUrl) {
-          throw new Error('Upload service did not return a file URL.');
-        }
-
-        await addDoc(collection(db, "gallery"), {
-          imageUrl: uploadResult.secureUrl,
-          assetProvider: uploadResult.provider,
-          cloudinaryPublicId: uploadResult.publicId || null,
-          cloudinaryAssetId: uploadResult.assetId || null,
-          resourceType: uploadResult.resourceType || 'image',
-          mimeType: uploadResult.mimeType || result.assets[0]?.mimeType || 'image/jpeg',
-          fileSize: uploadResult.bytes || result.assets[0]?.fileSize || null,
-          width: uploadResult.width || result.assets[0]?.width || null,
-          height: uploadResult.height || result.assets[0]?.height || null,
-          instituteId: userData.instituteId,
-          uploadedBy: userData.name || userData.email || 'Admin',
-          uploadedByUid: currentUser.uid,
-          createdAt: serverTimestamp(),
-        });
-      } catch (error) {
-        console.error('Gallery upload failed:', error);
-        showAlert("Upload Failed", "Could not save the image. Storage and Cloudinary access have been checked; please retry after the deployment finishes.");
-      } finally {
-        setUploading(false);
+      if (!currentUser?.uid) {
+        throw new Error('A signed-in admin is required to upload gallery media.');
       }
+
+      const uploadResult = await uploadInstitutionAsset({
+        currentUser,
+        asset,
+        folder: `institutions/${userData.instituteId}/gallery`,
+        resourceType: 'image',
+        deliveryType: 'upload',
+        context: {
+          module: 'gallery',
+          instituteId: userData.instituteId,
+          uploadedBy: currentUser.uid,
+        },
+      });
+
+      if (!uploadResult?.secureUrl) {
+        throw new Error('Upload service did not return a file URL.');
+      }
+
+      const galleryPayload = {
+        imageUrl: uploadResult.secureUrl,
+        assetProvider: uploadResult.provider,
+        cloudinaryPublicId: uploadResult.provider === 'cloudinary' ? uploadResult.publicId || null : null,
+        cloudinaryAssetId: uploadResult.provider === 'cloudinary' ? uploadResult.assetId || null : null,
+        storageBucket: uploadResult.storageBucket || null,
+        storagePath: uploadResult.storagePath || null,
+        supabasePath: uploadResult.supabasePath || null,
+        resourceType: uploadResult.resourceType || 'image',
+        mimeType: uploadResult.mimeType || asset.mimeType || 'image/jpeg',
+        fileSize: uploadResult.bytes || asset.fileSize || null,
+        width: uploadResult.width || asset.width || null,
+        height: uploadResult.height || asset.height || null,
+        instituteId: userData.instituteId,
+        uploadedBy: userData.name || userData.email || 'Admin',
+        uploadedByUid: currentUser.uid,
+      };
+
+      await createSupabaseGalleryItem(currentUser, galleryPayload);
+      await addDoc(collection(db, "gallery"), {
+        ...galleryPayload,
+        createdAt: serverTimestamp(),
+      });
+
+      const { images: supabaseImages } = await listSupabaseGallery(currentUser);
+      setImages(Array.isArray(supabaseImages) ? supabaseImages : []);
+    } catch (error) {
+      console.error('Gallery upload failed:', error);
+      showNativeError('Upload Failed', error, 'Could not upload the image. Please check your connection and try again.');
+    } finally {
+      setUploading(false);
     }
   };
 
-  const handleDelete = (imageId) => {
+  const handleDelete = (imageId, item = {}) => {
+    const removeImage = async () => {
+      if (item.dataSource === 'supabase' || item.supabaseId) {
+        await deleteSupabaseGalleryItem(currentUser, item.supabaseId || imageId);
+        setImages((current) => current.filter((image) => image.id !== imageId));
+        return;
+      }
+
+      await deleteDoc(doc(db, "gallery", imageId));
+    };
+
     if (Platform.OS === 'web') {
-      if (window.confirm("Delete this photo permanently?")) deleteDoc(doc(db, "gallery", imageId));
+      if (window.confirm("Delete this photo permanently?")) removeImage();
     } else {
       Alert.alert("Confirm Delete", "Delete this photo permanently?", [
         { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: () => deleteDoc(doc(db, "gallery", imageId)) }
+        { text: "Delete", style: "destructive", onPress: removeImage }
       ]);
     }
   };
@@ -158,7 +205,12 @@ export default function UploadGallery() {
               <Text style={styles.headerSub}>Upload official event photos. Students see them instantly in their gallery.</Text>
             </View>
             <TouchableOpacity style={[styles.uploadBtn, layout.isMobile && styles.uploadBtnMobile]} onPress={handlePickAndUpload} disabled={uploading}>
-              {uploading ? <SmoothSpinner color="#fff" size="small" /> : (
+              {uploading ? (
+                <>
+                  <SmoothSpinner color="#fff" size="small" />
+                  <Text style={styles.uploadBtnText}>Uploading...</Text>
+                </>
+              ) : (
                 <>
                   <Ionicons name="cloud-upload" size={20} color="#fff" />
                   <Text style={styles.uploadBtnText}>Upload Photo</Text>
@@ -174,7 +226,7 @@ export default function UploadGallery() {
             <View style={styles.imageMeta}>
               <Text style={styles.imageMetaText} numberOfLines={1}>{item.uploadedBy || 'Campus'}</Text>
             </View>
-            <TouchableOpacity style={styles.deleteOverlay} onPress={() => handleDelete(item.id)} accessibilityLabel="Delete gallery photo">
+            <TouchableOpacity style={styles.deleteOverlay} onPress={() => handleDelete(item.id, item)} accessibilityLabel="Delete gallery photo">
               <Ionicons name="trash" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
@@ -187,7 +239,7 @@ export default function UploadGallery() {
             </View>
           ) : (
             <View style={styles.emptyState}>
-              <Ionicons name="images-outline" size={50} color="#CBD5E0" />
+              <Ionicons name="images-outline" size={50} color={colors.muted} />
               <Text style={styles.emptyText}>No photos uploaded yet.</Text>
               <Text style={styles.emptySub}>Tap Upload Photo to publish the first campus memory.</Text>
             </View>
@@ -198,30 +250,29 @@ export default function UploadGallery() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+const baseStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#02030A', overflow: 'hidden' },
   content: { paddingTop: 16, paddingBottom: 96 },
   contentDesktop: { width: '100%', alignSelf: 'center', paddingTop: 24 },
   headerCard: {
-    backgroundColor: '#111827',
-    borderRadius: 22,
+    backgroundColor: '#0F172A',
+    borderColor: '#334155',
+    borderWidth: 1,
+    borderRadius: 8,
     padding: 18,
     marginBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.12,
-    shadowRadius: 18,
-    elevation: 4,
   },
   headerCardMobile: { flexWrap: 'wrap', alignItems: 'flex-start' },
   headerIcon: {
     width: 54,
     height: 54,
-    borderRadius: 18,
-    backgroundColor: '#FFF7ED',
+    borderRadius: 8,
+    backgroundColor: '#431407',
+    borderColor: '#C2410C',
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -236,22 +287,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 14,
+    borderRadius: 8,
     minHeight: 48,
   },
   uploadBtnMobile: { width: '100%', marginTop: 4 },
   uploadBtnText: { color: '#fff', fontWeight: '900', marginLeft: 7 },
   imageContainer: {
-    borderRadius: 18,
+    borderRadius: 8,
     overflow: 'hidden',
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#0F172A',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 3,
+    borderColor: '#334155',
   },
   image: { width: '100%', height: '100%', resizeMode: 'cover' },
   imageMeta: {
@@ -261,20 +307,20 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    backgroundColor: 'rgba(15, 23, 42, 0.58)',
+    backgroundColor: '#0F172A',
   },
   imageMetaText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
   deleteOverlay: {
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(239, 68, 68, 0.94)',
+    backgroundColor: '#450A0A',
     padding: 8,
-    borderRadius: 999,
+    borderRadius: 8,
   },
   loadingState: { alignItems: 'center', marginTop: 80 },
-  loadingText: { marginTop: 12, color: '#64748B', fontWeight: '800' },
+  loadingText: { marginTop: 12, color: '#B9C6DD', fontWeight: '800' },
   emptyState: { alignItems: 'center', marginTop: 80, paddingHorizontal: 20 },
-  emptyText: { marginTop: 10, color: '#64748B', fontSize: 17, fontWeight: '900' },
-  emptySub: { marginTop: 5, color: '#94A3B8', fontSize: 13, textAlign: 'center' },
+  emptyText: { marginTop: 10, color: '#F8FAFC', fontSize: 17, fontWeight: '900' },
+  emptySub: { marginTop: 5, color: '#B9C6DD', fontSize: 13, textAlign: 'center' },
 });

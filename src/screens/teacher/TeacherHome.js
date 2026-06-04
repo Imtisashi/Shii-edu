@@ -1,205 +1,153 @@
-import React, { useRef } from 'react';
-import { 
-  View, Text, StyleSheet, TouchableOpacity, 
-  ImageBackground, Animated, Platform, Image, StatusBar 
-} from 'react-native';
-import { BlurView } from 'expo-blur';
-import * as Haptics from 'expo-haptics';
+import React, { useMemo } from 'react';
 import { useNavigation } from '@react-navigation/native';
+import HomeDashboardScreen from '../home/HomeDashboardScreen';
 import { useAuth } from '../../contexts/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
-import PremiumActionCard from '../../components/ui/PremiumActionCard';
-import useResponsiveLayout from '../../hooks/useResponsiveLayout';
-
-const USE_NATIVE_DRIVER = Platform.OS !== 'web';
-const ENABLE_SCROLL_MOTION = Platform.OS !== 'web';
+import { useRootLayout } from '../../contexts/RootLayoutContext';
 
 export default function TeacherHome() {
   const navigation = useNavigation();
-  const { userData, logout } = useAuth();
-  const layout = useResponsiveLayout();
+  const { brand, colors } = useRootLayout();
+  const { logout, notifications, userData } = useAuth();
 
-  // Enterprise Scroll Animation Values
-  const scrollY = useRef(new Animated.Value(0)).current;
-
-  const teacherName = userData?.name || "Teacher";
-  const initials = teacherName.charAt(0).toUpperCase();
-  const instituteName = userData?.instituteData?.name || "Shii Edu";
-  const firstName = teacherName.split(' ')[0];
-  const compactCards = layout.isMobile;
-  
-  const instTypeStr = (userData?.instituteData?.type || 'school').toLowerCase();
+  const teacherName = userData?.name || 'Teacher';
+  const firstName = teacherName.split(' ')[0] || teacherName;
+  const instTypeStr = String(userData?.instituteData?.institutionType || userData?.instituteData?.type || 'school').toLowerCase();
   const isSchool = instTypeStr.includes('school');
+  const assignmentLabel = userData?.isClassTeacher
+    ? isSchool
+      ? `Class ${userData?.assignedClass || 'Unassigned'} - Sec ${userData?.assignedSection || 'Unassigned'}`
+      : `${userData?.assignedDept || 'Unassigned'} - Sem ${userData?.assignedSem || 'Unassigned'}`
+    : 'Subject teacher';
 
-  // Interpolations for Parallax & Glass Header
-  const headerOpacity = ENABLE_SCROLL_MOTION ? scrollY.interpolate({
-    inputRange: [50, 120],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  }) : 0;
+  const actions = useMemo(() => [
+    {
+      color: '#047857',
+      icon: 'checkmark-done-circle',
+      key: 'attendance',
+      onPress: () => navigation.navigate('Attendance'),
+      softColor: colors.emeraldSoft,
+      subtitle: "Open the roster and submit today's attendance.",
+      title: 'Attendance',
+    },
+    {
+      color: '#2563EB',
+      icon: 'megaphone',
+      key: 'notices',
+      onPress: () => navigation.navigate('TeacherNotifs'),
+      softColor: colors.deepBlueSoft,
+      subtitle: 'Publish and review classroom notices.',
+      title: 'Notices',
+    },
+    {
+      color: '#7C3AED',
+      icon: 'people',
+      key: 'students',
+      onPress: () => navigation.navigate('Students'),
+      softColor: colors.violetSoft,
+      subtitle: 'Review student IDs, sections, and classroom records.',
+      title: 'Directory',
+    },
+    {
+      color: '#DC2626',
+      icon: 'calendar',
+      key: 'routine',
+      onPress: () => navigation.navigate('Routine'),
+      softColor: colors.warningSoft,
+      subtitle: 'View assigned teaching schedule and room slots.',
+      title: 'Routine',
+    },
+    {
+      color: '#B45309',
+      icon: 'document-text',
+      key: 'assignments',
+      onPress: () => navigation.navigate('Assignments'),
+      softColor: colors.warningSoft,
+      subtitle: 'Create and manage coursework submissions.',
+      title: 'Assignments',
+    },
+    {
+      color: '#2563EB',
+      icon: 'play-circle',
+      key: 'courses',
+      onPress: () => navigation.navigate('Courses'),
+      softColor: colors.deepBlueSoft,
+      subtitle: 'Upload lessons and maintain course resources.',
+      title: 'Courses',
+    },
+    {
+      color: '#DC2626',
+      icon: 'document-attach',
+      key: 'pyq',
+      onPress: () => navigation.navigate('UploadPYQ'),
+      softColor: colors.warningSoft,
+      subtitle: 'Upload and organize question-paper documents.',
+      title: 'PYQs',
+    },
+    {
+      color: '#EA580C',
+      icon: 'images',
+      key: 'gallery',
+      onPress: () => navigation.navigate('GalleryView'),
+      softColor: colors.bronzeSoft,
+      subtitle: 'Review and contribute approved class media.',
+      title: 'Gallery',
+    },
+    {
+      color: '#0369A1',
+      icon: 'print',
+      key: 'reports',
+      onPress: () => navigation.navigate('ReportsCenter'),
+      softColor: colors.cyanSoft,
+      subtitle: 'Generate class-level academic reports.',
+      title: 'Reports',
+    },
+    {
+      color: '#0F766E',
+      icon: 'chatbubbles',
+      key: 'messages',
+      onPress: () => navigation.navigate('CommunicationHub'),
+      softColor: colors.emeraldSoft,
+      subtitle: 'Message admins, parents, and assigned students.',
+      title: 'Messages',
+    },
+    {
+      color: '#4F46E5',
+      icon: 'library',
+      key: 'syllabus',
+      onPress: () => navigation.navigate('SyllabusTutor'),
+      softColor: colors.violetSoft,
+      subtitle: 'Review syllabus coverage and tutoring prompts.',
+      title: 'Syllabus AI',
+    },
+  ], [colors, navigation]);
 
-  const heroTranslateY = ENABLE_SCROLL_MOTION ? scrollY.interpolate({
-    inputRange: [-100, 0, 200],
-    outputRange: [0, 0, 100],
-    extrapolate: 'clamp',
-  }) : 0;
-
-  const heroScale = ENABLE_SCROLL_MOTION ? scrollY.interpolate({
-    inputRange: [-100, 0],
-    outputRange: [1.2, 1],
-    extrapolate: 'clamp',
-  }) : 1;
-
-  const renderBadges = () => {
-    if (userData?.isClassTeacher) {
-      const p1 = isSchool ? `Class ${userData?.assignedClass || 'N/A'}` : (userData?.assignedDept || 'N/A');
-      const p2 = isSchool ? `Sec ${userData?.assignedSection || 'N/A'}` : `Sem ${userData?.assignedSem || 'N/A'}`;
-      return (
-        <View style={[styles.pillContainer, layout.isMobile && styles.pillContainerMobile]}>
-          <View style={[styles.pillBadge, layout.isMobile && styles.pillBadgeMobile, {backgroundColor: 'rgba(16, 185, 129, 0.3)', borderColor: '#10B981'}]}>
-             <Ionicons name="star" size={12} color="#fff" style={{marginRight: 4}} />
-             <Text style={[styles.pillText, layout.isMobile && styles.pillTextMobile]} numberOfLines={1}>Advisor</Text>
-          </View>
-          <View style={[styles.pillBadge, layout.isMobile && styles.pillBadgeMobile]}><Text style={[styles.pillText, layout.isMobile && styles.pillTextMobile]} numberOfLines={1}>{p1}</Text></View>
-          <View style={[styles.pillBadge, layout.isMobile && styles.pillBadgeMobile]}><Text style={[styles.pillText, layout.isMobile && styles.pillTextMobile]} numberOfLines={1}>{p2}</Text></View>
-        </View>
-      );
-    } else {
-      return (
-        <View style={[styles.pillContainer, layout.isMobile && styles.pillContainerMobile]}>
-          <View style={[styles.pillBadge, layout.isMobile && styles.pillBadgeMobile]}><Text style={[styles.pillText, layout.isMobile && styles.pillTextMobile]} numberOfLines={1}>Subject Teacher</Text></View>
-        </View>
-      );
-    }
-  };
+  const notices = useMemo(
+    () => (notifications || []).slice(0, 3).map((item, index) => ({
+      id: item.id || `teacher-notice-${index}`,
+      meta: item.type || 'Faculty update',
+      onPress: () => navigation.navigate('TeacherNotifs'),
+      title: item.title || 'Faculty update',
+    })),
+    [navigation, notifications]
+  );
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-
-      {/* STICKY GLASSMORPHISM HEADER */}
-      <Animated.View pointerEvents="none" style={[styles.glassHeader, { opacity: headerOpacity }]}>
-        {Platform.OS === 'ios' ? (
-          <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
-        ) : (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.95)' }]} />
-        )}
-        <View style={styles.glassHeaderContent}>
-          <Text style={styles.glassTitle}>Faculty Portal</Text>
-          <View style={[styles.glassAvatar, { backgroundColor: '#8B5CF6' }]}>
-            <Text style={styles.glassAvatarText}>{initials}</Text>
-          </View>
-        </View>
-      </Animated.View>
-
-      <Animated.ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false} 
-        keyboardShouldPersistTaps="handled"
-        onScroll={ENABLE_SCROLL_MOTION ? Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: USE_NATIVE_DRIVER }) : undefined}
-        scrollEventThrottle={16}
-        contentContainerStyle={[styles.scrollContent, layout.isDesktop && styles.scrollContentDesktop]}
-      >
-        {/* PARALLAX HERO SECTION */}
-        <Animated.View
-          style={[
-            styles.heroContainer,
-            { height: layout.heroHeight },
-            layout.isDesktop && styles.heroContainerDesktop,
-            layout.isDesktop && { maxWidth: layout.maxContentWidth },
-            ENABLE_SCROLL_MOTION && { transform: [{ translateY: heroTranslateY }, { scale: heroScale }] },
-          ]}
-        >
-           <ImageBackground 
-            source={{ uri: userData?.instituteData?.heroImage || 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1000&auto=format&fit=crop' }}             style={styles.heroImage}
-           >
-             <View style={[styles.heroGradient, layout.isMobile && styles.heroGradientMobile, layout.isDesktop && styles.heroGradientDesktop, { backgroundColor: 'rgba(76, 29, 149, 0.65)' }]}>
-               <Text style={[styles.instituteHeading, layout.isMobile && styles.instituteHeadingMobile]} numberOfLines={1}>{instituteName}</Text>
-               <View style={[styles.profileRow, layout.isMobile && styles.profileRowMobile]}>
-                  {userData?.profilePic ? (
-                    <Image source={{ uri: userData.profilePic }} style={[styles.avatarImage, layout.isMobile && styles.avatarImageMobile]} />
-                  ) : (
-                    <View style={[styles.avatarFallback, layout.isMobile && styles.avatarFallbackMobile]}><Text style={[styles.avatarInitials, layout.isMobile && styles.avatarInitialsMobile]}>{initials}</Text></View>
-                  )}
-                  <View style={styles.greetingBlock}>
-                    <Text style={[styles.greeting, layout.isMobile && styles.greetingMobile]}>Faculty Portal,</Text>
-                    <Text style={[styles.greetingName, layout.isMobile && styles.greetingNameMobile]} numberOfLines={1}>{firstName}</Text>
-                  </View>
-               </View>
-               {renderBadges()}
-             </View>
-           </ImageBackground>
-        </Animated.View>
-
-        <View style={[styles.bodyContent, layout.isMobile && styles.bodyContentMobile, layout.isDesktop && styles.bodyContentDesktop, layout.isDesktop && { maxWidth: layout.maxContentWidth }]}>
-          <Text style={[styles.sectionTitle, layout.isMobile && styles.sectionTitleMobile]}>Command Center</Text>
-          
-          <View style={[styles.gridContainer, layout.isDesktop && styles.gridContainerDesktop]}>
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Attendance" icon="checkmark-done-circle" color="#10B981" bgColor="#ECFDF5" delay={100} onPress={() => navigation.navigate('Attendance')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Notices" icon="megaphone" color="#3B82F6" bgColor="#EFF6FF" delay={200} onPress={() => navigation.navigate('TeacherNotifs')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Directory" icon="people" color="#8B5CF6" bgColor="#F5F3FF" delay={300} onPress={() => navigation.navigate('Students')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Routine" icon="calendar" color="#E11D48" bgColor="#FFE4E6" delay={400} onPress={() => navigation.navigate('Routine')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title={layout.isMobile ? 'Tasks' : 'Assignments'} icon="document-text" color="#F59E0B" bgColor="#FFFBEB" delay={500} onPress={() => navigation.navigate('Assignments')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Courses" icon="play-circle" color="#2563EB" bgColor="#EFF6FF" delay={600} onPress={() => navigation.navigate('Courses')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="PYQs" icon="document-attach" color="#DC2626" bgColor="#FEF2F2" delay={700} onPress={() => navigation.navigate('UploadPYQ')} />
-            <PremiumActionCard columns={layout.dashboardColumns} compact={compactCards} title="Gallery" icon="images" color="#F97316" bgColor="#FFF7ED" delay={800} onPress={() => navigation.navigate('GalleryView')} />
-          </View>
-
-          <TouchableOpacity style={[styles.logoutBtn, layout.isMobile && styles.logoutBtnMobile]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); logout(); }}>
-            <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-            <Text style={styles.logoutBtnText}>Secure Sign Out</Text>
-          </TouchableOpacity>
-        </View>
-      </Animated.ScrollView>
-    </View>
+    <HomeDashboardScreen
+      displayName={firstName}
+      greetingLabel="Faculty workspace"
+      instituteName={brand.name}
+      notices={notices}
+      onLogout={logout}
+      onOpenNotifications={() => navigation.navigate('TeacherNotifs')}
+      primaryActions={actions.slice(0, 4)}
+      profileMeta={[
+        assignmentLabel,
+        isSchool ? 'School mode' : 'College mode',
+        userData?.instituteId ? `Institute ${userData.instituteId}` : 'Institute pending',
+      ]}
+      secondaryActions={actions.slice(4)}
+      title="Faculty"
+      unreadCount={(notifications || []).length}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F4F4F5' },
-  scrollView: { flex: 1 },
-  glassHeader: { position: 'absolute', top: 0, left: 0, right: 0, height: Platform.OS === 'ios' ? 100 : 80, zIndex: 100, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
-  glassHeaderContent: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingHorizontal: 20, paddingBottom: 15 },
-  glassTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', letterSpacing: 0 },
-  glassAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#8B5CF6', justifyContent: 'center', alignItems: 'center' },
-  glassAvatarText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-  scrollContent: { paddingBottom: 120 },
-  scrollContentDesktop: { alignItems: 'center', paddingBottom: 80 },
-  heroContainer: { height: 320, width: '100%', backgroundColor: '#0F172A' },
-  heroContainerDesktop: { width: '100%', alignSelf: 'center', borderRadius: 28, overflow: 'hidden', marginTop: 24 },
-  heroImage: { width: '100%', height: '100%', justifyContent: 'flex-end' },
-  heroGradient: { width: '100%', height: '100%', padding: 24, justifyContent: 'flex-end' },
-  heroGradientDesktop: { padding: 36 },
-  heroGradientMobile: { padding: 18 },
-  instituteHeading: { fontSize: 16, fontWeight: '700', color: '#DDD6FE', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 20 },
-  instituteHeadingMobile: { fontSize: 12, lineHeight: 16, marginBottom: 14, letterSpacing: 1 },
-  profileRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  profileRowMobile: { marginBottom: 12 },
-  greetingBlock: { marginLeft: 16, flex: 1, minWidth: 0 },
-  avatarFallback: { width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)' },
-  avatarFallbackMobile: { width: 56, height: 56, borderRadius: 28 },
-  avatarInitials: { fontSize: 28, fontWeight: 'bold', color: '#fff' },
-  avatarInitialsMobile: { fontSize: 22 },
-  avatarImage: { width: 70, height: 70, borderRadius: 35, borderWidth: 2, borderColor: '#fff' },
-  avatarImageMobile: { width: 56, height: 56, borderRadius: 28 },
-  greeting: { fontSize: 16, color: '#E2E8F0', fontWeight: '500' },
-  greetingMobile: { fontSize: 13 },
-  greetingName: { fontSize: 32, fontWeight: '900', color: '#FFFFFF', marginTop: 2, letterSpacing: 0 },
-  greetingNameMobile: { fontSize: 25, lineHeight: 30 },
-  pillContainer: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
-  pillContainerMobile: { marginTop: 2 },
-  pillBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', marginRight: 10 },
-  pillBadgeMobile: { paddingHorizontal: 10, paddingVertical: 6, marginRight: 8, marginBottom: 8 },
-  pillText: { color: '#ffffff', fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
-  pillTextMobile: { fontSize: 12, letterSpacing: 0.2 },
-  bodyContent: { padding: 20, marginTop: -20, backgroundColor: '#F4F4F5', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
-  bodyContentMobile: { paddingHorizontal: 16, paddingTop: 18 },
-  bodyContentDesktop: { width: '100%', alignSelf: 'center', marginTop: 18, borderRadius: 0, paddingHorizontal: 0 },
-  sectionTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', marginBottom: 16, marginTop: 10, letterSpacing: 0 },
-  sectionTitleMobile: { fontSize: 18, marginBottom: 12 },
-  gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 },
-  gridContainerDesktop: { alignContent: 'flex-start' },
-  logoutBtn: { backgroundColor: '#fff', flexDirection: 'row', padding: 20, borderRadius: 20, alignItems: 'center', justifyContent: 'center', shadowColor: '#EF4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 2, marginTop: 10 },
-  logoutBtnMobile: { padding: 16, borderRadius: 17 },
-  logoutBtnText: { color: '#EF4444', fontWeight: 'bold', fontSize: 16, marginLeft: 10 },
-});

@@ -1,8 +1,11 @@
-import React, { createContext, useContext, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { getInstitutionProfile, InstitutionType } from '../services/institutionalProfile';
+import { db } from '../../firebaseConfig';
 
 const InstitutionContext = createContext(null);
+const SUPERADMIN_ROLE = 'superadmin';
 
 const arrayFromConfig = (value) => {
   if (!value) return [];
@@ -24,9 +27,10 @@ const normalizeSection = (section) => {
 };
 
 const buildSchoolWorkflow = (instituteData = {}) => {
-  const academicYears = arrayFromConfig(instituteData.academicYears || instituteData.years)
+  const academicModel = instituteData.academicModel || {};
+  const academicYears = arrayFromConfig(academicModel.academicYears || instituteData.academicYears || instituteData.years)
     .map((year) => (typeof year === 'string' ? { id: year, label: year } : year));
-  const gradeSource = instituteData.classSections || instituteData.gradeSections || instituteData.classes || [];
+  const gradeSource = academicModel.classSections || instituteData.classSections || instituteData.gradeSections || instituteData.classes || [];
   const gradeBlocks = arrayFromConfig(gradeSource).map((grade) => {
     if (typeof grade === 'string' || typeof grade === 'number') {
       return {
@@ -45,13 +49,17 @@ const buildSchoolWorkflow = (instituteData = {}) => {
 
   return {
     mode: InstitutionType.SCHOOL,
+    modelVersion: academicModel.modelVersion || 1,
+    system: academicModel.system || 'academic-year',
     academicYears,
     gradeBlocks,
-    classTeacherAssignments: instituteData.classTeacherAssignments || {},
+    standards: arrayFromConfig(academicModel.standards || instituteData.standards),
+    classTeacherAssignments: academicModel.classTeacherAssignments || instituteData.classTeacherAssignments || {},
     attendancePolicy: {
       requiredDaily: true,
       allowSubjectAttendance: false,
       parentVisible: true,
+      ...(academicModel.attendance || {}),
     },
     grading: {
       label: 'Continuous Evaluation',
@@ -62,7 +70,8 @@ const buildSchoolWorkflow = (instituteData = {}) => {
 };
 
 const buildCollegeWorkflow = (instituteData = {}) => {
-  const departments = arrayFromConfig(instituteData.departments || instituteData.depts)
+  const academicModel = instituteData.academicModel || {};
+  const departments = arrayFromConfig(academicModel.departments || instituteData.departments || instituteData.depts)
     .map((department) => (typeof department === 'string'
       ? { id: department, label: department, courses: [] }
       : {
@@ -70,22 +79,26 @@ const buildCollegeWorkflow = (instituteData = {}) => {
         label: String(department.label || department.name || department.code || 'Department'),
         courses: arrayFromConfig(department.courses),
       }));
-  const semesters = arrayFromConfig(instituteData.semesters || instituteData.sems)
+  const semesters = arrayFromConfig(academicModel.semesters || instituteData.semesters || instituteData.sems)
     .map((semester) => (typeof semester === 'string' || typeof semester === 'number'
       ? { id: String(semester), label: `Semester ${semester}` }
       : semester));
 
   return {
     mode: InstitutionType.COLLEGE,
+    modelVersion: academicModel.modelVersion || 1,
+    system: academicModel.system || 'semester',
     departments,
     semesters,
-    creditHours: instituteData.creditHours || {},
-    electiveRegistration: {
+    creditHours: academicModel.creditHours || instituteData.creditHours || {},
+    electiveRegistration: academicModel.electiveRegistration || {
       enabled: instituteData.electiveRegistrationEnabled !== false,
+      activeWindowId: null,
+      windows: [],
       window: instituteData.electiveRegistrationWindow || null,
     },
     professorCoursePairings: instituteData.professorCoursePairings || {},
-    gpa: {
+    gpa: academicModel.gpa || {
       scale: Number(instituteData.gpaScale || 10),
       cgpaEnabled: true,
       formula: instituteData.gpaFormula || 'weighted-credit-average',
@@ -100,10 +113,110 @@ const buildCollegeWorkflow = (instituteData = {}) => {
 
 export function InstitutionProvider({ children }) {
   const { userData } = useAuth();
+  const normalizedRole = String(userData?.role || '').trim().toLowerCase();
+  const isSuperAdmin = normalizedRole === SUPERADMIN_ROLE;
+  const [firestoreInstituteData, setFirestoreInstituteData] = useState(null);
+  const [status, setStatus] = useState('idle');
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      setFirestoreInstituteData(null);
+      setStatus('platform');
+      setError(null);
+      return undefined;
+    }
+
+    const instituteId = userData?.instituteId;
+
+    if (!instituteId) {
+      setFirestoreInstituteData(null);
+      setStatus('idle');
+      setError(null);
+      return undefined;
+    }
+
+    setStatus('loading');
+    setError(null);
+
+    const unsubscribe = onSnapshot(
+      doc(db, 'institutes', instituteId),
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          setFirestoreInstituteData(null);
+          setStatus('missing');
+          return;
+        }
+
+        const data = snapshot.data();
+        setFirestoreInstituteData({
+          id: snapshot.id,
+          ...data,
+          instituteId: data.instituteId || snapshot.id,
+        });
+        setStatus('ready');
+      },
+      (snapshotError) => {
+        console.error('Failed to read institution mode from Firestore:', snapshotError);
+        setFirestoreInstituteData(null);
+        setError(snapshotError.message || 'Unable to read institution mode.');
+        setStatus('error');
+      }
+    );
+
+    return unsubscribe;
+  }, [isSuperAdmin, userData?.instituteId]);
 
   const value = useMemo(() => {
-    const profile = getInstitutionProfile(userData || {});
-    const instituteData = userData?.instituteData || {};
+    if (isSuperAdmin) {
+      return {
+        profile: {
+          institutionType: 'PLATFORM',
+          isSchool: false,
+          isCollege: false,
+          isPlatform: true,
+          instituteId: null,
+          instituteName: 'Edu-Hub Platform',
+          academicRootLabel: 'Institutes',
+          academicChildLabel: 'Institutes',
+          attendanceLabel: 'Platform attendance disabled',
+          gradingLabel: 'Platform grading disabled',
+          facultyLabel: 'Institute admins',
+          courseLabel: 'Institute systems',
+          primaryValue: '',
+          secondaryValue: '',
+          scopeSummary: 'Superadmin platform control',
+        },
+        workflow: {
+          mode: 'PLATFORM',
+          instituteCreationEnabled: true,
+          supportedInstitutionTypes: [InstitutionType.SCHOOL, InstitutionType.COLLEGE],
+        },
+        institutionType: 'PLATFORM',
+        modeLabel: 'PLATFORM',
+        isSchool: false,
+        isCollege: false,
+        isPlatform: true,
+        instituteData: null,
+        status: 'platform',
+        error: null,
+        source: 'superadmin-role',
+        labels: {
+          academicRoot: 'Institutes',
+          academicChild: 'Institutes',
+          attendance: 'Platform attendance disabled',
+          grading: 'Platform grading disabled',
+          faculty: 'Institute admins',
+          course: 'Institute systems',
+        },
+      };
+    }
+
+    const instituteData = firestoreInstituteData || userData?.instituteData || {};
+    const profile = getInstitutionProfile({
+      ...(userData || {}),
+      instituteData,
+    });
     const workflow = profile.institutionType === InstitutionType.COLLEGE
       ? buildCollegeWorkflow(instituteData)
       : buildSchoolWorkflow(instituteData);
@@ -112,8 +225,14 @@ export function InstitutionProvider({ children }) {
       profile,
       workflow,
       institutionType: profile.institutionType,
+      modeLabel: profile.institutionType,
       isSchool: profile.isSchool,
       isCollege: profile.isCollege,
+      isPlatform: false,
+      instituteData,
+      status,
+      error,
+      source: firestoreInstituteData ? 'firestore' : 'auth-profile',
       labels: {
         academicRoot: profile.academicRootLabel,
         academicChild: profile.academicChildLabel,
@@ -123,7 +242,7 @@ export function InstitutionProvider({ children }) {
         course: profile.courseLabel
       }
     };
-  }, [userData]);
+  }, [error, firestoreInstituteData, isSuperAdmin, status, userData]);
 
   return (
     <InstitutionContext.Provider value={value}>

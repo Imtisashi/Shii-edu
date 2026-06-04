@@ -1,27 +1,28 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import LoadingState from '../components/ui/LoadingState';
 import { Ionicons } from '@expo/vector-icons';
+import InstituteSyncSplash from '../components/auth/InstituteSyncSplash';
 
-// Import all navigators
-import AuthNavigator from './AuthNavigator';
+// Import all institute navigators
+import InstituteAuthNavigator from './InstituteAuthNavigator';
 import StudentNavigator from './StudentNavigator';
 import TeacherNavigator from './TeacherNavigator';
 import AdminNavigator from './AdminNavigator';
-import SuperAdminNavigator from './SuperAdminNavigator';
+import ParentNavigator from './ParentNavigator';
+import DriverNavigator from './DriverNavigator';
 
 export default function AppNavigator() {
   const { currentUser, userData, loading, logout, profileError } = useAuth();
 
   // 1. Show loading while checking auth state or during the registration gap
   if (loading) {
-    return <LoadingState label="Preparing Shii Edu..." color="#4A90E2" />;
+    return <InstituteSyncSplash />;
   }
 
-  // 2. Not logged in? Go to Login/Register
+  // 2. Not logged in? Use the institute-scoped login.
   if (!currentUser) {
-    return <AuthNavigator />;
+    return <InstituteAuthNavigator />;
   }
 
   if (!userData) {
@@ -47,11 +48,27 @@ export default function AppNavigator() {
     );
   }
 
-  // 3. Multi-Tenant Role Logic - Using case-insensitive, whitespace-tolerant comparison
+  // 3. Institute role logic - using case-insensitive, whitespace-tolerant comparison.
   const userRole = userData?.role?.trim().toLowerCase().replace(/[\s_-]+/g, '') || '';
 
   if (userRole === 'superadmin') {
-    return <SuperAdminNavigator />;
+    return (
+      <View style={styles.profileIssueContainer}>
+        <View style={styles.profileIssueCard}>
+          <View style={styles.profileIssueIcon}>
+            <Ionicons name="shield-outline" size={30} color="#2563EB" />
+          </View>
+          <Text style={styles.profileIssueTitle}>Institute App Only</Text>
+          <Text style={styles.profileIssueText}>
+            Superadmin accounts must use the separate Edu-Hub Superadmin application.
+          </Text>
+          <TouchableOpacity style={styles.profileIssueButton} onPress={logout}>
+            <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.profileIssueButtonText}>Sign out</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   }
 
   if (userRole === 'admin') {
@@ -62,8 +79,35 @@ export default function AppNavigator() {
     return <TeacherNavigator />;
   }
 
-  // 4. Default to Student for everyone else
-  return <StudentNavigator />;
+  if (userRole === 'student') {
+    return <StudentNavigator />;
+  }
+
+  if (userRole === 'parent') {
+    return <ParentNavigator />;
+  }
+
+  if (userRole === 'driver') {
+    return <DriverNavigator />;
+  }
+
+  return (
+    <View style={styles.profileIssueContainer}>
+      <View style={styles.profileIssueCard}>
+        <View style={styles.profileIssueIcon}>
+          <Ionicons name="shield-outline" size={30} color="#2563EB" />
+        </View>
+        <Text style={styles.profileIssueTitle}>Unsupported Institute Role</Text>
+        <Text style={styles.profileIssueText}>
+          This account role is not enabled in the Edu Shii application.
+        </Text>
+        <TouchableOpacity style={styles.profileIssueButton} onPress={logout}>
+          <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
+          <Text style={styles.profileIssueButtonText}>Sign out</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -71,48 +115,45 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#02030A',
     padding: 20,
   },
   profileIssueCard: {
     width: '100%',
     maxWidth: 460,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    backgroundColor: '#0F172A',
+    borderRadius: 8,
     padding: 24,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.08,
-    shadowRadius: 22,
-    elevation: 4,
+    borderColor: '#334155',
   },
   profileIssueIcon: {
     width: 64,
     height: 64,
-    borderRadius: 20,
+    borderRadius: 8,
     backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
   profileIssueTitle: {
-    color: '#0F172A',
+    color: '#F8FAFC',
     fontSize: 22,
     fontWeight: '900',
     textAlign: 'center',
   },
   profileIssueText: {
-    color: '#475569',
+    color: '#B9C6DD',
     fontSize: 15,
     lineHeight: 22,
     textAlign: 'center',
     marginTop: 10,
   },
   profileIssueHint: {
-    color: '#94A3B8',
+    color: '#8EA4C8',
     fontSize: 13,
     lineHeight: 19,
     textAlign: 'center',
@@ -121,7 +162,7 @@ const styles = StyleSheet.create({
   profileIssueButton: {
     marginTop: 18,
     backgroundColor: '#2563EB',
-    borderRadius: 14,
+    borderRadius: 8,
     paddingHorizontal: 18,
     paddingVertical: 13,
     flexDirection: 'row',

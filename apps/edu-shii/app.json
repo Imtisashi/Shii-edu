@@ -1,0 +1,101 @@
+{
+  "expo": {
+    "name": "Edu Shii",
+    "slug": "edu-shii",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "../../assets/images/icon.png",
+    "scheme": "eduhub",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.eduhub.app",
+      "buildNumber": "1",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSCameraUsageDescription": "Edu Shii uses the camera when you choose to capture institute media.",
+        "NSFaceIDUsageDescription": "Allow Edu Shii to use Face ID for secure institute sign-in.",
+        "NSLocationWhenInUseUsageDescription": "Edu-Hub uses location while a driver is actively broadcasting a campus vehicle route.",
+        "NSPhotoLibraryAddUsageDescription": "Edu Shii saves media only when you explicitly request it.",
+        "NSPhotoLibraryUsageDescription": "Edu Shii uses your photo library when you choose images to upload."
+      }
+    },
+    "android": {
+      "package": "com.eduhub.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#02030A",
+        "foregroundImage": "../../assets/images/android-icon-foreground.png",
+        "backgroundImage": "../../assets/images/android-icon-background.png",
+        "monochromeImage": "../../assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "../../assets/images/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "../../assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF",
+          "dark": {
+            "backgroundColor": "#02030A"
+          }
+        }
+      ],
+      "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow Edu Shii to use the camera when you choose to capture institute media.",
+          "microphonePermission": false,
+          "photosPermission": "Allow Edu Shii to access photos you choose to upload."
+        }
+      ],
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.eduhub.app",
+          "enableGooglePay": true
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Edu-Hub to share the live location of an active campus vehicle route."
+        }
+      ],
+      "expo-notifications",
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true,
+          "faceIDPermission": "Allow Edu Shii to use Face ID for secure institute sign-in."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Edu Shii to use Face ID for secure institute sign-in."
+        }
+      ]
+    ]
+  }
+}

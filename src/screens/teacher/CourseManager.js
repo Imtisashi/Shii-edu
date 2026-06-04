@@ -26,6 +26,7 @@ import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../../firebaseConfig';
 import { getInstitutionProfile } from '../../services/institutionalProfile';
+import { useInstituteTheme } from '../../hooks/useInstituteTheme';
 
 const showMessage = (title, message) => {
   if (Platform.OS === 'web') {
@@ -77,6 +78,7 @@ const createLessonFromInput = ({ title, description, mediaInput, durationMinutes
 
 export default function CourseManager({ navigation }) {
   const { userData } = useAuth();
+  const { colors, styles } = useInstituteTheme(baseStyles);
   const profile = getInstitutionProfile(userData);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -250,7 +252,7 @@ export default function CourseManager({ navigation }) {
           </Text>
 
           <Text style={styles.label}>Course Title</Text>
-          <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Physics: Motion and Forces" />
+          <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Physics: Motion and Forces" placeholderTextColor={colors.muted} />
 
           <Text style={styles.label}>Course Description</Text>
           <TextInput
@@ -258,6 +260,7 @@ export default function CourseManager({ navigation }) {
             value={description}
             onChangeText={setDescription}
             placeholder="What students will learn"
+            placeholderTextColor={colors.muted}
             multiline
             textAlignVertical="top"
           />
@@ -265,25 +268,26 @@ export default function CourseManager({ navigation }) {
           <View style={styles.row}>
             <View style={styles.rowCell}>
               <Text style={styles.label}>{profile.academicRootLabel}</Text>
-              <TextInput style={styles.input} value={primaryTarget} onChangeText={setPrimaryTarget} placeholder={profile.isCollege ? 'CSE' : '10'} />
+              <TextInput style={styles.input} value={primaryTarget} onChangeText={setPrimaryTarget} placeholder={profile.isCollege ? 'CSE' : '10'} placeholderTextColor={colors.muted} />
             </View>
             <View style={styles.rowCell}>
               <Text style={styles.label}>{profile.academicChildLabel}</Text>
-              <TextInput style={styles.input} value={secondaryTarget} onChangeText={setSecondaryTarget} placeholder={profile.isCollege ? '3' : 'A'} />
+              <TextInput style={styles.input} value={secondaryTarget} onChangeText={setSecondaryTarget} placeholder={profile.isCollege ? '3' : 'A'} placeholderTextColor={colors.muted} />
             </View>
           </View>
 
           <Text style={styles.label}>Module Title</Text>
-          <TextInput style={styles.input} value={moduleTitle} onChangeText={setModuleTitle} placeholder="Module 1" />
+          <TextInput style={styles.input} value={moduleTitle} onChangeText={setModuleTitle} placeholder="Module 1" placeholderTextColor={colors.muted} />
 
           <View style={styles.lessonBox}>
             <Text style={styles.lessonBoxTitle}>Add Lesson</Text>
-            <TextInput style={styles.input} value={lessonTitle} onChangeText={setLessonTitle} placeholder="Lesson title" />
+            <TextInput style={styles.input} value={lessonTitle} onChangeText={setLessonTitle} placeholder="Lesson title" placeholderTextColor={colors.muted} />
             <TextInput
               style={[styles.input, styles.textAreaSmall]}
               value={lessonDescription}
               onChangeText={setLessonDescription}
               placeholder="Lesson notes or objective"
+              placeholderTextColor={colors.muted}
               multiline
               textAlignVertical="top"
             />
@@ -292,6 +296,7 @@ export default function CourseManager({ navigation }) {
               value={mediaInput}
               onChangeText={setMediaInput}
               placeholder="YouTube URL, MP4/HLS URL, or Cloudinary public ID"
+              placeholderTextColor={colors.muted}
               autoCapitalize="none"
             />
             <TextInput
@@ -299,6 +304,7 @@ export default function CourseManager({ navigation }) {
               value={durationMinutes}
               onChangeText={setDurationMinutes}
               placeholder="Duration in minutes"
+              placeholderTextColor={colors.muted}
               keyboardType="numeric"
             />
             <TouchableOpacity style={styles.secondaryBtn} onPress={addDraftLesson}>
@@ -342,33 +348,33 @@ export default function CourseManager({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+const baseStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#02030A', overflow: 'hidden' },
   scrollContent: { padding: 16, paddingBottom: 110 },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 18, padding: 18, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 22 },
-  cardTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A' },
-  helperText: { color: '#64748B', fontSize: 13, lineHeight: 19, marginTop: 6, marginBottom: 16 },
-  label: { fontSize: 12, color: '#475569', fontWeight: '900', textTransform: 'uppercase', marginBottom: 7 },
-  input: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 13, fontSize: 15, marginBottom: 14, color: '#0F172A', outlineStyle: 'none' },
+  card: { backgroundColor: '#0F172A', borderRadius: 8, padding: 18, borderWidth: 1, borderColor: '#334155', marginBottom: 22 },
+  cardTitle: { fontSize: 20, fontWeight: '900', color: '#F8FAFC' },
+  helperText: { color: '#B9C6DD', fontSize: 13, lineHeight: 19, marginTop: 6, marginBottom: 16 },
+  label: { fontSize: 12, color: '#8EA4C8', fontWeight: '900', textTransform: 'uppercase', marginBottom: 7 },
+  input: { backgroundColor: '#020617', borderWidth: 1, borderColor: '#334155', borderRadius: 8, padding: 13, fontSize: 15, marginBottom: 14, color: '#F8FAFC', outlineStyle: 'none' },
   textAreaSmall: { minHeight: 74 },
   row: { flexDirection: 'row', gap: 10 },
   rowCell: { flex: 1 },
-  lessonBox: { backgroundColor: '#EFF6FF', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#BFDBFE', marginBottom: 14 },
-  lessonBoxTitle: { fontSize: 16, fontWeight: '900', color: '#1D4ED8', marginBottom: 10 },
-  secondaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#BFDBFE', paddingVertical: 13 },
+  lessonBox: { backgroundColor: '#082F49', borderRadius: 8, padding: 14, borderWidth: 1, borderColor: '#075985', marginBottom: 14 },
+  lessonBoxTitle: { fontSize: 16, fontWeight: '900', color: '#67E8F9', marginBottom: 10 },
+  secondaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#111827', borderRadius: 8, borderWidth: 1, borderColor: '#075985', paddingVertical: 13 },
   secondaryBtnText: { color: '#2563EB', fontWeight: '900', marginLeft: 8 },
   draftList: { marginBottom: 14 },
-  draftLesson: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, marginBottom: 8 },
-  draftLessonText: { flex: 1, color: '#0F172A', fontWeight: '800', marginRight: 10 },
-  publishBtn: { backgroundColor: '#2563EB', borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
+  draftLesson: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#111827', borderColor: '#334155', borderRadius: 8, borderWidth: 1, padding: 12, marginBottom: 8 },
+  draftLessonText: { flex: 1, color: '#F8FAFC', fontWeight: '800', marginRight: 10 },
+  publishBtn: { backgroundColor: '#2563EB', borderColor: '#334155', borderRadius: 8, borderWidth: 1, paddingVertical: 16, alignItems: 'center'},
   publishBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
   disabled: { opacity: 0.7 },
-  sectionTitle: { fontSize: 17, color: '#0F172A', fontWeight: '900', marginBottom: 12 },
-  emptyText: { color: '#94A3B8', fontStyle: 'italic' },
-  courseCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 10 },
-  courseIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  sectionTitle: { fontSize: 17, color: '#F8FAFC', fontWeight: '900', marginBottom: 12 },
+  emptyText: { color: '#B9C6DD', fontWeight: '800' },
+  courseCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0F172A', borderRadius: 8, padding: 14, borderWidth: 1, borderColor: '#334155', marginBottom: 10 },
+  courseIcon: { width: 42, height: 42, borderRadius: 8, backgroundColor: '#082F49', borderColor: '#075985', borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   courseInfo: { flex: 1, minWidth: 0 },
-  courseTitle: { color: '#0F172A', fontSize: 16, fontWeight: '900' },
-  courseMeta: { color: '#64748B', fontSize: 12, marginTop: 3 },
-  deleteBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center', marginLeft: 10 },
+  courseTitle: { color: '#F8FAFC', fontSize: 16, fontWeight: '900' },
+  courseMeta: { color: '#B9C6DD', fontSize: 12, marginTop: 3 },
+  deleteBtn: { width: 38, height: 38, borderRadius: 8, backgroundColor: '#450A0A', borderColor: '#7F1D1D', borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginLeft: 10 },
 });

@@ -6,9 +6,11 @@ import DynamicHeader from '../../components/DynamicHeader';
 import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../../firebaseConfig';
+import { useInstituteTheme } from '../../hooks/useInstituteTheme';
 
 export default function TeacherAssignments({ navigation }) {
   const { userData } = useAuth();
+  const { colors, styles } = useInstituteTheme(baseStyles);
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -71,7 +73,7 @@ export default function TeacherAssignments({ navigation }) {
           )}
           ListEmptyComponent={(
             <View style={styles.emptyState}>
-              <Ionicons name="documents-outline" size={52} color="#CBD5E1" />
+              <Ionicons name="documents-outline" size={52} color={colors.muted} />
               <Text style={styles.emptyTitle}>No assignments yet</Text>
               <Text style={styles.emptyText}>Create one and it will appear for students immediately.</Text>
             </View>
@@ -82,19 +84,19 @@ export default function TeacherAssignments({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+const baseStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#02030A', overflow: 'hidden' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  createBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F59E0B', borderRadius: 14, paddingVertical: 15, margin: 16, marginBottom: 4 },
+  createBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F59E0B', borderColor: '#334155', borderRadius: 8, borderWidth: 1, paddingVertical: 15, margin: 16, marginBottom: 4},
   createBtnText: { color: '#FFFFFF', fontWeight: '900', fontSize: 16, marginLeft: 8 },
   listContent: { padding: 16, paddingBottom: 100 },
-  card: { flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0' },
-  iconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#FFFBEB', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  card: { flexDirection: 'row', backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1, padding: 16, marginBottom: 12 },
+  iconBox: { width: 44, height: 44, borderRadius: 8, backgroundColor: '#422006', borderColor: '#A16207', borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   info: { flex: 1, minWidth: 0 },
-  title: { color: '#0F172A', fontSize: 16, fontWeight: '900' },
-  meta: { color: '#C2410C', fontSize: 12, fontWeight: '900', marginTop: 4 },
-  description: { color: '#64748B', marginTop: 6, lineHeight: 20 },
+  title: { color: '#F8FAFC', fontSize: 16, fontWeight: '900' },
+  meta: { color: '#FBBF24', fontSize: 12, fontWeight: '900', marginTop: 4 },
+  description: { color: '#B9C6DD', marginTop: 6, lineHeight: 20 },
   emptyState: { alignItems: 'center', marginTop: 80, paddingHorizontal: 28 },
-  emptyTitle: { color: '#0F172A', fontSize: 18, fontWeight: '900', marginTop: 14 },
-  emptyText: { color: '#64748B', textAlign: 'center', lineHeight: 21, marginTop: 6 },
+  emptyTitle: { color: '#F8FAFC', fontSize: 18, fontWeight: '900', marginTop: 14 },
+  emptyText: { color: '#B9C6DD', textAlign: 'center', lineHeight: 21, marginTop: 6 },
 });

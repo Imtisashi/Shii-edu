@@ -2,6 +2,8 @@ import { Platform } from 'react-native';
 
 const trimTrailingSlash = (value) => value.replace(/\/+$/, '');
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const isLocalApiBase = (value) => /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?/i.test(value);
+const DEFAULT_PRODUCTION_API_BASE_URL = 'https://shii-edu.vercel.app';
 
 class ApiError extends Error {
   constructor(message, status, payload = {}) {
@@ -14,18 +16,25 @@ class ApiError extends Error {
 
 export const getApiBaseUrl = () => {
   const configuredUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
-  if (configuredUrl) return trimTrailingSlash(configuredUrl);
-
   const isDev = typeof __DEV__ !== 'undefined' && __DEV__;
+
+  if (configuredUrl) {
+    const trimmedUrl = trimTrailingSlash(configuredUrl);
+    if (!(Platform.OS === 'web' && !isDev && isLocalApiBase(trimmedUrl))) {
+      return trimmedUrl;
+    }
+  }
+
   if (isDev) {
     return Platform.OS === 'android' ? 'http://10.0.2.2:5000' : 'http://localhost:5000';
   }
 
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.origin) {
-    return trimTrailingSlash(window.location.origin);
+    const windowOrigin = trimTrailingSlash(window.location.origin);
+    return isLocalApiBase(windowOrigin) ? DEFAULT_PRODUCTION_API_BASE_URL : windowOrigin;
   }
 
-  throw new Error('Missing EXPO_PUBLIC_API_BASE_URL for production API calls.');
+  return DEFAULT_PRODUCTION_API_BASE_URL;
 };
 
 const parseResponse = async (response) => {
@@ -105,6 +114,15 @@ export const authenticatedFetch = async (path, currentUser, options = {}) => {
 
       if (isAbort) {
         throw new Error('The server took too long to respond. Please try again.');
+      }
+
+      if (!error.status) {
+        console.error('[apiClient] Request could not reach the API.', {
+          message: error.message,
+          path,
+          url,
+        });
+        throw new Error(`Could not reach the Edu-Hub API at ${url}. Please try again.`);
       }
 
       throw error;

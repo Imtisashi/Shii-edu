@@ -4,8 +4,10 @@ import { createUnifiedNotification } from '../../services/unifiedNotificationSer
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius } from '../../constants/theme';
+import { useInstituteTheme } from '../../hooks/useInstituteTheme';
 
 export default function AdminNotifs({ navigation }) {
+  const { colors, styles } = useInstituteTheme(baseStyles);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const { currentUser, userData } = useAuth();
@@ -55,12 +57,14 @@ export default function AdminNotifs({ navigation }) {
       <TextInput
         style={styles.input}
         placeholder="Title (e.g. Zona Fest Update)"
+        placeholderTextColor={colors.muted}
         value={title}
         onChangeText={setTitle}
       />
       <TextInput
         style={[styles.input, styles.textArea]}
         placeholder="Write notice details..."
+        placeholderTextColor={colors.muted}
         multiline
         value={content}
         onChangeText={setContent}
@@ -73,7 +77,7 @@ export default function AdminNotifs({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: Colors.background },
   headerTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 20, color: Colors.textPrimary },
   input: { borderWidth: 1, borderColor: Colors.border, padding: 15, borderRadius: Radius.md, marginBottom: 15 },

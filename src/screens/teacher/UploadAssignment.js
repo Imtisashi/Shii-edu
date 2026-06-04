@@ -2,13 +2,16 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, Platform } from 'react-native';
 import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import DynamicHeader from '../../components/DynamicHeader';
+import { useInstituteTheme } from '../../hooks/useInstituteTheme';
+import { createSupabaseAssignment } from '../../services/supabaseTenantDataService';
 
 export default function UploadAssignment() {
-  const { userData } = useAuth();
+  const { currentUser, userData } = useAuth();
+  const { colors, styles } = useInstituteTheme(baseStyles);
   const [course, setCourse] = useState('');
   const [question, setQuestion] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -26,16 +29,43 @@ export default function UploadAssignment() {
 
     setUploading(true);
     try {
-      await addDoc(collection(db, "assignments"), {
-        title: course.trim(),
-        subject: course.trim(),
+      const assignmentRef = doc(collection(db, "assignments"));
+      const assignmentPayload = {
         description: question.trim(),
         dueDate: dueDate.trim() || 'TBD',
+        id: assignmentRef.id,
         instituteId: userData.instituteId,
+        legacyFirestoreId: assignmentRef.id,
+        subject: course.trim(),
         teacherId: userData.uid,
         teacherName: userData.name,
-        createdAt: serverTimestamp(),
-      });
+        title: course.trim(),
+      };
+
+      let saved = false;
+      let lastError = null;
+
+      try {
+        await createSupabaseAssignment(currentUser, assignmentPayload);
+        saved = true;
+      } catch (supabaseError) {
+        lastError = supabaseError;
+        console.warn('Supabase assignment post failed, using Firestore fallback:', supabaseError);
+      }
+
+      try {
+        await setDoc(assignmentRef, {
+          ...assignmentPayload,
+          createdAt: serverTimestamp(),
+          dataSource: saved ? 'supabase+firebase' : 'firebase',
+        });
+        saved = true;
+      } catch (firebaseError) {
+        lastError = firebaseError;
+        console.warn('Firestore assignment mirror failed:', firebaseError);
+      }
+
+      if (!saved) throw lastError || new Error('Assignment upload failed.');
       
       if (Platform.OS === 'web') {
         window.alert("Assignment Posted!");
@@ -60,13 +90,13 @@ export default function UploadAssignment() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.card}>
           <Text style={styles.label}>Course / Subject Name</Text>
-          <TextInput style={styles.input} placeholder="e.g. Physics 101" value={course} onChangeText={setCourse} />
+          <TextInput style={styles.input} placeholder="e.g. Physics 101" placeholderTextColor={colors.muted} value={course} onChangeText={setCourse} />
 
           <Text style={styles.label}>Due Date (Optional)</Text>
-          <TextInput style={styles.input} placeholder="e.g. Next Friday" value={dueDate} onChangeText={setDueDate} />
+          <TextInput style={styles.input} placeholder="e.g. Next Friday" placeholderTextColor={colors.muted} value={dueDate} onChangeText={setDueDate} />
 
           <Text style={styles.label}>Instructions</Text>
-          <TextInput style={[styles.input, styles.textArea]} placeholder="Write the assignment details..." value={question} onChangeText={setQuestion} multiline numberOfLines={5} textAlignVertical="top" />
+          <TextInput style={[styles.input, styles.textArea]} placeholder="Write the assignment details..." placeholderTextColor={colors.muted} value={question} onChangeText={setQuestion} multiline numberOfLines={5} textAlignVertical="top" />
         </View>
 
         <TouchableOpacity style={styles.submitBtn} onPress={handleUpload} disabled={uploading}>
@@ -82,13 +112,13 @@ export default function UploadAssignment() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
+const baseStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#02030A', overflow: 'hidden' },
   scrollContent: { padding: 16, paddingBottom: 40 },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 20, elevation: 2 },
-  label: { fontSize: 14, fontWeight: '600', color: '#4A5568', marginBottom: 8 },
-  input: { backgroundColor: '#F7FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, padding: 12, fontSize: 16, color: '#2D3748', marginBottom: 16 },
+  card: { backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1, padding: 16, marginBottom: 20 },
+  label: { fontSize: 14, fontWeight: '800', color: '#B9C6DD', marginBottom: 8 },
+  input: { backgroundColor: '#020617', borderWidth: 1, borderColor: '#334155', borderRadius: 8, padding: 12, fontSize: 16, color: '#F8FAFC', marginBottom: 16, outlineStyle: 'none' },
   textArea: { minHeight: 120 },
-  submitBtn: { flexDirection: 'row', backgroundColor: '#8E24AA', borderRadius: 12, paddingVertical: 16, justifyContent: 'center', alignItems: 'center', elevation: 5 },
+  submitBtn: { flexDirection: 'row', backgroundColor: '#8E24AA', borderColor: '#334155', borderRadius: 8, borderWidth: 1, paddingVertical: 16, justifyContent: 'center', alignItems: 'center'},
   submitBtnText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
 });

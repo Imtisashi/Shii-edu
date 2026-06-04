@@ -16,55 +16,26 @@ const INSTITUTE_SCOPED_COLLECTIONS = [
 ];
 
 /**
- * Generates a unique institute ID from the institute name
- * @param {string} name - Institute name
- * @returns {Promise<string>} Unique institute ID
- */
-export const generateInstituteId = async (name) => {
-  // Convert to uppercase, remove non-alphanumeric, take first 6 chars
-  let baseId = name.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 6);
-
-  // If too short, pad with institute name length
-  if (baseId.length < 4) {
-    baseId = (name.length.toString() + baseId).padStart(6, '0');
-  }
-
-  // Check if ID exists, if so append a number
-  const institutesRef = collection(db, 'institutes');
-  const q = query(institutesRef, where('instituteId', '==', baseId));
-  const snapshot = await getDocs(q);
-
-  if (!snapshot.empty) {
-    // Find next available number
-    let counter = 1;
-    let newId = `${baseId}${counter}`;
-    while (true) {
-      const q2 = query(institutesRef, where('instituteId', '==', newId));
-      const snapshot2 = await getDocs(q2);
-      if (snapshot2.empty) break;
-      counter++;
-      newId = `${baseId}${counter}`;
-    }
-    return newId;
-  }
-
-  return baseId;
-};
-
-/**
  * Creates a new institute and admin profile
  * @param {Object} params - Institute and admin details
  * @returns {Promise<Object>} Result with instituteId and adminUid
  */
-export const createInstituteAndAdmin = async ({ instituteName, adminEmail, adminPassword, adminName }, currentUser = auth.currentUser) => {
+export const createInstituteAndAdmin = async ({
+  instituteName,
+  adminUserId,
+  adminPassword,
+  adminName,
+  institutionType = 'SCHOOL',
+}, currentUser = auth.currentUser) => {
   try {
     return await authenticatedFetch('/api/super-admin/institutes', currentUser, {
       method: 'POST',
       body: {
         instituteName,
-        adminEmail,
+        adminUserId,
         adminPassword,
         adminName,
+        institutionType,
       },
     });
   } catch (error) {
@@ -257,7 +228,6 @@ export const updateInstituteSettings = async (instituteId, settings) => {
 };
 
 export default {
-  generateInstituteId,
   createInstituteAndAdmin,
   deleteInstituteAsSuperAdmin,
   inviteUserToInstitute,

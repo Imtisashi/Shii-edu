@@ -11,6 +11,8 @@ const installPerformanceStyles = () => {
     :root {
       --shii-frame-ms: 16.67ms;
       --shii-tap-ms: 150ms;
+      --shii-edge-background: #02030A;
+      color-scheme: dark;
     }
 
     :root[data-high-refresh="true"] {
@@ -19,15 +21,16 @@ const installPerformanceStyles = () => {
     }
 
     html {
-      background: #F8FAFC;
+      background: var(--shii-edge-background);
       text-rendering: optimizeLegibility;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
 
     body {
-      background: #F8FAFC;
+      background: var(--shii-edge-background);
       min-height: 100%;
+      scrollbar-color: #64748B var(--shii-edge-background);
     }
 
     *,

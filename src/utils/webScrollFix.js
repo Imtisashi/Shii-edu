@@ -11,6 +11,7 @@ export const installWebScrollFix = () => {
   style.textContent = `
     html,
     body {
+      background: var(--shii-edge-background, #02030A);
       width: 100%;
       min-height: 100%;
       height: auto;

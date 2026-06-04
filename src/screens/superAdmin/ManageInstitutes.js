@@ -13,22 +13,19 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import { useNavigation } from '@react-navigation/native';
 import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { deleteInstituteAsSuperAdmin } from '../../services/firebaseAdminService';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
-import { useAuth } from '../../contexts/AuthContext';
-import AddInstituteModal from '../../components/superAdmin/AddInstituteModal';
 import LoadingState, { SmoothSpinner } from '../../components/ui/LoadingState';
 
 export default function ManageInstitutes() {
+  const navigation = useNavigation();
   const layout = useResponsiveLayout();
-  const { currentUser } = useAuth();
   const [institutes, setInstitutes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [showAddInstituteModal, setShowAddInstituteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editInstituteId, setEditInstituteId] = useState('');
   const [editName, setEditName] = useState('');
@@ -69,7 +66,6 @@ export default function ManageInstitutes() {
   }, []);
 
   const handleEditInstitute = (institute) => {
-    Haptics.selectionAsync();
     setEditInstituteId(institute.id);
     setEditName(institute.name || '');
     setShowEditModal(true);
@@ -126,7 +122,6 @@ export default function ManageInstitutes() {
   };
 
   const handleDeleteInstitute = (institute) => {
-    Haptics.selectionAsync();
     const message = `Delete ${institute.name || 'this institute'} and all linked users, attendance, payments, notices, routines, assignments, grades, gallery items, and papers? This cannot be undone.`;
 
     if (Platform.OS === 'web') {
@@ -155,40 +150,50 @@ export default function ManageInstitutes() {
     fetchInstitutes({ showLoader: false });
   };
 
-  const renderInstitute = ({ item }) => (
-    <View style={[styles.instituteCard, layout.isMobile && styles.instituteCardMobile, layout.listColumns > 1 && styles.instituteCardDesktop]}>
-      <View style={[styles.iconBox, layout.isMobile && styles.iconBoxMobile]}>
-        <Ionicons name="business" size={22} color="#2563EB" />
-      </View>
+  const renderInstitute = ({ item }) => {
+    const institutionType = String(item.institutionType || item.type || 'SCHOOL').toUpperCase();
+    const isCollege = institutionType === 'COLLEGE';
 
-      <View style={styles.instituteInfo}>
-        <Text style={styles.instituteName} numberOfLines={1}>
-          {item.name || 'Unnamed Institute'}
-        </Text>
-        <Text style={styles.instituteId} numberOfLines={1}>ID: {item.instituteId}</Text>
-        <Text style={styles.instituteMeta}>
-          Created {item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString() : 'recently'}
-        </Text>
-      </View>
+    return (
+      <View style={[styles.instituteCard, layout.isMobile && styles.instituteCardMobile, layout.listColumns > 1 && styles.instituteCardDesktop]}>
+        <View style={[styles.iconBox, isCollege && styles.iconBoxCollege, layout.isMobile && styles.iconBoxMobile]}>
+          <Ionicons name={isCollege ? 'library' : 'school'} size={22} color={isCollege ? '#C4B5FD' : '#67E8F9'} />
+        </View>
 
-      <View style={[styles.actionButtons, layout.isMobile && styles.actionButtonsMobile]}>
-        <TouchableOpacity style={[styles.editButton, layout.isMobile && styles.smallActionButtonMobile]} onPress={() => handleEditInstitute(item)}>
-          <Ionicons name="create-outline" size={20} color="#2563EB" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.deleteButton, layout.isMobile && styles.smallActionButtonMobile, deletingInstituteId === item.id && styles.disabledBtn]}
-          onPress={() => handleDeleteInstitute(item)}
-        disabled={deletingInstituteId === item.id}
-        >
-          {deletingInstituteId === item.id ? (
-            <SmoothSpinner size={18} stroke={3} color="#EF4444" trackColor="#FEE2E2" />
-          ) : (
-            <Ionicons name="trash-outline" size={20} color="#EF4444" />
-          )}
-        </TouchableOpacity>
+        <View style={styles.instituteInfo}>
+          <Text style={styles.instituteName} numberOfLines={1}>
+            {item.name || 'Unnamed Institute'}
+          </Text>
+          <Text style={styles.instituteId} numberOfLines={1}>ID: {item.instituteId}</Text>
+          <View style={[styles.modePill, isCollege && styles.modePillCollege]}>
+            <Text style={[styles.modePillText, isCollege && styles.modePillTextCollege]}>
+              {isCollege ? 'College' : 'School'}
+            </Text>
+          </View>
+          <Text style={styles.instituteMeta}>
+            Created {item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString() : 'recently'}
+          </Text>
+        </View>
+
+        <View style={[styles.actionButtons, layout.isMobile && styles.actionButtonsMobile]}>
+          <TouchableOpacity style={[styles.editButton, layout.isMobile && styles.smallActionButtonMobile]} onPress={() => handleEditInstitute(item)}>
+            <Ionicons name="create-outline" size={20} color="#60A5FA" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.deleteButton, layout.isMobile && styles.smallActionButtonMobile, deletingInstituteId === item.id && styles.disabledBtn]}
+            onPress={() => handleDeleteInstitute(item)}
+            disabled={deletingInstituteId === item.id}
+          >
+            {deletingInstituteId === item.id ? (
+              <SmoothSpinner size={18} stroke={3} color="#F87171" trackColor="#7F1D1D" />
+            ) : (
+              <Ionicons name="trash-outline" size={20} color="#F87171" />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   if (loading) {
     return <LoadingState label="Loading institutes..." color="#2563EB" />;
@@ -203,7 +208,7 @@ export default function ManageInstitutes() {
         columnWrapperStyle={layout.listColumns > 1 ? styles.columnWrapper : undefined}
         keyExtractor={(item) => item.id}
         renderItem={renderInstitute}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshInstitutes} tintColor="#2563EB" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshInstitutes} tintColor="#67E8F9" />}
         contentContainerStyle={[
           styles.listContent,
           { paddingHorizontal: layout.horizontalPadding },
@@ -219,9 +224,9 @@ export default function ManageInstitutes() {
               <Text style={[styles.subtitle, layout.isMobile && styles.subtitleMobile]}>Rename institutes, audit identifiers, and remove duplicate or test campuses.</Text>
             </View>
 
-            <TouchableOpacity style={[styles.addButton, layout.isMobile && styles.addButtonMobile]} onPress={() => { Haptics.selectionAsync(); setShowAddInstituteModal(true); }}>
+            <TouchableOpacity style={[styles.addButton, layout.isMobile && styles.addButtonMobile]} onPress={() => { navigation.navigate('SuperAdminHome'); }}>
               <Ionicons name="add-circle" size={22} color="#fff" />
-              <Text style={styles.buttonText} numberOfLines={1}>Add Institute</Text>
+              <Text style={styles.buttonText} numberOfLines={1}>Create Institute With Type</Text>
             </TouchableOpacity>
           </>
         }
@@ -234,7 +239,7 @@ export default function ManageInstitutes() {
         }
       />
 
-      <Modal animationType="fade" transparent visible={showEditModal} onRequestClose={closeEditModal}>
+      <Modal transparent visible={showEditModal} onRequestClose={closeEditModal} animationType="slide">
         <View style={styles.modalContainer}>
           <ScrollView contentContainerStyle={styles.modalScrollContent} keyboardShouldPersistTaps="handled">
             <View style={styles.modalContent}>
@@ -261,7 +266,7 @@ export default function ManageInstitutes() {
               </View>
 
               <TouchableOpacity style={[styles.modalBtn, saving && styles.disabledBtn]} onPress={handleSaveEdit} disabled={saving}>
-                {saving ? <SmoothSpinner size={18} stroke={3} color="#FFFFFF" trackColor="rgba(255,255,255,0.28)" /> : <Text style={styles.modalBtnText}>Save Changes</Text>}
+                {saving ? <SmoothSpinner size={18} stroke={3} color="#FFFFFF" trackColor="#CBD5E1" /> : <Text style={styles.modalBtnText}>Save Changes</Text>}
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalCancelBtn} onPress={closeEditModal} disabled={saving}>
                 <Text style={styles.modalCancelBtnText}>Cancel</Text>
@@ -271,80 +276,98 @@ export default function ManageInstitutes() {
         </View>
       </Modal>
 
-      <AddInstituteModal
-        visible={showAddInstituteModal}
-        currentUser={currentUser}
-        onClose={() => setShowAddInstituteModal(false)}
-        onCreated={() => fetchInstitutes({ showLoader: false })}
-      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
-  loadingText: { marginTop: 12, color: '#64748B', fontWeight: '600' },
+  container: { flex: 1, backgroundColor: '#02030A', overflow: 'hidden' },
   listContent: { paddingVertical: 16, paddingBottom: 32 },
   listContentDesktop: { width: '100%', alignSelf: 'center', paddingTop: 24 },
-  header: { backgroundColor: '#0F172A', borderRadius: 22, padding: 22, marginBottom: 14 },
-  headerMobile: { padding: 18, borderRadius: 20 },
+  header: {
+    backgroundColor: '#0F172A',
+    borderRadius: 8,
+    padding: 22,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#075985',
+  },
+  headerMobile: { padding: 18, borderRadius: 8 },
   headerDesktop: { padding: 30 },
-  eyebrow: { color: '#93C5FD', fontSize: 12, fontWeight: '900', letterSpacing: 1.2, textTransform: 'uppercase' },
-  title: { fontSize: 28, fontWeight: '900', color: '#FFFFFF', marginTop: 8 },
+  eyebrow: { color: '#67E8F9', fontSize: 12, fontWeight: '900', letterSpacing: 1.2, textTransform: 'uppercase' },
+  title: { fontSize: 28, fontWeight: '900', color: '#F8FAFC', marginTop: 8 },
   titleMobile: { fontSize: 24, lineHeight: 29 },
-  subtitle: { fontSize: 14, color: '#CBD5E1', marginTop: 8, lineHeight: 21 },
+  subtitle: { fontSize: 14, color: '#B9C6DD', marginTop: 8, lineHeight: 21 },
   subtitleMobile: { fontSize: 13, lineHeight: 19 },
   addButton: {
     backgroundColor: '#2563EB',
     paddingVertical: 14,
-    borderRadius: 16,
+    borderRadius: 8,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
     marginBottom: 16,
   },
-  addButtonMobile: { paddingHorizontal: 12, paddingVertical: 13, borderRadius: 15 },
-  buttonText: { flexShrink: 1, color: '#fff', fontWeight: '900', fontSize: 15, marginLeft: 8 },
+  addButtonMobile: { paddingHorizontal: 12, paddingVertical: 13, borderRadius: 8 },
+  buttonText: { flexShrink: 1, color: '#FFFFFF', fontWeight: '900', fontSize: 15, marginLeft: 8 },
   instituteCard: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
+    backgroundColor: '#0F172A',
+    borderRadius: 8,
     padding: 16,
     marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 2,
+    borderColor: '#334155',
   },
-  instituteCardMobile: { padding: 13, borderRadius: 16, alignItems: 'flex-start' },
+  instituteCardMobile: { padding: 13, borderRadius: 8, alignItems: 'flex-start' },
   columnWrapper: { gap: 12 },
   instituteCardDesktop: { flex: 1 },
   iconBox: {
     width: 46,
     height: 46,
-    borderRadius: 14,
-    backgroundColor: '#EFF6FF',
+    borderRadius: 8,
+    backgroundColor: '#082F49',
+    borderWidth: 1,
+    borderColor: '#075985',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
   },
-  iconBoxMobile: { width: 40, height: 40, borderRadius: 12, marginRight: 10 },
+  iconBoxCollege: {
+    backgroundColor: '#1E1B4B',
+    borderColor: '#6D28D9',
+  },
+  iconBoxMobile: { width: 40, height: 40, borderRadius: 8, marginRight: 10 },
   instituteInfo: { flex: 1, minWidth: 0 },
-  instituteName: { fontSize: 17, fontWeight: '900', color: '#0F172A' },
-  instituteId: { fontSize: 12, color: '#64748B', marginTop: 3, fontWeight: '700' },
-  instituteMeta: { fontSize: 12, color: '#94A3B8', marginTop: 3 },
+  instituteName: { fontSize: 17, fontWeight: '900', color: '#F8FAFC' },
+  instituteId: { fontSize: 12, color: '#8EA4C8', marginTop: 3, fontWeight: '700' },
+  modePill: {
+    alignSelf: 'flex-start',
+    marginTop: 7,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#082F49',
+    borderWidth: 1,
+    borderColor: '#075985',
+  },
+  modePillCollege: {
+    backgroundColor: '#1E1B4B',
+    borderColor: '#6D28D9',
+  },
+  modePillText: { fontSize: 11, color: '#67E8F9', fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.6 },
+  modePillTextCollege: { color: '#C4B5FD' },
+  instituteMeta: { fontSize: 12, color: '#64748B', marginTop: 5 },
   actionButtons: { flexDirection: 'row', marginLeft: 10 },
   actionButtonsMobile: { marginLeft: 8 },
   editButton: {
     width: 40,
     height: 40,
-    borderRadius: 13,
-    backgroundColor: '#EFF6FF',
+    borderRadius: 8,
+    backgroundColor: '#082F49',
+    borderWidth: 1,
+    borderColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
@@ -352,28 +375,64 @@ const styles = StyleSheet.create({
   deleteButton: {
     width: 40,
     height: 40,
-    borderRadius: 13,
-    backgroundColor: '#FEF2F2',
+    borderRadius: 8,
+    backgroundColor: '#450A0A',
+    borderWidth: 1,
+    borderColor: '#7F1D1D',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  smallActionButtonMobile: { width: 38, height: 38, borderRadius: 12 },
-  emptyState: { alignItems: 'center', justifyContent: 'center', padding: 34, backgroundColor: '#fff', borderRadius: 20 },
-  emptyTitle: { fontSize: 20, color: '#0F172A', fontWeight: '900', marginTop: 14 },
-  emptyText: { fontSize: 14, color: '#64748B', textAlign: 'center', marginTop: 8, lineHeight: 21 },
-  modalContainer: { flex: 1, backgroundColor: 'rgba(15,23,42,0.62)' },
+  smallActionButtonMobile: { width: 38, height: 38, borderRadius: 8 },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 34,
+    backgroundColor: '#0F172A',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  emptyTitle: { fontSize: 20, color: '#F8FAFC', fontWeight: '900', marginTop: 14 },
+  emptyText: { fontSize: 14, color: '#8EA4C8', textAlign: 'center', marginTop: 8, lineHeight: 21 },
+  modalContainer: { flex: 1, backgroundColor: '#020617' },
   modalScrollContent: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalContent: { width: '100%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 22, padding: 22 },
+  modalContent: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#0F172A',
+    borderRadius: 8,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
   modalHeader: { alignItems: 'center', marginBottom: 18 },
-  modalIcon: { width: 58, height: 58, borderRadius: 18, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  modalTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A' },
-  modalSubtitle: { color: '#64748B', fontSize: 13, marginTop: 5, textAlign: 'center' },
-  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 14, marginBottom: 12 },
+  modalIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 8,
+    backgroundColor: '#082F49',
+    borderWidth: 1,
+    borderColor: '#075985',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  modalTitle: { fontSize: 22, fontWeight: '900', color: '#F8FAFC' },
+  modalSubtitle: { color: '#8EA4C8', fontSize: 13, marginTop: 5, textAlign: 'center' },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#020617',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 8,
+    marginBottom: 12,
+  },
   icon: { paddingHorizontal: 14 },
-  input: { flex: 1, paddingVertical: 15, fontSize: 15, color: '#0F172A', outlineStyle: 'none' },
-  modalBtn: { backgroundColor: '#2563EB', paddingVertical: 15, borderRadius: 14, alignItems: 'center', marginTop: 6 },
+  input: { flex: 1, paddingVertical: 15, fontSize: 15, color: '#F8FAFC', outlineStyle: 'none' },
+  modalBtn: { backgroundColor: '#2563EB', paddingVertical: 15, borderRadius: 8, alignItems: 'center', marginTop: 6 },
   disabledBtn: { opacity: 0.6 },
   modalBtnText: { color: '#ffffff', fontSize: 16, fontWeight: '900' },
   modalCancelBtn: { alignItems: 'center', paddingVertical: 13 },
-  modalCancelBtnText: { fontSize: 15, color: '#64748B', fontWeight: '800' },
+  modalCancelBtnText: { fontSize: 15, color: '#8EA4C8', fontWeight: '800' },
 });

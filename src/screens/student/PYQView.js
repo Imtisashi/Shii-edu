@@ -1,12 +1,13 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Linking } from 'react-native';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from '../../../firebaseConfig';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useEffect, useMemo, useState } from 'react';
+import { FlatList, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import DynamicHeader from '../../components/DynamicHeader';
-import useResponsiveLayout from '../../hooks/useResponsiveLayout';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '../../../firebaseConfig';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
+import StudentScreenScaffold, { EnterprisePanel, ScreenIntro } from '../../components/student/StudentScreenScaffold';
+import { useAuth } from '../../contexts/AuthContext';
+import { useRootLayout } from '../../contexts/RootLayoutContext';
+import { listSupabasePyqs } from '../../services/supabaseTenantDataService';
 
 const createdAtToMillis = (createdAt) => {
   if (!createdAt) return 0;
@@ -16,9 +17,73 @@ const createdAtToMillis = (createdAt) => {
   return Number.isNaN(parsed) ? 0 : parsed;
 };
 
+function LoadingState() {
+  const { colors } = useRootLayout();
+
+  return (
+    <StudentScreenScaffold accentVariant="bronze" scroll={false} style={styles.centerContent}>
+      <SmoothSpinner size={42} color="#F87171" trackColor={colors.hairline} />
+      <Text style={[styles.loadingText, { color: colors.textSoft }]}>Loading papers...</Text>
+    </StudentScreenScaffold>
+  );
+}
+
+function PaperCard({ item }) {
+  const { colors, radii } = useRootLayout();
+  const title = item.title || `${item.subject || 'Subject'} - ${item.year || 'Year'}`;
+
+  return (
+    <TouchableOpacity
+      accessibilityLabel={`Open ${title}`}
+      accessibilityRole="button"
+      disabled={!item.fileUrl}
+      onPress={() => item.fileUrl && Linking.openURL(item.fileUrl)}
+      style={[
+        styles.card,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.hairline,
+          borderRadius: radii.card,
+          opacity: item.fileUrl ? 1 : 0.72,
+        },
+      ]}
+    >
+      <View style={[styles.fileIcon, { backgroundColor: '#450A0A', borderColor: colors.hairline }]}>
+        <Ionicons name="document-text" size={23} color="#F87171" />
+      </View>
+      <View style={styles.cardCopy}>
+        <Text numberOfLines={1} style={[styles.title, { color: colors.text }]}>{title}</Text>
+        <Text numberOfLines={1} style={[styles.desc, { color: colors.textSoft }]}>
+          {item.subject || 'Subject'} - {item.year || 'Year'} - PDF
+        </Text>
+        <Text numberOfLines={1} style={[styles.uploadedBy, { color: colors.muted }]}>
+          Uploaded by {item.uploadedBy || 'Faculty'}
+        </Text>
+      </View>
+      <View style={[styles.downloadButton, { backgroundColor: colors.deepBlueSoft, borderColor: colors.hairline }]}>
+        <Ionicons name="download-outline" size={21} color={colors.deepBlue} />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function EmptyState() {
+  const { colors } = useRootLayout();
+
+  return (
+    <View style={styles.emptyState}>
+      <View style={[styles.emptyIcon, { backgroundColor: '#450A0A', borderColor: colors.hairline }]}>
+        <Ionicons name="document-attach-outline" size={34} color="#F87171" />
+      </View>
+      <Text style={[styles.emptyTitle, { color: colors.text }]}>No PYQs yet</Text>
+      <Text style={[styles.emptyText, { color: colors.muted }]}>Your institute has not uploaded previous-year papers yet.</Text>
+    </View>
+  );
+}
+
 export default function PYQView() {
-  const { userData } = useAuth();
-  const layout = useResponsiveLayout();
+  const { currentUser, userData } = useAuth();
+  const { colors } = useRootLayout();
   const [papers, setPapers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,151 +94,177 @@ export default function PYQView() {
 
   useEffect(() => {
     if (!userData?.instituteId) {
+      setPapers([]);
       setLoading(false);
       return undefined;
     }
 
-    const q = query(
-      collection(db, "pyqs"),
-      where("instituteId", "==", userData.instituteId)
-    );
+    setLoading(true);
+    let cancelled = false;
+    let unsubscribeFirestore = null;
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setPapers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      setLoading(false);
-    }, (error) => {
-      console.error('Error loading PYQs:', error);
-      setLoading(false);
-    });
+    const startFirestoreFallback = () => {
+      const papersQuery = query(
+        collection(db, 'pyqs'),
+        where('instituteId', '==', userData.instituteId)
+      );
 
-    return () => unsubscribe();
-  }, [userData]);
+      unsubscribeFirestore = onSnapshot(papersQuery, (snapshot) => {
+        if (cancelled) return;
+        setPapers(snapshot.docs.map((document) => ({ id: document.id, ...document.data(), dataSource: 'firestore' })));
+        setLoading(false);
+      }, (error) => {
+        if (cancelled) return;
+        console.error('Error loading PYQs:', error);
+        setPapers([]);
+        setLoading(false);
+      });
+    };
+
+    listSupabasePyqs(currentUser)
+      .then(({ papers: supabasePapers }) => {
+        if (cancelled) return;
+        setPapers(Array.isArray(supabasePapers) ? supabasePapers : []);
+        setLoading(false);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.warn('Supabase PYQ student bridge failed, falling back to Firestore:', error);
+        startFirestoreFallback();
+      });
+
+    return () => {
+      cancelled = true;
+      if (typeof unsubscribeFirestore === 'function') unsubscribeFirestore();
+    };
+  }, [currentUser, userData?.instituteId]);
+
+  if (loading) return <LoadingState />;
 
   return (
-    <View style={styles.container}>
-      <DynamicHeader title="Previous Papers" showBack />
+    <StudentScreenScaffold accentVariant="bronze" scroll={false} style={styles.scaffoldContent}>
+      <ScreenIntro
+        accentColor="#F87171"
+        eyebrow="Exam archive"
+        subtitle="Download verified previous-year question papers uploaded by your institute."
+        title="PYQ Vault"
+        trailing={<Ionicons name="library" size={27} color="#F87171" />}
+      />
+      <EnterprisePanel style={styles.summaryPanel}>
+        <Ionicons name="documents-outline" size={20} color="#F87171" />
+        <Text style={[styles.summaryText, { color: colors.text }]}>
+          {visiblePapers.length} paper{visiblePapers.length === 1 ? '' : 's'} available
+        </Text>
+      </EnterprisePanel>
       <FlatList
         data={visiblePapers}
-        keyExtractor={item => item.id}
-        contentContainerStyle={[
-          styles.content,
-          { paddingHorizontal: layout.horizontalPadding },
-          layout.isDesktop && styles.contentDesktop,
-          layout.isDesktop && { maxWidth: layout.maxContentWidth },
-        ]}
+        keyExtractor={(item) => item.id}
+        ListEmptyComponent={<EmptyState />}
+        contentContainerStyle={styles.listContent}
+        renderItem={({ item }) => <PaperCard item={item} />}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <View style={[styles.hero, layout.isMobile && styles.heroMobile]}>
-            <View style={styles.heroIcon}>
-              <Ionicons name="library" size={27} color="#2563EB" />
-            </View>
-            <View style={styles.heroCopy}>
-              <Text style={[styles.heroTitle, layout.isMobile && styles.heroTitleMobile]}>PYQ Vault</Text>
-              <Text style={styles.heroText}>Download verified previous-year question papers uploaded by your institute.</Text>
-            </View>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity 
-            style={styles.card}
-            onPress={() => item.fileUrl && Linking.openURL(item.fileUrl)}
-          >
-            <View style={styles.fileIcon}>
-              <Ionicons name="document-text" size={25} color="#DC2626" />
-            </View>
-            <View style={styles.cardCopy}>
-              <Text style={styles.title} numberOfLines={1}>{item.title || `${item.subject} - ${item.year}`}</Text>
-              <Text style={styles.desc} numberOfLines={1}>{item.subject || 'Subject'} - {item.year || 'Year'} - PDF</Text>
-              <Text style={styles.uploadedBy} numberOfLines={1}>Uploaded by {item.uploadedBy || 'Faculty'}</Text>
-            </View>
-            <View style={styles.downloadButton}>
-              <Ionicons name="download-outline" size={22} color="#2563EB" />
-            </View>
-          </TouchableOpacity>
-        )}
-        ListEmptyComponent={
-          loading ? (
-            <View style={styles.emptyState}>
-              <SmoothSpinner color="#2563EB" />
-              <Text style={styles.emptyText}>Loading papers...</Text>
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="document-attach-outline" size={46} color="#CBD5E1" />
-              <Text style={styles.emptyTitle}>No PYQs yet</Text>
-              <Text style={styles.emptyText}>Your institute has not uploaded previous-year papers yet.</Text>
-            </View>
-          )
-        }
       />
-    </View>
+    </StudentScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  content: { paddingTop: 16, paddingBottom: 110 },
-  contentDesktop: { width: '100%', alignSelf: 'center', paddingTop: 24 },
-  hero: {
-    backgroundColor: '#0F172A',
-    borderRadius: 22,
-    padding: 18,
-    marginBottom: 16,
-    flexDirection: 'row',
+  card: {
     alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 13,
+    marginBottom: 12,
+    overflow: 'hidden',
+    padding: 15,
   },
-  heroMobile: { alignItems: 'flex-start' },
-  heroIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: 18,
-    backgroundColor: '#EFF6FF',
+  cardCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  centerContent: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  desc: {
+    fontSize: 13,
+    fontWeight: '800',
+    marginTop: 3,
+  },
+  downloadButton: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: 'center',
+    marginLeft: 8,
+    width: 44,
+  },
+  emptyIcon: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 72,
+    justifyContent: 'center',
+    marginBottom: 16,
+    width: 72,
+  },
+  emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    minHeight: 250,
+    paddingHorizontal: 20,
   },
-  heroCopy: { flex: 1, minWidth: 0 },
-  heroTitle: { color: '#FFFFFF', fontSize: 24, fontWeight: '900' },
-  heroTitleMobile: { fontSize: 22 },
-  heroText: { color: '#CBD5E1', fontSize: 14, lineHeight: 20, marginTop: 5 },
-  card: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.05,
-    shadowRadius: 14,
+  emptyText: {
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    textAlign: 'center',
   },
   fileIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 15,
-    backgroundColor: '#FEF2F2',
     alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 50,
     justifyContent: 'center',
-    marginRight: 13,
+    width: 50,
   },
-  cardCopy: { flex: 1, minWidth: 0 },
-  title: { fontSize: 16, fontWeight: '900', color: '#1E293B' },
-  desc: { fontSize: 13, color: '#64748B', fontWeight: '700', marginTop: 3 },
-  uploadedBy: { fontSize: 12, color: '#94A3B8', marginTop: 3 },
-  downloadButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#EFF6FF',
+  listContent: {
+    paddingBottom: 8,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontWeight: '800',
+    marginTop: 16,
+  },
+  scaffoldContent: {
+    flex: 1,
+  },
+  summaryPanel: {
     alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 10,
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16,
+    padding: 14,
   },
-  emptyState: { alignItems: 'center', justifyContent: 'center', padding: 30, backgroundColor: '#FFFFFF', borderRadius: 20 },
-  emptyTitle: { color: '#0F172A', fontSize: 18, fontWeight: '900', marginTop: 12 },
-  emptyText: { textAlign: 'center', marginTop: 8, color: '#94A3B8', lineHeight: 20 }
+  summaryText: {
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  uploadedBy: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 3,
+  },
 });

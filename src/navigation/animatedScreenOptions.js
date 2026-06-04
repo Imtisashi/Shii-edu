@@ -1,21 +1,20 @@
-import { Platform } from 'react-native';
-
-const ENABLE_SCREEN_MOTION = Platform.OS !== 'web';
+const ENABLE_SCREEN_MOTION = true;
+const EDGE_BACKGROUND = '#020617';
 
 export const sharedStackScreenOptions = {
   animationEnabled: ENABLE_SCREEN_MOTION,
-  cardStyle: { backgroundColor: '#F8FAFC' },
+  cardStyle: { backgroundColor: EDGE_BACKGROUND },
   transitionSpec: {
     open: {
       animation: 'timing',
       config: {
-        duration: 260,
+        duration: 140,
       },
     },
     close: {
       animation: 'timing',
       config: {
-        duration: 220,
+        duration: 110,
       },
     },
   },
@@ -26,13 +25,7 @@ export const sharedStackScreenOptions = {
         {
           translateX: current.progress.interpolate({
             inputRange: [0, 1],
-            outputRange: [Math.min(layouts.screen.width * 0.08, 42), 0],
-          }),
-        },
-        {
-          scale: current.progress.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0.985, 1],
+            outputRange: [Math.min(layouts.screen.width * 0.015, 10), 0],
           }),
         },
       ],

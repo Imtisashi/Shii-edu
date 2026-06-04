@@ -1,9 +1,12 @@
 import React from 'react';
+import { View } from 'react-native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { sharedStackScreenOptions, sharedTabScreenOptions } from './animatedScreenOptions';
-import useResponsiveLayout from '../hooks/useResponsiveLayout';
+import EdgeDrawerButton from '../components/navigation/EdgeDrawerButton';
+import EnterpriseTabBar from '../components/navigation/EnterpriseTabBar';
+import { useRootLayout } from '../contexts/RootLayoutContext';
 
 // Import all Student Screens
 import StudentHome from '../screens/student/StudentHome';
@@ -18,49 +21,34 @@ import Notices from '../screens/student/Notices';
 import Routine from '../screens/student/Routine';
 import StudentNotifications from '../screens/student/StudentNotifications';
 import CoursePlayerScreen from '../screens/student/CoursePlayerScreen';
+import CommunicationHub from '../screens/shared/CommunicationHub';
+import FleetTrackingScreen from '../screens/shared/FleetTrackingScreen';
+import SyllabusTutor from '../screens/shared/SyllabusTutor';
 
 const Drawer = createDrawerNavigator();
 const Tab = createBottomTabNavigator();
 
 // --- THE BOTTOM TAB NAVIGATOR (for quick access) ---
 function BottomTabNavigator() {
-  const layout = useResponsiveLayout();
+  const { colors } = useRootLayout();
 
   return (
     <Tab.Navigator
+      tabBar={(props) => <EnterpriseTabBar {...props} />}
       screenOptions={({ route }) => ({
         ...sharedTabScreenOptions,
         headerShown: false,
-        tabBarIcon: ({ focused, color }) => {
+        tabBarIcon: ({ focused, color, size }) => {
           let iconName;
           if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
           else if (route.name === 'Tasks') iconName = focused ? 'book' : 'book-outline';
           else if (route.name === 'Notices') iconName = focused ? 'megaphone' : 'megaphone-outline';
           else if (route.name === 'Faculty') iconName = focused ? 'people' : 'people-outline';
 
-          const iconSize = layout.isMobile ? (focused ? 23 : 21) : (focused ? 28 : 24);
-          return <Ionicons name={iconName} size={iconSize} color={color} />;
+          return <Ionicons name={iconName} size={focused ? size + 1 : size} color={color} />;
         },
-        tabBarActiveTintColor: '#4A90E2',
-        tabBarInactiveTintColor: '#94A3B8',
-        tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopWidth: 1,
-          borderTopColor: '#F1F5F9',
-          height: layout.isMobile ? 62 : 65,
-          paddingBottom: layout.isMobile ? 7 : 10,
-          paddingTop: layout.isMobile ? 7 : 10,
-          elevation: 10,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.05,
-          shadowRadius: 10,
-        },
-        tabBarItemStyle: layout.isMobile ? { paddingHorizontal: 0 } : undefined,
-        tabBarLabelStyle: {
-          fontWeight: 'bold',
-          fontSize: layout.isMobile ? 10 : 11,
-        }
+        tabBarActiveTintColor: colors.text,
+        tabBarInactiveTintColor: colors.muted,
       })}
     >
       <Tab.Screen name="Home" component={StudentHome} />
@@ -73,21 +61,39 @@ function BottomTabNavigator() {
 
 // --- THE MAIN DRAWER NAVIGATOR ---
 export default function StudentNavigator() {
+  const { colors } = useRootLayout();
+
   return (
     <Drawer.Navigator
-      screenOptions={{
+      screenOptions={({ navigation }) => ({
         ...sharedStackScreenOptions,
-        headerStyle: { backgroundColor: '#fff', elevation: 0, shadowOpacity: 0 },
-        headerTintColor: '#1E293B',
-        headerTitleStyle: { fontWeight: 'bold' },
-        drawerActiveTintColor: '#4A90E2',
-        drawerInactiveTintColor: '#94A3B8',
-        drawerStyle: { width: 280 },
-      }}
+        drawerActiveBackgroundColor: colors.accentSoft,
+        drawerActiveTintColor: colors.text,
+        drawerInactiveTintColor: colors.muted,
+        drawerLabelStyle: { fontWeight: '800' },
+        drawerStyle: { backgroundColor: colors.page, width: 280 },
+        drawerType: 'front',
+        headerLeft: () => (
+          <View style={{ marginLeft: 14 }}>
+            <EdgeDrawerButton onPress={() => navigation.openDrawer()} size={42} />
+          </View>
+        ),
+        headerStyle: {
+          backgroundColor: colors.header,
+          borderBottomColor: colors.hairline,
+          borderBottomWidth: 1,
+        },
+        headerTintColor: colors.text,
+        headerTitleAlign: 'center',
+        headerTitleStyle: { fontWeight: '900' },
+        overlayColor: colors.overlay,
+        sceneContainerStyle: { backgroundColor: colors.page },
+      })}
     >
       {/* Home screen is the bottom tab navigator */}
       <Drawer.Screen name="Home" component={BottomTabNavigator} options={{
         drawerLabel: 'Home',
+        headerShown: false,
         drawerIcon: ({ focused, color }) => (
           <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
         )
@@ -148,6 +154,27 @@ export default function StudentNavigator() {
         drawerLabel: 'Notifications',
         drawerIcon: ({ focused, color }) => (
           <Ionicons name={focused ? 'notifications' : 'notifications-outline'} size={24} color={color} />
+        )
+      }} />
+
+      <Drawer.Screen name="CommunicationHub" component={CommunicationHub} options={{
+        drawerLabel: 'Messages',
+        drawerIcon: ({ focused, color }) => (
+          <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} size={24} color={color} />
+        )
+      }} />
+
+      <Drawer.Screen name="Live Fleet" component={FleetTrackingScreen} options={{
+        drawerLabel: 'Live Fleet',
+        drawerIcon: ({ focused, color }) => (
+          <Ionicons name={focused ? 'bus' : 'bus-outline'} size={24} color={color} />
+        )
+      }} />
+
+      <Drawer.Screen name="SyllabusTutor" component={SyllabusTutor} options={{
+        drawerLabel: 'Syllabus Tutor',
+        drawerIcon: ({ focused, color }) => (
+          <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={24} color={color} />
         )
       }} />
     </Drawer.Navigator>

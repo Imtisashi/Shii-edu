@@ -2,8 +2,9 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import DynamicHeader from '../DynamicHeader';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
-import { Colors, Radius, Spacing } from '../../constants/theme';
+import { Radius, Spacing } from '../../constants/theme';
 import { useInstitution } from '../../contexts/InstitutionContext';
+import { useRootLayout } from '../../contexts/RootLayoutContext';
 
 export default function InstitutionalLayout({
   userData,
@@ -17,6 +18,7 @@ export default function InstitutionalLayout({
 }) {
   const layout = useResponsiveLayout();
   const institution = useInstitution();
+  const { colors } = useRootLayout();
   const profile = userData ? institution.profile : institution.profile;
   const workflow = institution.workflow;
   const Body = scroll ? ScrollView : View;
@@ -40,30 +42,30 @@ export default function InstitutionalLayout({
     };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.page }]}>
       <DynamicHeader title={title} showBack={showBack} />
       <Body {...bodyProps}>
-        <View style={[styles.hero, layout.isMobile && styles.heroMobile]}>
+        <View style={[styles.hero, layout.isMobile && styles.heroMobile, { backgroundColor: colors.cardStrong, borderColor: colors.hairline }]}>
           <View style={styles.heroTextBlock}>
-            <Text style={styles.modeLabel}>{profile.institutionType}</Text>
-            <Text style={styles.title}>{title}</Text>
-            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+            <Text style={[styles.modeLabel, { color: colors.accent }]}>{profile.institutionType}</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+            {subtitle ? <Text style={[styles.subtitle, { color: colors.textSoft }]}>{subtitle}</Text> : null}
             <View style={styles.scopeRow}>
-              <View style={styles.scopePill}>
-                <Text style={styles.scopeLabel}>{profile.academicRootLabel}</Text>
-                <Text style={styles.scopeValue}>{profile.primaryValue || 'All'}</Text>
+              <View style={[styles.scopePill, { backgroundColor: colors.card, borderColor: colors.hairline }]}>
+                <Text style={[styles.scopeLabel, { color: colors.muted }]}>{profile.academicRootLabel}</Text>
+                <Text style={[styles.scopeValue, { color: colors.text }]}>{profile.primaryValue || 'All'}</Text>
               </View>
-              <View style={styles.scopePill}>
-                <Text style={styles.scopeLabel}>{profile.academicChildLabel}</Text>
-                <Text style={styles.scopeValue}>{profile.secondaryValue || 'All'}</Text>
+              <View style={[styles.scopePill, { backgroundColor: colors.card, borderColor: colors.hairline }]}>
+                <Text style={[styles.scopeLabel, { color: colors.muted }]}>{profile.academicChildLabel}</Text>
+                <Text style={[styles.scopeValue, { color: colors.text }]}>{profile.secondaryValue || 'All'}</Text>
               </View>
-              <View style={styles.scopePill}>
-                <Text style={styles.scopeLabel}>Assessment</Text>
-                <Text style={styles.scopeValue}>{profile.gradingLabel}</Text>
+              <View style={[styles.scopePill, { backgroundColor: colors.card, borderColor: colors.hairline }]}>
+                <Text style={[styles.scopeLabel, { color: colors.muted }]}>Assessment</Text>
+                <Text style={[styles.scopeValue, { color: colors.text }]}>{profile.gradingLabel}</Text>
               </View>
-              <View style={styles.scopePill}>
-                <Text style={styles.scopeLabel}>{profile.isCollege ? 'GPA Scale' : 'Attendance'}</Text>
-                <Text style={styles.scopeValue}>
+              <View style={[styles.scopePill, { backgroundColor: colors.card, borderColor: colors.hairline }]}>
+                <Text style={[styles.scopeLabel, { color: colors.muted }]}>{profile.isCollege ? 'GPA Scale' : 'Attendance'}</Text>
+                <Text style={[styles.scopeValue, { color: colors.text }]}>
                   {profile.isCollege ? `${workflow.gpa.scale}-point` : 'Daily required'}
                 </Text>
               </View>
@@ -84,17 +86,15 @@ export default function InstitutionalLayout({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1 },
   content: { paddingTop: Spacing.lg, paddingBottom: 96 },
   contentNoScroll: { flex: 1, paddingTop: Spacing.lg, paddingBottom: Spacing.lg },
   contentDesktop: { width: '100%', alignSelf: 'center' },
   hero: {
-    backgroundColor: Colors.surface,
     borderRadius: Radius.lg,
     padding: Spacing.xl,
     marginBottom: Spacing.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: Spacing.lg,
@@ -105,7 +105,6 @@ const styles = StyleSheet.create({
   },
   heroTextBlock: { flex: 1 },
   modeLabel: {
-    color: Colors.primary,
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 1,
@@ -113,13 +112,11 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   title: {
-    color: Colors.textPrimary,
     fontSize: 24,
     fontWeight: '900',
     letterSpacing: 0,
   },
   subtitle: {
-    color: Colors.textSecondary,
     fontSize: 14,
     lineHeight: 21,
     marginTop: Spacing.xs,
@@ -131,21 +128,17 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
   },
   scopePill: {
-    backgroundColor: Colors.surfaceVariant,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   scopeLabel: {
-    color: Colors.textSecondary,
     fontSize: 11,
     fontWeight: '800',
     textTransform: 'uppercase',
   },
   scopeValue: {
-    color: Colors.textPrimary,
     fontSize: 13,
     fontWeight: '800',
     marginTop: 2,

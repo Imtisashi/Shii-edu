@@ -20,8 +20,17 @@ import {
   subscribeToCourseProgressList,
 } from '../../services/courseService';
 import { requestSignedPlaybackUrl } from '../../services/cloudinaryMediaService';
+import { useInstituteTheme } from '../../hooks/useInstituteTheme';
 
 const SAVE_INTERVAL_MS = 10000;
+const COURSE_CARD = '#0F172A';
+const COURSE_BORDER = '#334155';
+const COURSE_TEXT = '#F8FAFC';
+const COURSE_TEXT_SOFT = '#B9C6DD';
+const COURSE_MUTED = '#8EA4C8';
+const COURSE_BLUE_SOFT = '#082F49';
+const COURSE_GREEN = '#16A34A';
+const COURSE_GREEN_SOFT = '#052E2B';
 
 const secondsToLabel = (seconds) => {
   const safeSeconds = Math.max(0, Math.floor(Number(seconds || 0)));
@@ -52,7 +61,7 @@ function WebYouTubePlayer({ embedUrl }) {
       minHeight: 260,
       border: 0,
       backgroundColor: '#020617',
-      borderRadius: 18,
+      borderRadius: 8,
       display: 'block',
     },
   });
@@ -132,14 +141,14 @@ function WebHlsVideo({ sourceUrl, posterUrl, initialPositionSeconds, onProgress,
       height: '100%',
       minHeight: 260,
       backgroundColor: '#020617',
-      borderRadius: 18,
+      borderRadius: 8,
       objectFit: 'contain',
       display: 'block',
     },
   });
 }
 
-function NativeVideoFallback({ sourceUrl }) {
+function NativeVideoFallback({ sourceUrl, styles }) {
   return (
     <View style={styles.nativeVideoFallback}>
       <Ionicons name="play-circle" size={54} color="#FFFFFF" />
@@ -161,6 +170,7 @@ function NativeVideoFallback({ sourceUrl }) {
 export default function CoursePlayer({ course, loading = false, error = null }) {
   const { currentUser, userData } = useAuth();
   const layout = useResponsiveLayout();
+  const { colors, styles } = useInstituteTheme(baseStyles);
   const lessons = useMemo(() => flattenLessons(course), [course]);
   const [selectedLessonId, setSelectedLessonId] = useState(null);
   const [progressRecords, setProgressRecords] = useState([]);
@@ -211,6 +221,7 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
 
     return subscribeToCourseProgressList({
       userId: currentUserUid,
+      instituteId,
       courseId,
       onProgressList: setProgressRecords,
       onError: (progressError) => {
@@ -218,7 +229,7 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
         setProgressRecords([]);
       },
     });
-  }, [courseId, currentUserUid]);
+  }, [courseId, currentUserUid, instituteId]);
 
   useEffect(() => {
     setNotes(selectedProgress?.notes || '');
@@ -361,7 +372,7 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
                 accessibilityLabel={`Open ${lesson.title}`}
               >
                 <View style={[styles.lessonStatus, record?.completed && styles.lessonStatusDone]}>
-                  <Ionicons name={record?.completed ? 'checkmark' : 'play'} size={13} color={record?.completed ? '#FFFFFF' : Colors.primary} />
+                  <Ionicons name={record?.completed ? 'checkmark' : 'play'} size={13} color={record?.completed ? '#FFFFFF' : '#93C5FD'} />
                 </View>
                 <View style={styles.lessonTextBlock}>
                   <Text style={[styles.lessonTitle, isActive && styles.lessonTitleActive]} numberOfLines={2}>{lesson.title}</Text>
@@ -396,7 +407,7 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
   if (!course) {
     return (
       <View style={styles.stateCard}>
-        <Ionicons name="albums-outline" size={42} color={Colors.border} />
+        <Ionicons name="albums-outline" size={42} color={colors.muted} />
         <Text style={styles.stateTitle}>No published course is assigned to your profile yet.</Text>
         <Text style={styles.stateText}>Courses appear here after your institute publishes one for your class or department.</Text>
       </View>
@@ -406,7 +417,7 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
   if (!selectedLesson) {
     return (
       <View style={styles.stateCard}>
-        <Ionicons name="videocam-off-outline" size={42} color={Colors.border} />
+        <Ionicons name="videocam-off-outline" size={42} color={colors.muted} />
         <Text style={styles.stateTitle}>This course has no lessons yet.</Text>
         <Text style={styles.stateText}>Ask your faculty team to add at least one lesson before publishing this course.</Text>
       </View>
@@ -414,13 +425,13 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
   }
 
   return (
-    <View style={[styles.playerShell, layout.isDesktop && styles.playerShellDesktop]}>
+      <View style={[styles.playerShell, layout.isDesktop && styles.playerShellDesktop]}>
       {!layout.isMobile ? <View style={styles.sidebar}>{renderSyllabus()}</View> : null}
 
       <View style={styles.learningPanel}>
         {layout.isMobile ? (
           <TouchableOpacity style={styles.mobileSyllabusButton} onPress={() => setSheetOpen(true)}>
-            <Ionicons name="list" size={18} color={Colors.primary} />
+            <Ionicons name="list" size={18} color={colors.text} />
             <Text style={styles.mobileSyllabusText}>Open syllabus</Text>
           </TouchableOpacity>
         ) : null}
@@ -445,7 +456,7 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
             youtubeEmbedUrl && Platform.OS === 'web' ? (
               <WebYouTubePlayer embedUrl={youtubeEmbedUrl} />
             ) : youtubeEmbedUrl ? (
-              <NativeVideoFallback sourceUrl={playbackUrl} />
+              <NativeVideoFallback sourceUrl={playbackUrl} styles={styles} />
             ) : Platform.OS === 'web' ? (
               <WebHlsVideo
                 sourceUrl={playbackUrl}
@@ -455,7 +466,7 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
                 onEnded={handleEnded}
               />
             ) : (
-              <NativeVideoFallback sourceUrl={playbackUrl} />
+              <NativeVideoFallback sourceUrl={playbackUrl} styles={styles} />
             )
           ) : (
             <View style={styles.videoState}>
@@ -478,7 +489,7 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
             </View>
           ) : (
             <TouchableOpacity style={styles.markCompleteBtn} onPress={handleManualComplete}>
-              <Ionicons name="checkmark-done" size={17} color={Colors.success} />
+              <Ionicons name="checkmark-done" size={17} color={COURSE_GREEN} />
               <Text style={styles.markCompleteText}>Mark Complete</Text>
             </TouchableOpacity>
           )}
@@ -496,7 +507,7 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
           onChangeText={setNotes}
           onBlur={() => persistProgress({ force: true })}
           placeholder="Write clean study notes for this lesson..."
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor={colors.muted}
         />
         {selectedLesson.resources.length ? (
           <View style={styles.resourcesBlock}>
@@ -515,7 +526,7 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Course syllabus</Text>
               <TouchableOpacity onPress={() => setSheetOpen(false)} style={styles.sheetClose}>
-                <Ionicons name="close" size={22} color={Colors.textSecondary} />
+                <Ionicons name="close" size={22} color={colors.textSoft} />
               </TouchableOpacity>
             </View>
             {renderSyllabus()}
@@ -526,23 +537,23 @@ export default function CoursePlayer({ course, loading = false, error = null }) 
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   playerShell: { gap: Spacing.md },
   playerShellDesktop: { flexDirection: 'row', alignItems: 'stretch' },
   sidebar: {
     width: 300,
-    backgroundColor: Colors.surface,
+    backgroundColor: COURSE_CARD,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: COURSE_BORDER,
     overflow: 'hidden',
     maxHeight: 720,
   },
   syllabusScroll: { flexGrow: 0 },
   syllabusContent: { padding: Spacing.md, paddingBottom: Spacing.lg },
   moduleBlock: { marginBottom: Spacing.lg },
-  moduleEyebrow: { color: Colors.primary, fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
-  moduleTitle: { color: Colors.textPrimary, fontSize: 16, fontWeight: '900', marginTop: 3, marginBottom: Spacing.sm },
+  moduleEyebrow: { color: '#38BDF8', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
+  moduleTitle: { color: COURSE_TEXT, fontSize: 16, fontWeight: '900', marginTop: 3, marginBottom: Spacing.sm },
   lessonRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -553,56 +564,58 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   lessonRowActive: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#BFDBFE',
+    backgroundColor: COURSE_BLUE_SOFT,
+    borderColor: '#2563EB',
   },
   lessonStatus: {
     width: 26,
     height: 26,
-    borderRadius: 13,
-    backgroundColor: '#DBEAFE',
+    borderRadius: 8,
+    backgroundColor: COURSE_BLUE_SOFT,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Spacing.sm,
   },
-  lessonStatusDone: { backgroundColor: Colors.success },
+  lessonStatusDone: { backgroundColor: COURSE_GREEN },
   lessonTextBlock: { flex: 1, minWidth: 0 },
-  lessonTitle: { color: Colors.textPrimary, fontSize: 13, fontWeight: '800' },
-  lessonTitleActive: { color: Colors.primary },
-  lessonMeta: { color: Colors.textSecondary, fontSize: 11, marginTop: 2 },
+  lessonTitle: { color: COURSE_TEXT, fontSize: 13, fontWeight: '800' },
+  lessonTitleActive: { color: '#93C5FD' },
+  lessonMeta: { color: COURSE_MUTED, fontSize: 11, marginTop: 2 },
   learningPanel: { flex: 1.6, minWidth: 0 },
   mobileSyllabusButton: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    borderRadius: Radius.pill,
+    backgroundColor: COURSE_BLUE_SOFT,
+    borderRadius: Radius.lg,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: COURSE_BORDER,
   },
-  mobileSyllabusText: { color: Colors.primary, fontWeight: '900', marginLeft: Spacing.xs },
+  mobileSyllabusText: { color: COURSE_TEXT, fontWeight: '900', marginLeft: Spacing.xs },
   progressCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: COURSE_CARD,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: COURSE_BORDER,
     padding: Spacing.md,
     marginBottom: Spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
   },
-  progressLabel: { color: Colors.textSecondary, fontSize: 12, fontWeight: '800', textTransform: 'uppercase' },
-  progressValue: { color: Colors.textPrimary, fontSize: 18, fontWeight: '900', marginTop: 2 },
-  progressBar: { flex: 1, height: 10, borderRadius: 5, backgroundColor: '#E2E8F0', overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: Colors.success },
+  progressLabel: { color: COURSE_MUTED, fontSize: 12, fontWeight: '800', textTransform: 'uppercase' },
+  progressValue: { color: COURSE_TEXT, fontSize: 18, fontWeight: '900', marginTop: 2 },
+  progressBar: { flex: 1, height: 10, borderRadius: 5, backgroundColor: '#111827', overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: COURSE_GREEN },
   videoFrame: {
     width: '100%',
     aspectRatio: 16 / 9,
     minHeight: 260,
     backgroundColor: '#020617',
-    borderRadius: 18,
+    borderRadius: 8,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#111827',
@@ -612,65 +625,65 @@ const styles = StyleSheet.create({
   nativeVideoFallback: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.lg },
   nativeVideoTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '900', marginTop: Spacing.sm },
   nativeVideoText: { color: '#CBD5E1', textAlign: 'center', marginTop: Spacing.xs, lineHeight: 20 },
-  nativeVideoButton: { backgroundColor: Colors.primary, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, borderRadius: Radius.pill, marginTop: Spacing.md },
+  nativeVideoButton: { backgroundColor: Colors.primary, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, borderRadius: Radius.lg, marginTop: Spacing.md },
   nativeVideoButtonText: { color: '#FFFFFF', fontWeight: '900' },
   lessonHeader: {
-    backgroundColor: Colors.surface,
+    backgroundColor: COURSE_CARD,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: COURSE_BORDER,
     padding: Spacing.lg,
     marginTop: Spacing.md,
     flexDirection: 'row',
     gap: Spacing.md,
     alignItems: 'flex-start',
   },
-  nowPlaying: { color: Colors.primary, fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
-  selectedLessonTitle: { color: Colors.textPrimary, fontSize: 22, fontWeight: '900', marginTop: 4 },
-  selectedLessonDescription: { color: Colors.textSecondary, lineHeight: 21, marginTop: Spacing.xs },
-  completedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.success, borderRadius: Radius.pill, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
+  nowPlaying: { color: '#93C5FD', fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
+  selectedLessonTitle: { color: COURSE_TEXT, fontSize: 22, fontWeight: '900', marginTop: 4 },
+  selectedLessonDescription: { color: COURSE_TEXT_SOFT, lineHeight: 21, marginTop: Spacing.xs },
+  completedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: COURSE_GREEN, borderRadius: Radius.lg, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
   completedBadgeText: { color: '#FFFFFF', fontWeight: '900', marginLeft: 5, fontSize: 12 },
-  markCompleteBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ECFDF5', borderRadius: Radius.pill, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderWidth: 1, borderColor: '#BBF7D0' },
-  markCompleteText: { color: Colors.success, fontWeight: '900', marginLeft: 5, fontSize: 12 },
+  markCompleteBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: COURSE_GREEN_SOFT, borderRadius: Radius.lg, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderWidth: 1, borderColor: COURSE_BORDER },
+  markCompleteText: { color: COURSE_TEXT, fontWeight: '900', marginLeft: 5, fontSize: 12 },
   interactionPanel: {
     flex: 1,
-    backgroundColor: Colors.surface,
+    backgroundColor: COURSE_CARD,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: COURSE_BORDER,
     padding: Spacing.lg,
     minWidth: 0,
   },
-  panelTitle: { color: Colors.textPrimary, fontSize: 19, fontWeight: '900' },
-  panelText: { color: Colors.textSecondary, lineHeight: 20, marginTop: Spacing.xs, marginBottom: Spacing.md },
+  panelTitle: { color: COURSE_TEXT, fontSize: 19, fontWeight: '900' },
+  panelText: { color: COURSE_TEXT_SOFT, lineHeight: 20, marginTop: Spacing.xs, marginBottom: Spacing.md },
   notesInput: {
     minHeight: 180,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#111827',
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: COURSE_BORDER,
     padding: Spacing.md,
-    color: Colors.textPrimary,
+    color: COURSE_TEXT,
     fontSize: 14,
     outlineStyle: 'none',
   },
   resourcesBlock: { marginTop: Spacing.lg },
-  resourcesTitle: { color: Colors.textPrimary, fontWeight: '900', marginBottom: Spacing.sm },
-  resourceItem: { color: Colors.primary, fontWeight: '700', marginBottom: Spacing.xs },
+  resourcesTitle: { color: COURSE_TEXT, fontWeight: '900', marginBottom: Spacing.sm },
+  resourceItem: { color: '#93C5FD', fontWeight: '700', marginBottom: Spacing.xs },
   stateCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: COURSE_CARD,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: COURSE_BORDER,
     padding: Spacing.xl,
     alignItems: 'center',
   },
-  stateTitle: { color: Colors.textPrimary, fontSize: 18, fontWeight: '900', textAlign: 'center', marginTop: Spacing.sm },
-  stateText: { color: Colors.textSecondary, textAlign: 'center', lineHeight: 21, marginTop: Spacing.xs },
-  sheetBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.48)', justifyContent: 'flex-end' },
-  sheet: { maxHeight: '82%', backgroundColor: Colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: Spacing.sm },
-  sheetHandle: { width: 44, height: 5, borderRadius: 3, backgroundColor: '#CBD5E1', alignSelf: 'center', marginBottom: Spacing.sm },
+  stateTitle: { color: COURSE_TEXT, fontSize: 18, fontWeight: '900', textAlign: 'center', marginTop: Spacing.sm },
+  stateText: { color: COURSE_TEXT_SOFT, textAlign: 'center', lineHeight: 21, marginTop: Spacing.xs },
+  sheetBackdrop: { flex: 1, backgroundColor: '#020617', justifyContent: 'flex-end' },
+  sheet: { maxHeight: '82%', backgroundColor: '#070B16', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: Spacing.sm, borderWidth: 1, borderColor: COURSE_BORDER },
+  sheetHandle: { width: 44, height: 5, borderRadius: 3, backgroundColor: COURSE_BORDER, alignSelf: 'center', marginBottom: Spacing.sm },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm },
-  sheetTitle: { color: Colors.textPrimary, fontSize: 19, fontWeight: '900' },
+  sheetTitle: { color: COURSE_TEXT, fontSize: 19, fontWeight: '900' },
   sheetClose: { padding: Spacing.xs },
 });

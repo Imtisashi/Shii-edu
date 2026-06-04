@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import CoursePlayer from '../../components/course/CoursePlayer';
-import InstitutionalLayout from '../../components/institution/InstitutionalLayout';
+import StudentScreenScaffold, { ScreenIntro } from '../../components/student/StudentScreenScaffold';
 import { useAuth } from '../../contexts/AuthContext';
+import { useRootLayout } from '../../contexts/RootLayoutContext';
 import { subscribeToLearnerCourse } from '../../services/courseService';
-import { Colors, Radius, Spacing } from '../../constants/theme';
 
-export default function CoursePlayerScreen({ route, navigation }) {
+export default function CoursePlayerScreen({ route }) {
   const { userData } = useAuth();
+  const { colors } = useRootLayout();
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,7 +20,6 @@ export default function CoursePlayerScreen({ route, navigation }) {
 
     const unsubscribe = subscribeToLearnerCourse({
       courseId,
-      userData,
       onCourse: (nextCourse) => {
         setCourse(nextCourse);
         setLoading(false);
@@ -30,35 +29,22 @@ export default function CoursePlayerScreen({ route, navigation }) {
         setError(courseError);
         setLoading(false);
       },
+      userData,
     });
 
     return () => unsubscribe();
   }, [courseId, userData]);
 
   return (
-    <InstitutionalLayout
-      userData={userData}
-      title="Learning Player"
-      subtitle="Stream assigned lessons, track completion, and keep durable notes against each lesson."
-      scroll={false}
-      actions={(
-        <TouchableOpacity
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: '#EFF6FF',
-            borderRadius: Radius.pill,
-            paddingHorizontal: Spacing.md,
-            paddingVertical: Spacing.sm,
-          }}
-          onPress={() => navigation.navigate('Home')}
-        >
-          <Ionicons name="home-outline" size={17} color={Colors.primary} />
-          <Text style={{ color: Colors.primary, fontWeight: '900', marginLeft: 6 }}>Dashboard</Text>
-        </TouchableOpacity>
-      )}
-    >
-      <CoursePlayer course={course} loading={loading} error={error} />
-    </InstitutionalLayout>
+    <StudentScreenScaffold accentVariant="blue">
+      <ScreenIntro
+        accentColor={colors.deepBlue}
+        eyebrow="Learning player"
+        subtitle="Stream assigned lessons, track completion, and keep durable notes against each lesson."
+        title="Courses"
+        trailing={<Ionicons name="play-circle" size={28} color={colors.deepBlue} />}
+      />
+      <CoursePlayer course={course} error={error} loading={loading} />
+    </StudentScreenScaffold>
   );
 }

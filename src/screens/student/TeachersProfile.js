@@ -1,77 +1,169 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from '../../../firebaseConfig';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useEffect, useMemo, useState } from 'react';
+import { FlatList, Image, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import DynamicHeader from '../../components/DynamicHeader';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { useAuth } from '../../contexts/AuthContext';
+import { useRootLayout } from '../../contexts/RootLayoutContext';
+import { fetchFacultyDirectory } from '../../services/facultyDirectoryService';
 
-export default function TeachersProfile() {
-  const { userData } = useAuth();
-  const [teachers, setTeachers] = useState([]);
-  const [loading, setLoading] = useState(true);
+const getInitial = (name) => String(name || 'F').trim().charAt(0).toUpperCase() || 'F';
 
-  useEffect(() => {
-    if (!userData?.instituteId) return;
+function FacultyHeader({ count }) {
+  const { colors, typography } = useRootLayout();
 
-    // Fetch actual teachers from this specific campus
-    const q = query(
-      collection(db, "users"),
-      where("instituteId", "==", userData.instituteId),
-      where("role", "==", "teacher")
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setTeachers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [userData]);
-
-  const renderTeacherCard = ({ item }) => (
-    <View style={styles.card}>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
+  return (
+    <View style={styles.headerBlock}>
+      <Text style={[styles.eyebrow, { color: colors.muted }]}>Campus faculty</Text>
+      <Text style={[styles.screenTitle, { color: colors.text, fontFamily: typography.title }]}>Faculty</Text>
+      <Text style={[styles.screenSubtitle, { color: colors.textSoft }]}>
+        Your institute teachers and faculty identifiers in one polished roster.
+      </Text>
+      <View style={[styles.summaryPill, { backgroundColor: colors.card, borderColor: colors.hairline }]}>
+        <Ionicons name="people-outline" size={16} color={colors.emerald} />
+        <Text style={[styles.summaryText, { color: colors.text }]}>{count} teacher{count === 1 ? '' : 's'}</Text>
       </View>
-      <View style={styles.infoContainer}>
-        <Text style={styles.name}>{item.name}</Text>
-        <Text style={styles.email}>{item.email}</Text>
+    </View>
+  );
+}
+
+function FacultyAvatar({ item }) {
+  const { colors } = useRootLayout();
+  const photoURL = item.photoURL || item.profilePic || item.avatarUrl;
+
+  return (
+    <View style={styles.avatarFrame}>
+      {photoURL ? (
+        <Image source={{ uri: photoURL }} style={styles.avatarImage} />
+      ) : (
+        <View style={[styles.avatarFallback, { backgroundColor: colors.cardStrong, borderColor: colors.hairline }]}>
+          <Text style={[styles.avatarText, { color: colors.text }]}>{getInitial(item.name)}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function FacultyCard({ item }) {
+  const { colors, radii } = useRootLayout();
+  const department = item.department || item.dept || item.subject || 'Faculty';
+  const teacherCode = item.loginId || item.teacherCode || item.uniqueId || item.code || item.id || 'ID pending';
+
+  return (
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.hairline,
+          borderRadius: radii.card,
+        },
+      ]}
+    >
+      <FacultyAvatar item={item} />
+      <View style={styles.infoBlock}>
+        <Text numberOfLines={1} style={[styles.name, { color: colors.text }]}>
+          {item.name || 'Unnamed Faculty'}
+        </Text>
+        <Text numberOfLines={1} style={[styles.email, { color: colors.textSoft }]}>
+          ID: {teacherCode}
+        </Text>
         <View style={styles.badgeRow}>
-          <View style={styles.badge}>
-            <Ionicons name="briefcase-outline" size={12} color="#3182CE" style={{marginRight: 4}} />
-            <Text style={styles.badgeText}>Faculty</Text>
+          <View style={[styles.badge, { backgroundColor: colors.emeraldSoft, borderColor: colors.hairline }]}>
+            <Ionicons name="briefcase-outline" size={13} color={colors.emerald} />
+            <Text numberOfLines={1} style={[styles.badgeText, { color: colors.text }]}>{department}</Text>
           </View>
-          <View style={[styles.badge, styles.codeBadge]}>
-            <Text style={[styles.badgeText, styles.codeBadgeText]}>Code: {item.teacherCode}</Text>
+          <View style={[styles.badge, { backgroundColor: colors.deepBlueSoft, borderColor: colors.hairline }]}>
+            <Ionicons name="id-card-outline" size={13} color={colors.deepBlue} />
+            <Text numberOfLines={1} style={[styles.badgeText, { color: colors.text }]}>Code {teacherCode}</Text>
           </View>
         </View>
       </View>
     </View>
   );
+}
+
+function EmptyState({ message = 'Teacher profiles will appear after admin onboarding.', title = 'No faculty yet' }) {
+  const { colors } = useRootLayout();
 
   return (
-    <View style={styles.container}>
-      <DynamicHeader title="Our Faculty" showBack={true} />
-      
+    <View style={styles.emptyState}>
+      <View style={[styles.emptyIcon, { backgroundColor: colors.emeraldSoft, borderColor: colors.hairline }]}>
+        <Ionicons name="people-outline" size={34} color={colors.emerald} />
+      </View>
+      <Text style={[styles.emptyTitle, { color: colors.text }]}>{title}</Text>
+      <Text style={[styles.emptyText, { color: colors.muted }]}>{message}</Text>
+    </View>
+  );
+}
+
+export default function TeachersProfile() {
+  const { currentUser, userData } = useAuth();
+  const { colors, insets, isDesktop, maxContentWidth, spacing } = useRootLayout();
+  const [teachers, setTeachers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (!currentUser || !userData?.instituteId) {
+      setTeachers([]);
+      setLoading(false);
+      return () => {
+        isActive = false;
+      };
+    }
+
+    setLoading(true);
+    setErrorMessage('');
+
+    fetchFacultyDirectory(currentUser)
+      .then((nextTeachers) => {
+        if (!isActive) return;
+        setTeachers(nextTeachers);
+      })
+      .catch((error) => {
+        if (!isActive) return;
+        console.error('Teacher roster request failed:', error);
+        setTeachers([]);
+        setErrorMessage('The faculty directory could not be loaded. Please try again shortly.');
+      })
+      .finally(() => {
+        if (isActive) setLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [currentUser, userData?.instituteId]);
+
+  const listStyle = useMemo(() => ({
+    alignSelf: 'center',
+    maxWidth: isDesktop ? maxContentWidth : undefined,
+    paddingBottom: Math.max(insets.bottom, 10) + 104,
+    paddingHorizontal: spacing.pageX,
+    paddingTop: Math.max(insets.top, 12) + 26,
+    width: '100%',
+  }), [insets.bottom, insets.top, isDesktop, maxContentWidth, spacing.pageX]);
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.page }]}>
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <SmoothSpinner size="large" color="#4A90E2" />
+        <View style={styles.loadingState}>
+          <SmoothSpinner size={42} color={colors.emerald} trackColor={colors.hairline} />
+          <Text style={[styles.loadingText, { color: colors.textSoft }]}>Loading faculty...</Text>
         </View>
       ) : (
         <FlatList
           data={teachers}
           keyExtractor={(item) => item.id}
-          renderItem={renderTeacherCard}
-          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={errorMessage
+            ? <EmptyState title="Unable to load faculty" message={errorMessage} />
+            : <EmptyState />}
+          ListHeaderComponent={<FacultyHeader count={teachers.length} />}
+          contentContainerStyle={listStyle}
+          renderItem={({ item }) => <FacultyCard item={item} />}
           showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={{ alignItems: 'center', marginTop: 50 }}>
-              <Ionicons name="people-outline" size={50} color="#CBD5E0" />
-              <Text style={{ color: '#718096', marginTop: 10 }}>No faculty registered yet.</Text>
-            </View>
-          }
         />
       )}
     </View>
@@ -79,18 +171,147 @@ export default function TeachersProfile() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  listContent: { padding: 16, paddingBottom: 100 },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', elevation: 2 },
-  avatar: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#4A90E2', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-  avatarText: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
-  infoContainer: { flex: 1 },
-  name: { fontSize: 18, fontWeight: 'bold', color: '#2D3748', marginBottom: 4 },
-  email: { fontSize: 13, color: '#718096', marginBottom: 8 },
-  badgeRow: { flexDirection: 'row' },
-  badge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EBF4FF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginRight: 8 },
-  badgeText: { fontSize: 11, color: '#3182CE', fontWeight: '600' },
-  codeBadge: { backgroundColor: '#EDF2F7' },
-  codeBadgeText: { color: '#4A5568' }
+  avatarFallback: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 58,
+    justifyContent: 'center',
+    width: 58,
+  },
+  avatarFrame: {
+    height: 62,
+    justifyContent: 'center',
+    width: 68,
+  },
+  avatarImage: {
+    borderRadius: 8,
+    height: 58,
+    width: 58,
+  },
+  avatarText: {
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  badge: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    maxWidth: '100%',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '900',
+    maxWidth: 180,
+  },
+  card: {
+    alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 14,
+    marginBottom: 14,
+    overflow: 'hidden',
+    padding: 18,
+  },
+  container: {
+    flex: 1,
+  },
+  email: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  emptyIcon: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 72,
+    justifyContent: 'center',
+    marginBottom: 16,
+    width: 72,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 260,
+    paddingHorizontal: 20,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0,
+    textTransform: 'uppercase',
+  },
+  headerBlock: {
+    marginBottom: 22,
+  },
+  infoBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  loadingState: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontWeight: '800',
+    marginTop: 16,
+  },
+  name: {
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 0,
+  },
+  screenSubtitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 21,
+    marginTop: 8,
+    maxWidth: 620,
+  },
+  screenTitle: {
+    fontSize: 34,
+    fontWeight: '900',
+    letterSpacing: 0,
+    marginTop: 4,
+  },
+  summaryPill: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 16,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+  },
+  summaryText: {
+    fontSize: 12,
+    fontWeight: '900',
+  },
 });

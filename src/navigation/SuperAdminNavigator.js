@@ -1,9 +1,10 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { sharedStackScreenOptions } from './animatedScreenOptions';
-import SuperAdminHome from '../screens/superAdmin/SuperAdminHome';
+import SuperadminMasterDashboard from '../screens/superAdmin/SuperadminMasterDashboard';
 import ManageAdminUsers from '../screens/superAdmin/ManageAdminUsers';
 import ManageInstitutes from '../screens/superAdmin/ManageInstitutes';
+import { EDGE_BACKGROUND } from '../contexts/RootLayoutContext';
 
 const Stack = createStackNavigator();
 
@@ -13,19 +14,24 @@ export default function SuperAdminNavigator() {
       screenOptions={{
         ...sharedStackScreenOptions,
         headerShown: true,
-        headerStyle: {
-          backgroundColor: '#0F172A',
-          elevation: 0,
-          shadowOpacity: 0,
+        cardStyle: {
+          backgroundColor: EDGE_BACKGROUND,
         },
-        headerTintColor: '#fff',
+        headerStyle: {
+          backgroundColor: EDGE_BACKGROUND,
+          borderBottomColor: '#334155',
+          borderBottomWidth: 1,
+        },
+        headerTintColor: '#F8FAFC',
         headerTitleStyle: {
           fontWeight: '900',
+          color: '#F8FAFC',
         },
+        headerTitleAlign: 'center',
         headerBackTitleVisible: false,
       }}
     >
-      <Stack.Screen name="SuperAdminHome" component={SuperAdminHome} options={{ title: 'Super Admin' }} />
+      <Stack.Screen name="SuperAdminHome" component={SuperadminMasterDashboard} options={{ title: 'Superadmin Master' }} />
       <Stack.Screen name="ManageAdminUsers" component={ManageAdminUsers} options={{ title: 'Administrators' }} />
       <Stack.Screen name="ManageInstitutes" component={ManageInstitutes} options={{ title: 'Institutes' }} />
     </Stack.Navigator>

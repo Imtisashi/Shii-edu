@@ -3,11 +3,14 @@ import { NavigationContainer } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Font from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { InstitutionProvider } from './src/contexts/InstitutionContext';
 import { LayoutContextProvider } from './src/contexts/LayoutContext';
+import { EDGE_BACKGROUND, RootLayoutProvider } from './src/contexts/RootLayoutContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import RootLayout from './src/components/RootLayout';
+import GlobalErrorBoundary from './src/components/errors/GlobalErrorBoundary';
 import { installWebPerformanceTuning } from './src/utils/webPerformanceTuning';
 import { installWebScrollFix } from './src/utils/webScrollFix';
 import { installFirestoreOfflinePersistence } from './src/services/offlinePersistence';
@@ -20,7 +23,7 @@ const linking = {
 const documentTitle = {
   formatter: (options) => {
     const routeTitle = options?.title;
-    return routeTitle && routeTitle !== 'Login' ? `${routeTitle} | Shii Edu` : 'Shii Edu';
+    return routeTitle && routeTitle !== 'Login' ? `${routeTitle} | Edu Shii` : 'Edu Shii';
   },
 };
 
@@ -46,21 +49,29 @@ export default function App() {
     };
   }, []);
 
-  if (!iconsReady) return null;
+  if (!iconsReady) {
+    return <GestureHandlerRootView style={{ flex: 1, backgroundColor: EDGE_BACKGROUND }} />;
+  }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
-      <AuthProvider>
-        <InstitutionProvider>
-          <LayoutContextProvider>
-            <NavigationContainer linking={linking} documentTitle={documentTitle}>
-              <RootLayout>
-                <AppNavigator />
-              </RootLayout>
-            </NavigationContainer>
-          </LayoutContextProvider>
-        </InstitutionProvider>
-      </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: EDGE_BACKGROUND }}>
+      <SafeAreaProvider>
+        <GlobalErrorBoundary appName="Edu Shii">
+          <AuthProvider appMode="institute">
+            <InstitutionProvider>
+            <RootLayoutProvider>
+              <LayoutContextProvider>
+                <NavigationContainer linking={linking} documentTitle={documentTitle}>
+                  <RootLayout>
+                    <AppNavigator />
+                  </RootLayout>
+                </NavigationContainer>
+              </LayoutContextProvider>
+            </RootLayoutProvider>
+            </InstitutionProvider>
+          </AuthProvider>
+        </GlobalErrorBoundary>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

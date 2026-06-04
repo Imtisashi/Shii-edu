@@ -4,10 +4,11 @@ import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { auth } from '../../../firebaseConfig';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 import BrandLogo from '../../components/BrandLogo';
+import EnterpriseAuthBackground from '../../components/auth/EnterpriseAuthBackground';
+import { DURATION, EASING } from '../../utils/animations';
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
@@ -53,10 +54,10 @@ export default function Login() {
   }, []);
 
   useEffect(() => {
-    Animated.spring(introAnim, {
+    Animated.timing(introAnim, {
       toValue: 1,
-      friction: 8,
-      tension: 42,
+      duration: DURATION.standard,
+      easing: EASING.strongEaseOut,
       useNativeDriver: USE_NATIVE_DRIVER,
     }).start();
   }, [introAnim]);
@@ -80,7 +81,6 @@ export default function Login() {
   };
 
   const handleLogin = async () => {
-    Haptics.selectionAsync();
     if (!identifier || !password) {
       showLoginAlert('Please enter your ID/Email and Password.');
       return;
@@ -114,7 +114,6 @@ export default function Login() {
   };
 
   const handleSendResetLink = async () => {
-    Haptics.selectionAsync();
     if (!resetEmail) {
       setResetMessage('Please enter your email address.');
       setResetMessageType('error');
@@ -147,194 +146,195 @@ export default function Login() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.keyboardRoot}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.container,
-          layout.isMobile && styles.containerMobile,
-          layout.isDesktop && styles.containerDesktop,
-          layout.isCompact && styles.containerCompact,
-        ]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+    <EnterpriseAuthBackground>
+      <KeyboardAvoidingView
+        style={styles.keyboardRoot}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {layout.isDesktop ? (
-          <Animated.View style={[styles.desktopBrandPanel, introStyle]}>
-            <BrandLogo size={68} variant="light" style={styles.brandIcon} />
-            <Text style={styles.brandTitle}>Shii Edu</Text>
-            <Text style={styles.brandCopy}>
-              A polished education SaaS workspace for superadmins, admins, teachers, and students.
-            </Text>
-            <View style={styles.brandFeatureRow}>
-              <Ionicons name="shield-checkmark" size={18} color="#C4B5FD" />
-              <Text style={styles.brandFeatureText}>Role-based secure access</Text>
-            </View>
-            <View style={styles.brandFeatureRow}>
-              <Ionicons name="pie-chart" size={18} color="#C4B5FD" />
-              <Text style={styles.brandFeatureText}>Desktop analytics and mobile workflows</Text>
-            </View>
-          </Animated.View>
-        ) : null}
-
-        <Animated.View style={[styles.card, layout.isMobile && styles.cardMobile, layout.isMobile && { width: mobileCardWidth }, layout.isDesktop && styles.cardDesktop, layout.isCompact && styles.cardCompact, introStyle]}>
-          <View style={[styles.header, layout.isMobile && styles.headerMobile]}>
-            <View style={[styles.logoCage, layout.isMobile && styles.logoCageMobile]}>
-              <BrandLogo size={58} />
-            </View>
-            <Text style={[styles.title, layout.isMobile && styles.titleMobile]}>Shii Edu</Text>
-            <Text style={styles.subtitle}>Sign in with your campus ID or email</Text>
-          </View>
-
-          <View style={styles.form}>
-            <Text style={styles.label}>User ID or Email</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="person-outline" size={20} color="#94A3B8" style={styles.icon} />
-              <TextInput
-                style={styles.input}
-                placeholder={layout.isMobile ? 'ID or email' : 'e.g. STU-1024 or admin@college.edu'}
-                value={identifier}
-                onChangeText={setIdentifier}
-                autoCapitalize="none"
-                autoCorrect={false}
-                placeholderTextColor="#94A3B8"
-              />
-            </View>
-
-            <Text style={styles.label}>Password</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={20} color="#94A3B8" style={styles.icon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                placeholderTextColor="#94A3B8"
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#94A3B8" />
-              </TouchableOpacity>
-            </View>
-
-            {/* REMEMBER ME & FORGOT PASSWORD ROW */}
-            <View style={[styles.optionsRow, layout.isMobile && styles.optionsRowMobile, layout.isCompact && styles.optionsRowCompact]}>
-              <TouchableOpacity
-                style={styles.rememberRow}
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setRememberMe(!rememberMe);
-                }}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.checkbox, rememberMe && styles.checkboxActive]} >
-                  {rememberMe && <Ionicons name="checkmark" size={14} color="#fff" />}
-                </View>
-                <Text style={styles.rememberText}>Remember Me</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => {
-                Haptics.selectionAsync();
-                setShowResetModal(true);
-              }}>
-                <Text style={styles.forgotText}>Forgot Password?</Text>
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity
-              style={styles.loginBtn}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              {loading ? <SmoothSpinner color="#fff" /> : <Text style={styles.loginBtnText}>Secure Login</Text>}
-            </TouchableOpacity>
-          </View>
-
-          {/* REGISTRATION IS GONE. REPLACED WITH ADMIN NOTICE */}
-          <View style={styles.footer}>
-            <Ionicons name="shield-checkmark" size={16} color="#94A3B8" />
-            <Text style={styles.footerText}>
-              Access is managed by your campus administrator.
-            </Text>
-          </View>
-        </Animated.View>
-      </ScrollView>
-
-      {/* Password Reset Modal */}
-      <Modal
-        animationType="slide"
-        transparent={false}
-        visible={showResetModal}
-        onRequestClose={handleResetModalClose}
-      >
-        <View style={styles.modalContainer}>
-          <View style={[styles.modalContent, layout.isDesktop && styles.modalContentDesktop]}>
-            <View style={styles.modalHeader}>
-              <Ionicons name="mail-outline" size={28} color="#4A90E2" />
-              <Text style={styles.modalTitle}>Reset Password</Text>
-            </View>
-            <View style={styles.modalBody}>
-              <Text style={styles.modalSubtitle}>
-                Enter your email address to receive a password reset link.
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.container,
+            layout.isMobile && styles.containerMobile,
+            layout.isDesktop && styles.containerDesktop,
+            layout.isCompact && styles.containerCompact,
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {layout.isDesktop ? (
+            <Animated.View style={[styles.desktopBrandPanel, introStyle]}>
+              <BrandLogo size={68} variant="light" style={styles.brandIcon} />
+              <Text style={styles.brandEyebrow}>Institute Access Control</Text>
+              <Text style={styles.brandTitle}>Edu Shii</Text>
+              <Text style={styles.brandCopy}>
+                A structured education workspace for superadmins, administrators, teachers, students, and parents.
               </Text>
+              <View style={styles.brandFeatureRow}>
+                <Ionicons name="shield-checkmark" size={18} color="#C4B5FD" />
+                <Text style={styles.brandFeatureText}>Role-based secure access</Text>
+              </View>
+              <View style={styles.brandFeatureRow}>
+                <Ionicons name="business" size={18} color="#C4B5FD" />
+                <Text style={styles.brandFeatureText}>School and college workflows shaped for each campus</Text>
+              </View>
+            </Animated.View>
+          ) : null}
+
+          <Animated.View style={[styles.card, layout.isMobile && styles.cardMobile, layout.isMobile && { width: mobileCardWidth }, layout.isDesktop && styles.cardDesktop, layout.isCompact && styles.cardCompact, introStyle]}>
+            <View style={[styles.header, layout.isMobile && styles.headerMobile]}>
+              <View style={[styles.logoCage, layout.isMobile && styles.logoCageMobile]}>
+                <BrandLogo size={58} />
+              </View>
+              <Text style={[styles.title, layout.isMobile && styles.titleMobile]}>Edu Shii</Text>
+              <Text style={styles.subtitle}>Sign in to your institute workspace</Text>
+            </View>
+
+            <View style={styles.form}>
+              <Text style={styles.label}>User ID or Email</Text>
               <View style={styles.inputContainer}>
-                <Ionicons name="mail-outline" size={20} color="#94A3B8" style={styles.icon} />
+                <Ionicons name="person-outline" size={20} color="#CBD5E1" style={styles.icon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="your@email.com"
-                  value={resetEmail}
-                  onChangeText={setResetEmail}
+                  placeholder={layout.isMobile ? 'ID or email' : 'e.g. STU-1024 or admin@college.edu'}
+                  value={identifier}
+                  onChangeText={setIdentifier}
                   autoCapitalize="none"
-                  keyboardType="email-address"
+                  autoCorrect={false}
                   placeholderTextColor="#94A3B8"
                 />
               </View>
-              {resetMessage && (
-                <View style={{ marginVertical: 12 }}>
-                  <Text
-                    style={[
-                      styles.modalMessage,
-                      resetMessageType === 'success' && styles.modalMessageSuccess,
-                      resetMessageType === 'error' && styles.modalMessageError
-                    ]}
-                  >
-                    {resetMessage}
-                  </Text>
-                </View>
-              )}
+
+              <Text style={styles.label}>Password</Text>
+              <View style={styles.inputContainer}>
+                <Ionicons name="lock-closed-outline" size={20} color="#CBD5E1" style={styles.icon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  placeholderTextColor="#94A3B8"
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                  <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#CBD5E1" />
+                </TouchableOpacity>
+              </View>
+
+              {/* REMEMBER ME & FORGOT PASSWORD ROW */}
+              <View style={[styles.optionsRow, layout.isMobile && styles.optionsRowMobile, layout.isCompact && styles.optionsRowCompact]}>
+                <TouchableOpacity
+                  style={styles.rememberRow}
+                  onPress={() => {
+                    setRememberMe(!rememberMe);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.checkbox, rememberMe && styles.checkboxActive]} >
+                    {rememberMe && <Ionicons name="checkmark" size={14} color="#020617" />}
+                  </View>
+                  <Text style={styles.rememberText}>Remember Me</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => {
+                  setShowResetModal(true);
+                }}>
+                  <Text style={styles.forgotText}>Forgot Password?</Text>
+                </TouchableOpacity>
+              </View>
+
               <TouchableOpacity
-                style={[styles.modalBtn, resetLoading && styles.modalBtnLoading]}
-                onPress={handleSendResetLink}
-                disabled={resetLoading}
+                style={styles.loginBtn}
+                onPress={handleLogin}
+                disabled={loading}
               >
-                {resetLoading ? (
-                  <SmoothSpinner color="#fff" size={20} />
-                ) : (
-                  <Text style={styles.modalBtnText}>Send Reset Link</Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalCancelBtn}
-                onPress={handleResetModalClose}
-              >
-                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+                {loading ? <SmoothSpinner color="#fff" /> : <Text style={styles.loginBtnText}>Secure Login</Text>}
               </TouchableOpacity>
             </View>
+
+            {/* REGISTRATION IS GONE. REPLACED WITH ADMIN NOTICE */}
+            <View style={styles.footer}>
+              <Ionicons name="shield-checkmark" size={16} color="#CBD5E1" />
+              <Text style={styles.footerText}>
+                Access is managed by your campus administrator.
+              </Text>
+            </View>
+          </Animated.View>
+        </ScrollView>
+
+        {/* Password Reset Modal */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={showResetModal}
+          onRequestClose={handleResetModalClose}
+        >
+          <View style={styles.modalContainer}>
+            <View style={[styles.modalContent, layout.isDesktop && styles.modalContentDesktop]}>
+              <View style={styles.modalHeader}>
+                <Ionicons name="mail-outline" size={28} color="#C4B5FD" />
+                <Text style={styles.modalTitle}>Reset Password</Text>
+              </View>
+              <View style={styles.modalBody}>
+                <Text style={styles.modalSubtitle}>
+                  Enter your email address to receive a password reset link.
+                </Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="mail-outline" size={20} color="#CBD5E1" style={styles.icon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="your@email.com"
+                    value={resetEmail}
+                    onChangeText={setResetEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    placeholderTextColor="#94A3B8"
+                  />
+                </View>
+                {resetMessage && (
+                  <View style={{ marginVertical: 12 }}>
+                    <Text
+                      style={[
+                        styles.modalMessage,
+                        resetMessageType === 'success' && styles.modalMessageSuccess,
+                        resetMessageType === 'error' && styles.modalMessageError
+                      ]}
+                    >
+                      {resetMessage}
+                    </Text>
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={[styles.modalBtn, resetLoading && styles.modalBtnLoading]}
+                  onPress={handleSendResetLink}
+                  disabled={resetLoading}
+                >
+                  {resetLoading ? (
+                    <SmoothSpinner color="#fff" size={20} />
+                  ) : (
+                    <Text style={styles.modalBtnText}>Send Reset Link</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalCancelBtn}
+                  onPress={handleResetModalClose}
+                >
+                  <Text style={styles.modalCancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
-        </View>
-      </Modal>
-    </KeyboardAvoidingView>
+        </Modal>
+      </KeyboardAvoidingView>
+    </EnterpriseAuthBackground>
   );
 }
 
 
 const styles = StyleSheet.create({
-  keyboardRoot: { flex: 1, backgroundColor: '#0F172A' },
-  scrollView: { flex: 1, backgroundColor: '#0F172A' },
-  container: { flexGrow: 1, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  keyboardRoot: { flex: 1, backgroundColor: 'transparent' },
+  scrollView: { flex: 1, backgroundColor: 'transparent' },
+  container: { flexGrow: 1, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', padding: 20 },
   containerMobile: { alignItems: 'stretch' },
   containerDesktop: { flexDirection: 'row', padding: 40, gap: 28 },
   containerCompact: { padding: 14 },
@@ -344,62 +344,71 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     justifyContent: 'center',
     padding: 34,
-    borderRadius: 30,
-    backgroundColor: 'rgba(139, 92, 246, 0.16)',
+    borderRadius: 8,
+    backgroundColor: '#0F172A',
     borderWidth: 1,
-    borderColor: 'rgba(196, 181, 253, 0.22)',
+    borderColor: '#334155',
   },
   brandIcon: { marginBottom: 22 },
-  brandTitle: { color: '#FFFFFF', fontSize: 42, fontWeight: '900', letterSpacing: 0 },
-  brandCopy: { color: '#CBD5E1', fontSize: 17, lineHeight: 26, marginTop: 12, marginBottom: 26, maxWidth: 430 },
+  brandEyebrow: { color: '#A5B4FC', fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.4, marginBottom: 10 },
+  brandTitle: { color: '#F8FAFC', fontSize: 42, fontWeight: '900', letterSpacing: 0 },
+  brandCopy: { color: '#DDE7F5', fontSize: 17, lineHeight: 26, marginTop: 12, marginBottom: 26, maxWidth: 430 },
   brandFeatureRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12 },
-  brandFeatureText: { color: '#EDE9FE', marginLeft: 10, fontSize: 15, fontWeight: '700' },
-  card: { backgroundColor: '#ffffff', width: '100%', maxWidth: 450, borderRadius: 30, padding: 30, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 20 },
+  brandFeatureText: { color: '#EEF2FF', marginLeft: 10, fontSize: 15, fontWeight: '700' },
+  card: {
+    backgroundColor: '#0F172A',
+    width: '100%',
+    maxWidth: 450,
+    borderRadius: 8,
+    padding: 30,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
   cardDesktop: { maxWidth: 440 },
-  cardMobile: { alignSelf: 'center', maxWidth: '100%', borderRadius: 26, padding: 20 },
-  cardCompact: { padding: 18, borderRadius: 24 },
+  cardMobile: { alignSelf: 'center', maxWidth: '100%', borderRadius: 8, padding: 20 },
+  cardCompact: { padding: 18, borderRadius: 8 },
   header: { alignItems: 'center', marginBottom: 35 },
   headerMobile: { marginBottom: 26 },
-  logoCage: { backgroundColor: '#F5F3FF', padding: 10, borderRadius: 22, marginBottom: 15 },
-  logoCageMobile: { padding: 8, borderRadius: 20, marginBottom: 12 },
-  title: { fontSize: 28, fontWeight: '900', color: '#1E293B', marginBottom: 5 },
+  logoCage: { backgroundColor: '#111827', padding: 10, borderRadius: 8, marginBottom: 15, borderWidth: 1, borderColor: '#334155' },
+  logoCageMobile: { padding: 8, borderRadius: 8, marginBottom: 12 },
+  title: { fontSize: 28, fontWeight: '900', color: '#F8FAFC', marginBottom: 5 },
   titleMobile: { fontSize: 26 },
-  subtitle: { fontSize: 14, color: '#64748B', textAlign: 'center' },
+  subtitle: { fontSize: 14, color: '#CBD5E1', textAlign: 'center' },
 
   form: { marginBottom: 20 },
-  label: { fontSize: 13, fontWeight: 'bold', color: '#475569', marginBottom: 8, textTransform: 'uppercase' },
-  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 14, marginBottom: 20 },
+  label: { fontSize: 13, fontWeight: 'bold', color: '#E2E8F0', marginBottom: 8, textTransform: 'uppercase' },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#020617', borderWidth: 1, borderColor: '#334155', borderRadius: 8, marginBottom: 20 },
   icon: { paddingHorizontal: 15 },
-  input: { flex: 1, minWidth: 0, paddingVertical: 16, fontSize: 16, color: '#1E293B', outlineStyle: 'none' },
+  input: { flex: 1, minWidth: 0, paddingVertical: 16, fontSize: 16, color: '#F8FAFC', outlineStyle: 'none' },
   eyeIcon: { paddingHorizontal: 10, paddingVertical: 12 },
 
   optionsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 },
   optionsRowMobile: { justifyContent: 'flex-start', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 24 },
   optionsRowCompact: { flexWrap: 'wrap', gap: 12 },
   rememberRow: { flexDirection: 'row', alignItems: 'center' },
-  checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: '#CBD5E0', justifyContent: 'center', alignItems: 'center', marginRight: 8 },
-  checkboxActive: { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' },
-  rememberText: { fontSize: 14, color: '#475569', fontWeight: '500' },
-  forgotText: { fontSize: 14, color: '#8B5CF6', fontWeight: '600' },
+  checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: '#94A3B8', justifyContent: 'center', alignItems: 'center', marginRight: 8 },
+  checkboxActive: { backgroundColor: '#C4B5FD', borderColor: '#C4B5FD' },
+  rememberText: { fontSize: 14, color: '#E2E8F0', fontWeight: '500' },
+  forgotText: { fontSize: 14, color: '#C4B5FD', fontWeight: '700' },
 
-  loginBtn: { backgroundColor: '#8B5CF6', paddingVertical: 18, borderRadius: 16, alignItems: 'center', elevation: 3 },
+  loginBtn: { backgroundColor: '#2563EB', paddingVertical: 16, borderRadius: 8, alignItems: 'center' },
   loginBtnText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
 
-  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10, paddingTop: 20, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
-  footerText: { flex: 1, fontSize: 12, color: '#94A3B8', marginLeft: 6, fontWeight: '500' },
-  modalContainer: { flex: 1, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalContent: { width: '100%', maxWidth: 430, backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24, shadowColor: '#0F172A', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.12, shadowRadius: 22, elevation: 8 },
+  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10, paddingTop: 20, borderTopWidth: 1, borderTopColor: '#334155' },
+  footerText: { flex: 1, fontSize: 12, color: '#CBD5E1', marginLeft: 6, fontWeight: '500' },
+  modalContainer: { flex: 1, backgroundColor: '#020617', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { width: '100%', maxWidth: 430, backgroundColor: '#0F172A', borderRadius: 8, padding: 24, borderWidth: 1, borderColor: '#334155' },
   modalContentDesktop: { maxWidth: 460 },
   modalHeader: { alignItems: 'center', marginBottom: 18 },
-  modalTitle: { marginTop: 10, fontSize: 22, fontWeight: '900', color: '#0F172A' },
+  modalTitle: { marginTop: 10, fontSize: 22, fontWeight: '900', color: '#F8FAFC' },
   modalBody: { width: '100%' },
-  modalSubtitle: { color: '#64748B', textAlign: 'center', lineHeight: 21, marginBottom: 18 },
+  modalSubtitle: { color: '#CBD5E1', textAlign: 'center', lineHeight: 21, marginBottom: 18 },
   modalMessage: { textAlign: 'center', fontWeight: '700' },
-  modalMessageSuccess: { color: '#059669' },
-  modalMessageError: { color: '#DC2626' },
-  modalBtn: { backgroundColor: '#4A90E2', borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
+  modalMessageSuccess: { color: '#34D399' },
+  modalMessageError: { color: '#FCA5A5' },
+  modalBtn: { backgroundColor: '#2563EB', borderRadius: 8, paddingVertical: 15, alignItems: 'center' },
   modalBtnLoading: { opacity: 0.75 },
   modalBtnText: { color: '#FFFFFF', fontWeight: '900', fontSize: 15 },
   modalCancelBtn: { alignItems: 'center', paddingVertical: 14 },
-  modalCancelBtnText: { color: '#64748B', fontWeight: '800' },
+  modalCancelBtnText: { color: '#CBD5E1', fontWeight: '800' },
 });

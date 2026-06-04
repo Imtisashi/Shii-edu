@@ -1,0 +1,15 @@
+{
+  "rules": {
+    "fleetLocations": {
+      "$instituteId": {
+        ".read": "auth != null && auth.token.instituteVerified == true && auth.token.instituteId == $instituteId",
+        "$vehicleId": {
+          ".write": "auth != null && auth.token.instituteVerified == true && auth.token.instituteId == $instituteId && (auth.token.role == 'admin' || (auth.token.role == 'driver' && newData.child('driverUid').val() == auth.uid))",
+          ".validate": "newData.hasChildren(['instituteId', 'vehicleId', 'driverUid', 'status', 'updatedAt']) && newData.child('instituteId').val() == $instituteId && newData.child('vehicleId').val() == $vehicleId && newData.child('status').val() in ['active', 'offline'] && (newData.child('status').val() == 'offline' || (newData.child('latitude').isNumber() && newData.child('longitude').isNumber() && newData.child('latitude').val() >= -90 && newData.child('latitude').val() <= 90 && newData.child('longitude').val() >= -180 && newData.child('longitude').val() <= 180))"
+        }
+      }
+    },
+    ".read": false,
+    ".write": false
+  }
+}

@@ -10,8 +10,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { EASING, DURATION } from '../../utils/animations';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { PieChart } from 'react-native-chart-kit';
 import { useNavigation } from '@react-navigation/native';
 import { collection, getDocs } from 'firebase/firestore';
@@ -42,13 +42,14 @@ export default function SuperAdminHome() {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 450,
+        duration: DURATION.deliberate,
+        easing: EASING.strongEaseOut,
         useNativeDriver: USE_NATIVE_DRIVER,
       }),
-      Animated.spring(slideAnim, {
+      Animated.timing(slideAnim, {
         toValue: 0,
-        friction: 8,
-        tension: 45,
+        duration: DURATION.standard,
+        easing: EASING.strongEaseOut,
         useNativeDriver: USE_NATIVE_DRIVER,
       }),
     ]).start();
@@ -197,7 +198,6 @@ export default function SuperAdminHome() {
   };
 
   const handleDeleteInstitute = (institute) => {
-    Haptics.selectionAsync();
     const message = `Delete ${institute.name || 'this institute'} and all linked users, attendance, payments, notices, routines, assignments, grades, gallery items, and papers? This cannot be undone.`;
 
     if (Platform.OS === 'web') {
@@ -319,7 +319,7 @@ export default function SuperAdminHome() {
                 </Text>
               </View>
 
-              <TouchableOpacity style={styles.logoutButton} onPress={() => { Haptics.selectionAsync(); logout(); }}>
+              <TouchableOpacity style={styles.logoutButton} onPress={() => { logout(); }}>
                 <Ionicons name="log-out-outline" size={18} color="#F8FAFC" />
                 <Text style={styles.logoutText}>Sign out</Text>
               </TouchableOpacity>
@@ -355,7 +355,7 @@ export default function SuperAdminHome() {
                   data={userMixData}
                   width={pieWidth}
                   height={layout.isMobile ? 176 : 190}
-                  chartConfig={{ color: (opacity = 1) => `rgba(15, 23, 42, ${opacity})` }}
+                  chartConfig={{ color: () => '#0F172A' }}
                   accessor="population"
                   backgroundColor="transparent"
                   paddingLeft={layout.isMobile ? "0" : "8"}
@@ -364,15 +364,15 @@ export default function SuperAdminHome() {
               </View>
 
               <View style={[styles.actionGrid, layout.isDesktop && styles.actionPanelDesktop]}>
-                <TouchableOpacity style={[styles.primaryAction, layout.isMobile && styles.actionButtonMobile]} onPress={() => { Haptics.selectionAsync(); setShowAddInstituteModal(true); }}>
+                <TouchableOpacity style={[styles.primaryAction, layout.isMobile && styles.actionButtonMobile]} onPress={() => { setShowAddInstituteModal(true); }}>
                   <Ionicons name="add-circle" size={22} color="#FFFFFF" />
                   <Text style={styles.primaryActionText}>Add Institute</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.secondaryAction, layout.isMobile && styles.actionButtonMobile]} onPress={() => { Haptics.selectionAsync(); navigation.navigate('ManageInstitutes'); }}>
+                <TouchableOpacity style={[styles.secondaryAction, layout.isMobile && styles.actionButtonMobile]} onPress={() => { navigation.navigate('ManageInstitutes'); }}>
                   <Ionicons name="business-outline" size={22} color="#2563EB" />
                   <Text style={styles.secondaryActionText}>Manage Institutes</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.secondaryAction, layout.isMobile && styles.actionButtonMobile]} onPress={() => { Haptics.selectionAsync(); navigation.navigate('ManageAdminUsers'); }}>
+                <TouchableOpacity style={[styles.secondaryAction, layout.isMobile && styles.actionButtonMobile]} onPress={() => { navigation.navigate('ManageAdminUsers'); }}>
                   <Ionicons name="people-outline" size={22} color="#2563EB" />
                   <Text style={styles.secondaryActionText}>Manage Admins</Text>
                 </TouchableOpacity>
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
   listContentDesktop: { width: '100%', alignSelf: 'center', paddingTop: 24 },
   hero: {
     backgroundColor: '#0F172A',
-    borderRadius: 22,
+    borderRadius: 8,
     padding: 22,
     marginBottom: 16,
     overflow: 'hidden',
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 30,
   },
-  heroMobile: { padding: 18, borderRadius: 20 },
+  heroMobile: { padding: 18, borderRadius: 8 },
   eyebrow: { color: '#93C5FD', fontSize: 12, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase' },
   heroTitle: { color: '#FFFFFF', fontSize: 28, fontWeight: '900', marginTop: 8, lineHeight: 34 },
   heroTitleMobile: { fontSize: 24, lineHeight: 29 },
@@ -444,12 +444,12 @@ const styles = StyleSheet.create({
     marginTop: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: '#111827',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
+    borderColor: '#334155',
     paddingHorizontal: 14,
     paddingVertical: 9,
-    borderRadius: 999,
+    borderRadius: 8,
   },
   logoutText: { color: '#F8FAFC', fontWeight: '800', marginLeft: 8 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
@@ -458,15 +458,10 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 140,
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    borderRadius: 8,
     padding: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.05,
-    shadowRadius: 16,
-    elevation: 2,
   },
   statCardWide: { minWidth: 180 },
   statsLabel: { color: '#64748B', fontSize: 13, fontWeight: '700' },
@@ -474,7 +469,7 @@ const styles = StyleSheet.create({
   statsHint: { color: '#94A3B8', fontSize: 12, marginTop: 4 },
   chartCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 8,
     padding: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -493,7 +488,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginBottom: 0,
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     padding: 16,
@@ -504,7 +499,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#2563EB',
-    borderRadius: 16,
+    borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 14,
     minWidth: 160,
@@ -517,7 +512,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#EFF6FF',
-    borderRadius: 16,
+    borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderWidth: 1,
@@ -528,32 +523,27 @@ const styles = StyleSheet.create({
   secondaryActionText: { color: '#1D4ED8', fontSize: 15, fontWeight: '900', marginLeft: 8 },
   instituteCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    borderRadius: 8,
     padding: 16,
     marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 2,
   },
-  instituteCardMobile: { padding: 13, borderRadius: 16, alignItems: 'flex-start' },
+  instituteCardMobile: { padding: 13, borderRadius: 8, alignItems: 'flex-start' },
   instituteColumnWrapper: { gap: 12 },
   instituteCardDesktop: { flex: 1 },
   instituteIcon: {
     width: 46,
     height: 46,
-    borderRadius: 14,
+    borderRadius: 8,
     backgroundColor: '#EFF6FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
   },
-  instituteIconMobile: { width: 40, height: 40, borderRadius: 12, marginRight: 10 },
+  instituteIconMobile: { width: 40, height: 40, borderRadius: 8, marginRight: 10 },
   instituteInfo: { flex: 1, minWidth: 0 },
   instituteName: { fontSize: 17, fontWeight: '900', color: '#0F172A' },
   instituteId: { fontSize: 12, color: '#64748B', marginTop: 3, fontWeight: '600' },
@@ -564,22 +554,22 @@ const styles = StyleSheet.create({
   deleteButton: {
     width: 40,
     height: 40,
-    borderRadius: 13,
+    borderRadius: 8,
     backgroundColor: '#FEF2F2',
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 12,
   },
-  deleteButtonMobile: { width: 38, height: 38, borderRadius: 12, marginLeft: 8 },
-  emptyState: { alignItems: 'center', justifyContent: 'center', padding: 30, backgroundColor: '#FFFFFF', borderRadius: 20 },
-  emptyIcon: { width: 78, height: 78, borderRadius: 24, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' },
+  deleteButtonMobile: { width: 38, height: 38, borderRadius: 8, marginLeft: 8 },
+  emptyState: { alignItems: 'center', justifyContent: 'center', padding: 30, backgroundColor: '#FFFFFF', borderRadius: 8 },
+  emptyIcon: { width: 78, height: 78, borderRadius: 8, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' },
   emptyTitle: { color: '#0F172A', fontSize: 20, fontWeight: '900', marginTop: 16 },
   emptyText: { color: '#64748B', textAlign: 'center', lineHeight: 21, marginTop: 8, marginBottom: 18 },
-  modalContainer: { flex: 1, backgroundColor: 'rgba(15,23,42,0.62)' },
+  modalContainer: { flex: 1, backgroundColor: '#0F172A' },
   modalScrollContent: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalContent: { width: '100%', maxWidth: 430, backgroundColor: '#FFFFFF', borderRadius: 22, padding: 22 },
+  modalContent: { width: '100%', maxWidth: 430, backgroundColor: '#FFFFFF', borderRadius: 8, padding: 22 },
   modalHeader: { alignItems: 'center', marginBottom: 18 },
-  modalIcon: { width: 60, height: 60, borderRadius: 18, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  modalIcon: { width: 60, height: 60, borderRadius: 8, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   modalTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A' },
   modalSubtitle: { fontSize: 13, color: '#64748B', marginTop: 5, textAlign: 'center' },
   inputContainer: {
@@ -588,14 +578,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderRadius: 14,
+    borderRadius: 8,
     marginBottom: 12,
   },
   icon: { paddingHorizontal: 14 },
   input: { flex: 1, paddingVertical: 15, paddingRight: 14, fontSize: 15, color: '#0F172A', outlineStyle: 'none' },
   creatingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 10 },
   creatingText: { marginLeft: 8, color: '#64748B', fontWeight: '700' },
-  modalButton: { backgroundColor: '#2563EB', paddingVertical: 15, borderRadius: 14, alignItems: 'center', marginTop: 6 },
+  modalButton: { backgroundColor: '#2563EB', paddingVertical: 15, borderRadius: 8, alignItems: 'center', marginTop: 6 },
   disabledButton: { opacity: 0.6 },
   modalButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
   modalCancelButton: { alignItems: 'center', paddingVertical: 13 },

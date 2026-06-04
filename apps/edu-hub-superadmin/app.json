@@ -1,0 +1,65 @@
+{
+  "expo": {
+    "name": "Edu-Hub Superadmin",
+    "slug": "edu-hub-superadmin",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "../../assets/images/icon.png",
+    "scheme": "eduhub-superadmin",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.eduhub.superadmin",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Edu-Hub Superadmin uses the camera when you choose to capture institute media.",
+        "NSPhotoLibraryAddUsageDescription": "Edu-Hub Superadmin saves media only when you explicitly request it.",
+        "NSPhotoLibraryUsageDescription": "Edu-Hub Superadmin uses your photo library when you choose images to upload."
+      }
+    },
+    "android": {
+      "package": "com.eduhub.superadmin",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#02030A",
+        "foregroundImage": "../../assets/images/android-icon-foreground.png",
+        "backgroundImage": "../../assets/images/android-icon-background.png",
+        "monochromeImage": "../../assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "../../assets/images/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "../../assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#02030A",
+          "dark": {
+            "backgroundColor": "#02030A"
+          }
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow Edu-Hub Superadmin to use the camera when you choose to capture institute media.",
+          "microphonePermission": false,
+          "photosPermission": "Allow Edu-Hub Superadmin to access photos you choose to upload."
+        }
+      ]
+    ]
+  }
+}

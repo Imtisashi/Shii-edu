@@ -52,6 +52,34 @@ export const aiStudyGuide = async ({ courseId, focus, instituteId } = {}) => run
   instituteId,
 });
 
+export const aiSyllabusTutor = async ({ courseId, question, syllabusId, instituteId } = {}) => runAIAction('syllabusTutor', {
+  courseId,
+  question,
+  syllabusId,
+  instituteId,
+});
+
+export const aiSmartCompose = async ({ roughThought, targetLevel = 'Overall', instituteId } = {}) => {
+  const response = await runAIAction('smartCompose', {
+    roughThought,
+    targetLevel,
+    instituteId,
+  });
+  const draft = response.draft || response.parsed;
+
+  if (!draft?.title || !draft?.message) {
+    throw new Error('Smart Compose did not return a usable notice draft.');
+  }
+
+  return {
+    ...response,
+    draft: {
+      title: String(draft.title).trim(),
+      message: String(draft.message).trim(),
+    },
+  };
+};
+
 export const askGemini = async (prompt) => {
   const response = await runAIAction('general', { prompt });
   return response.output;

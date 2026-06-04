@@ -6,9 +6,13 @@ import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import DynamicHeader from '../../components/DynamicHeader';
+import EditableProfileAvatar from '../../components/profile/EditableProfileAvatar';
+import { useInstituteTheme } from '../../hooks/useInstituteTheme';
+import { updateSupabaseOwnProfile } from '../../services/supabaseTenantDataService';
 
 export default function TeacherProfileSettings({ navigation }) {
-  const { userData } = useAuth();
+  const { currentUser, userData } = useAuth();
+  const { colors, styles } = useInstituteTheme(baseStyles);
   const returnToTeacherHome = () => {
     if (navigation.canGoBack()) {
       navigation.goBack();
@@ -26,11 +30,16 @@ export default function TeacherProfileSettings({ navigation }) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await updateDoc(doc(db, "users", userData.uid), {
+      const profileUpdate = {
         name: name.trim(),
         degree: degree.trim(),
         experience: experience.trim(),
-      });
+      };
+
+      await Promise.all([
+        updateSupabaseOwnProfile(currentUser, profileUpdate),
+        updateDoc(doc(db, "users", userData.uid), profileUpdate),
+      ]);
       
       const msg = "Profile updated successfully!";
       if (Platform.OS === 'web') {
@@ -57,10 +66,8 @@ export default function TeacherProfileSettings({ navigation }) {
       
       <View style={styles.formContainer}>
         <View style={styles.avatarCage}>
-          <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarInitials}>{name ? name.charAt(0).toUpperCase() : 'T'}</Text>
-          </View>
-          <Text style={styles.hint}>Avatar changes via Cloudinary coming soon.</Text>
+          <EditableProfileAvatar size={104} />
+          <Text style={styles.hint}>Tap your avatar to update your Supabase profile image.</Text>
         </View>
 
         <Text style={styles.label}>Full Name</Text>
@@ -69,6 +76,7 @@ export default function TeacherProfileSettings({ navigation }) {
           value={name} 
           onChangeText={setName} 
           placeholder="e.g. Prof. Alan Turing" 
+          placeholderTextColor={colors.muted}
         />
 
         <Text style={styles.label}>Highest Qualification / Degree</Text>
@@ -77,6 +85,7 @@ export default function TeacherProfileSettings({ navigation }) {
           value={degree} 
           onChangeText={setDegree} 
           placeholder="e.g. Ph.D. in Computer Science" 
+          placeholderTextColor={colors.muted}
         />
 
         <Text style={styles.label}>Years of Experience</Text>
@@ -85,6 +94,7 @@ export default function TeacherProfileSettings({ navigation }) {
           value={experience} 
           onChangeText={setExperience} 
           placeholder="e.g. 12" 
+          placeholderTextColor={colors.muted}
           keyboardType="numeric"
         />
 
@@ -101,15 +111,13 @@ export default function TeacherProfileSettings({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+const baseStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#02030A', overflow: 'hidden' },
   formContainer: { padding: 20 },
   avatarCage: { alignItems: 'center', marginBottom: 30 },
-  avatarPlaceholder: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#E1BEE7', justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#8E24AA' },
-  avatarInitials: { fontSize: 40, fontWeight: 'bold', color: '#8E24AA' },
-  hint: { fontSize: 12, color: '#94A3B8', marginTop: 10, fontStyle: 'italic' },
-  label: { fontSize: 14, fontWeight: 'bold', color: '#334155', marginBottom: 8 },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 15, fontSize: 16, marginBottom: 20, color: '#1E293B' },
-  saveBtn: { backgroundColor: '#8E24AA', padding: 18, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10, elevation: 3 },
+  hint: { fontSize: 12, color: '#B9C6DD', marginTop: 12, fontWeight: '800', textAlign: 'center' },
+  label: { fontSize: 14, fontWeight: 'bold', color: '#B9C6DD', marginBottom: 8 },
+  input: { backgroundColor: '#0F172A', borderWidth: 1, borderColor: '#334155', borderRadius: 8, padding: 15, fontSize: 16, marginBottom: 20, color: '#F8FAFC', outlineStyle: 'none' },
+  saveBtn: { backgroundColor: '#8E24AA', borderColor: '#334155', borderWidth: 1, padding: 18, borderRadius: 8, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10},
   saveText: { color: '#fff', fontWeight: 'bold', fontSize: 18, marginLeft: 8 }
 });

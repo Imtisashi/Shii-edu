@@ -13,6 +13,7 @@
     "**/*.tsx"
   ],
   "exclude": [
-    "app_backup"
+    "app_backup",
+    "supabase/functions"
   ]
 }

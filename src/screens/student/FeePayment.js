@@ -1,227 +1,349 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Alert } from 'react-native';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../../../firebaseConfig';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useEffect, useMemo, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { authenticatedFetch } from '../../services/apiClient';
+import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '../../../firebaseConfig';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
+import StudentScreenScaffold, { EnterprisePanel, ScreenIntro } from '../../components/student/StudentScreenScaffold';
+import { useAuth } from '../../contexts/AuthContext';
+import { useRootLayout } from '../../contexts/RootLayoutContext';
+import StripePaymentButton from '../../components/payments/StripePaymentButton';
 
-// Dynamically injects Razorpay SDK for Web Browsers
-const loadRazorpayScript = () => {
-  return new Promise((resolve) => {
-    if (Platform.OS !== 'web' || window.Razorpay) return resolve(true);
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-};
+const formatCurrency = (value) => `Rs. ${Number(value || 0).toLocaleString()}`;
 
-export default function FeePayment() {
-  const { currentUser, userData } = useAuth();
-  const [feeData, setFeeData] = useState(null);
-  const [isPaying, setIsPaying] = useState(false);
-
-  useEffect(() => {
-    if (!userData?.uid) return;
-    const unsub = onSnapshot(doc(db, "users", userData.uid), (document) => {
-      setFeeData(document.data());
-    });
-    return () => unsub();
-  }, [userData]);
-
-  const handleRazorpayCheckout = async () => {
-    setIsPaying(true);
-
-    try {
-      // 1. Load the Script (Web only)
-      const isSdkLoaded = await loadRazorpayScript();
-      if (!isSdkLoaded) {
-        setIsPaying(false);
-        if (Platform.OS === 'web') {
-          window.alert("Failed to load Razorpay SDK");
-        } else {
-          Alert.alert("Error", "Check your internet connection.");
-        }
-        return;
-      }
-
-      const order = await authenticatedFetch('/api/payments/create-order', currentUser, {
-        method: 'POST',
-      });
-
-      if (!order.id) throw new Error("Server did not return an Order ID.");
-
-      // 3. Open the Real Razorpay Checkout Window
-      const options = {
-        key: order.keyId,
-        amount: order.amount,
-        currency: order.currency,
-        name: userData?.instituteData?.name || "Campus Pay",
-        description: `Fee Clearance for ${userData.name}`,
-        order_id: order.id,
-        prefill: {
-          name: userData.name,
-          email: userData.email,
-        },
-        theme: { color: "#8B5CF6" },
-        handler: async function (paymentResponse) {
-          try {
-            await authenticatedFetch('/api/payments/verify', currentUser, {
-              method: 'POST',
-              body: {
-                razorpay_order_id: paymentResponse.razorpay_order_id,
-                razorpay_payment_id: paymentResponse.razorpay_payment_id,
-                razorpay_signature: paymentResponse.razorpay_signature,
-              },
-            });
-
-            if (Platform.OS === 'web') {
-              window.alert("Payment Successful! Ledger updated.");
-            } else {
-              Alert.alert("Success", "Payment Successful!");
-            }
-          } catch (err) {
-            console.error("Payment Verification Error:", err);
-            if (Platform.OS === 'web') {
-              window.alert("Payment was received but verification failed. Please contact your campus office.");
-            } else {
-              Alert.alert("Verification Pending", "Payment was received but verification failed. Please contact your campus office.");
-            }
-          }
-        },
-      };
-
-      const rzp = new window.Razorpay(options);
-      
-      rzp.on('payment.failed', function (response) {
-        if (Platform.OS === 'web') {
-          window.alert(`Payment Failed: ${response.error.description}`);
-        } else {
-          Alert.alert("Failed", response.error.description);
-        }
-      });
-
-      rzp.open();
-
-    } catch (e) {
-      console.error(e);
-      if (Platform.OS === 'web') {
-        window.alert("Payment service is currently unavailable. Please try again later or contact your campus office.");
-      } else {
-        Alert.alert("Payment Unavailable", "Please try again later or contact your campus office.");
-      }
-    } finally {
-      setIsPaying(false);
-    }
-  };
-
-  if (!feeData) return <SmoothSpinner style={{ flex: 1, marginTop: 100 }} color="#8B5CF6" size="large" />;
-
-  const paid = feeData.feePaid || 0;
-  const total = feeData.totalFee || 0;
-  const pending = Math.max(0, total - paid);
-  const progress = total === 0 ? 100 : Math.min((paid / total) * 100, 100);
-  const breakdown = feeData.feeBreakdown || [];
+function LoadingState() {
+  const { colors } = useRootLayout();
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 96 }} showsVerticalScrollIndicator={false}>
-      
-      {/* FINANCIAL OVERVIEW CARD */}
-      <View style={styles.card}>
-        <Text style={styles.title}>Financial Dashboard</Text>
-        
-        <View style={styles.statRow}>
-          <View>
-            <Text style={styles.label}>Total Dues</Text>
-            <Text style={styles.valueTotal}>Rs. {total.toLocaleString()}</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.label}>Paid to date</Text>
-            <Text style={styles.valuePaid}>Rs. {paid.toLocaleString()}</Text>
-          </View>
+    <StudentScreenScaffold accentVariant="bronze" scroll={false} style={styles.centerContent}>
+      <SmoothSpinner size={42} color={colors.bronze} trackColor={colors.hairline} />
+      <Text style={[styles.loadingText, { color: colors.textSoft }]}>Loading fee ledger...</Text>
+    </StudentScreenScaffold>
+  );
+}
+
+function LedgerHero({ paid, pending, progress, total }) {
+  const { colors } = useRootLayout();
+
+  return (
+    <EnterprisePanel style={styles.ledgerHero}>
+      <View style={styles.statRow}>
+        <View style={styles.statBlock}>
+          <Text style={[styles.label, { color: colors.muted }]}>Total dues</Text>
+          <Text style={[styles.valueTotal, { color: colors.text }]}>{formatCurrency(total)}</Text>
         </View>
-
-        <View style={styles.progressBg}>
-          <View style={[styles.progressFill, { width: `${progress}%` }]} />
+        <View style={styles.statBlockRight}>
+          <Text style={[styles.label, { color: colors.muted }]}>Paid to date</Text>
+          <Text style={[styles.valuePaid, { color: colors.emerald }]}>{formatCurrency(paid)}</Text>
         </View>
-
-        {total === 0 ? (
-          <View style={[styles.infoBox, { backgroundColor: '#F0FDF4' }]}>
-            <Ionicons name="checkmark-circle" size={24} color="#16A34A" />
-            <Text style={[styles.infoText, { color: '#16A34A' }]}>No fees have been assigned to you yet.</Text>
-          </View>
-        ) : (
-          <View style={styles.infoBox}>
-            <Ionicons name="shield-checkmark" size={24} color="#3B82F6" />
-            <Text style={styles.infoText}>
-              You have <Text style={{fontWeight:'900'}}>Rs. {pending.toLocaleString()}</Text> remaining in unpaid dues. Secured by Razorpay.
-            </Text>
-          </View>
-        )}
-
-        {total > 0 && (
-          <TouchableOpacity 
-            style={[styles.payBtn, paid >= total && styles.disabledBtn]} 
-            onPress={handleRazorpayCheckout} 
-            disabled={isPaying || paid >= total}
-          >
-            {isPaying ? <SmoothSpinner color="#fff" /> : (
-              <>
-                <Ionicons name={paid >= total ? "checkmark-done" : "card"} size={20} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={styles.payText}>{paid >= total ? "All Dues Cleared" : "Pay with Razorpay"}</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        )}
       </View>
 
-      {/* ITEMIZED BILL */}
-      <Text style={styles.sectionTitle}>Itemized Dues</Text>
-      {breakdown.length === 0 ? (
-        <Text style={styles.emptyText}>No specific fees logged by the Admin.</Text>
-      ) : (
-        breakdown.map((fee, index) => (
-          <View key={index} style={styles.breakdownCard}>
-            <View style={styles.iconCage}>
-              <Ionicons name={fee.type?.toLowerCase().includes('exam') ? 'document-text' : 'cash'} size={24} color="#8B5CF6" />
+      <View style={[styles.progressTrack, { backgroundColor: '#111827' }]}>
+        <View style={[styles.progressFill, { backgroundColor: colors.bronze, width: `${progress}%` }]} />
+      </View>
+
+      <View style={[styles.infoBox, { backgroundColor: pending > 0 ? colors.deepBlueSoft : colors.emeraldSoft, borderColor: colors.hairline }]}>
+        <Ionicons name={pending > 0 ? 'shield-checkmark' : 'checkmark-circle'} size={24} color={pending > 0 ? colors.deepBlue : colors.emerald} />
+        <Text style={[styles.infoText, { color: colors.textSoft }]}>
+          {total === 0
+            ? 'No fees have been assigned to you yet.'
+            : pending > 0
+              ? `You have ${formatCurrency(pending)} remaining in unpaid dues. Secured by Stripe.`
+              : 'All assigned dues are cleared.'}
+        </Text>
+      </View>
+    </EnterprisePanel>
+  );
+}
+
+function FeeRow({ fee }) {
+  const { colors, radii } = useRootLayout();
+  const isExam = String(fee.type || '').toLowerCase().includes('exam');
+
+  return (
+    <View
+      style={[
+        styles.breakdownCard,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.hairline,
+          borderRadius: radii.control,
+        },
+      ]}
+    >
+      <View style={[styles.iconCage, { backgroundColor: colors.bronzeSoft, borderColor: colors.hairline }]}>
+        <Ionicons name={isExam ? 'document-text' : 'cash'} size={22} color={colors.bronze} />
+      </View>
+      <View style={styles.feeTextBlock}>
+        <Text numberOfLines={1} style={[styles.feeTitle, { color: colors.text }]}>
+          {fee.title || 'Campus fee'}
+        </Text>
+        <Text numberOfLines={1} style={[styles.feeType, { color: colors.muted }]}>
+          {fee.type || 'General'}
+        </Text>
+      </View>
+      <Text style={[styles.feeAmount, { color: colors.text }]}>{formatCurrency(fee.amount)}</Text>
+    </View>
+  );
+}
+
+export default function FeePayment() {
+  const { userData } = useAuth();
+  const { colors } = useRootLayout();
+  const [feeData, setFeeData] = useState(null);
+  const [invoices, setInvoices] = useState([]);
+  const ledgerUserUid = userData?.role === 'parent' ? userData?.linkedStudentUid : userData?.uid;
+
+  useEffect(() => {
+    if (!ledgerUserUid) {
+      setFeeData({});
+      return undefined;
+    }
+
+    const unsubscribe = onSnapshot(doc(db, 'users', ledgerUserUid), (document) => {
+      setFeeData(document.data() || {});
+    }, (error) => {
+      console.error('Fee ledger listener failed:', error);
+      setFeeData({});
+    });
+
+    return () => unsubscribe();
+  }, [ledgerUserUid]);
+
+  useEffect(() => {
+    if (!ledgerUserUid || !userData?.instituteId) {
+      setInvoices([]);
+      return undefined;
+    }
+
+    const invoicesQuery = query(
+      collection(db, 'feeInvoices'),
+      where('instituteId', '==', userData.instituteId),
+      where('studentUid', '==', ledgerUserUid)
+    );
+    return onSnapshot(invoicesQuery, (snapshot) => {
+      const nextInvoices = snapshot.docs
+        .map((document) => ({ id: document.id, ...document.data() }))
+        .sort((left, right) => String(left.dueDate || '').localeCompare(String(right.dueDate || '')));
+      setInvoices(nextInvoices);
+    }, (error) => {
+      console.error('Fee invoice listener failed:', error);
+      setInvoices([]);
+    });
+  }, [ledgerUserUid, userData?.instituteId]);
+
+  const ledger = useMemo(() => {
+    if (invoices.length > 0) {
+      const total = invoices.reduce((sum, invoice) => sum + Number(invoice.amount || 0), 0);
+      const paid = invoices.reduce((sum, invoice) => sum + Number(invoice.paidAmount || 0), 0);
+      const pending = Math.max(0, total - paid);
+      const progress = total === 0 ? 100 : Math.min((paid / total) * 100, 100);
+      return { breakdown: invoices, paid, pending, progress, total };
+    }
+
+    const paid = Number(feeData?.feePaid || 0);
+    const total = Number(feeData?.totalFee || 0);
+    const pending = Math.max(0, total - paid);
+    const progress = total === 0 ? 100 : Math.min((paid / total) * 100, 100);
+    const breakdown = Array.isArray(feeData?.feeBreakdown) ? feeData.feeBreakdown : [];
+
+    return { breakdown, paid, pending, progress, total };
+  }, [feeData, invoices]);
+
+  const nextUnpaidInvoice = useMemo(
+    () => invoices.find((invoice) => invoice.status !== 'paid' && Number(invoice.balanceAmountMinor || 0) > 0) || null,
+    [invoices]
+  );
+
+  if (!feeData) return <LoadingState />;
+
+  return (
+    <StudentScreenScaffold accentVariant="bronze">
+      <ScreenIntro
+        accentColor={colors.bronze}
+        eyebrow="Finance ledger"
+        subtitle="Track assigned dues, payments, receipts, and Stripe clearance status."
+        title="Fees"
+        trailing={<Ionicons name="wallet" size={27} color={colors.bronze} />}
+      />
+
+      <LedgerHero
+        paid={ledger.paid}
+        pending={ledger.pending}
+        progress={ledger.progress}
+        total={ledger.total}
+      />
+
+      {ledger.total > 0 && (
+        <View style={styles.paymentButtonWrap}>
+          {nextUnpaidInvoice ? (
+            <StripePaymentButton
+              invoiceId={nextUnpaidInvoice.id}
+              label={`Pay ${formatCurrency(nextUnpaidInvoice.balanceAmount || nextUnpaidInvoice.amount)}`}
+            />
+          ) : (
+            <View style={[styles.clearedButton, { backgroundColor: colors.emerald }]}>
+              <Ionicons name="checkmark-done" size={20} color="#FFFFFF" />
+              <Text style={styles.clearedButtonText}>All Dues Cleared</Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.feeTitle}>{fee.title}</Text>
-              <Text style={styles.feeType}>{fee.type}</Text>
-            </View>
-            <Text style={styles.feeAmount}>Rs. {fee.amount.toLocaleString()}</Text>
-          </View>
-        ))
+          )}
+        </View>
       )}
 
-    </ScrollView>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Itemized dues</Text>
+      {ledger.breakdown.length === 0 ? (
+        <EnterprisePanel style={styles.emptyPanel}>
+          <Ionicons name="receipt-outline" size={32} color={colors.muted} />
+          <Text style={[styles.emptyText, { color: colors.muted }]}>No specific fees logged by the admin.</Text>
+        </EnterprisePanel>
+      ) : (
+        ledger.breakdown.map((fee, index) => (
+          <FeeRow fee={fee} key={`${fee.title || fee.type || 'fee'}-${index}`} />
+        ))
+      )}
+    </StudentScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC', padding: 20 },
-  card: { backgroundColor: '#fff', borderRadius: 24, padding: 25, elevation: 4, marginTop: 10, marginBottom: 30 },
-  title: { fontSize: 22, fontWeight: '900', color: '#1E293B', marginBottom: 25 },
-  statRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  label: { color: '#64748B', fontWeight: '600', fontSize: 13, textTransform: 'uppercase' },
-  valueTotal: { color: '#1E293B', fontSize: 24, fontWeight: '900', marginTop: 4 },
-  valuePaid: { color: '#10B981', fontSize: 24, fontWeight: '900', marginTop: 4 },
-  progressBg: { height: 12, backgroundColor: '#F1F5F9', borderRadius: 6, marginVertical: 25, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#8B5CF6' },
-  infoBox: { flexDirection: 'row', backgroundColor: '#EFF6FF', padding: 18, borderRadius: 16, marginBottom: 25, alignItems: 'center' },
-  infoText: { color: '#1E40AF', fontSize: 14, marginLeft: 12, flex: 1, lineHeight: 20 },
-  payBtn: { backgroundColor: '#8B5CF6', flexDirection: 'row', padding: 18, borderRadius: 16, alignItems: 'center', justifyContent: 'center', elevation: 2 },
-  disabledBtn: { backgroundColor: '#10B981', elevation: 0 },
-  payText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B', marginBottom: 15, marginLeft: 5 },
-  emptyText: { color: '#94A3B8', fontStyle: 'italic', marginLeft: 5 },
-  breakdownCard: { flexDirection: 'row', backgroundColor: '#fff', padding: 15, borderRadius: 16, alignItems: 'center', marginBottom: 12, elevation: 1 },
-  iconCage: { backgroundColor: '#F5F3FF', padding: 12, borderRadius: 12, marginRight: 15 },
-  feeTitle: { fontSize: 15, fontWeight: 'bold', color: '#1E293B' },
-  feeType: { fontSize: 12, color: '#64748B', marginTop: 2, textTransform: 'capitalize' },
-  feeAmount: { fontSize: 16, fontWeight: 'bold', color: '#8B5CF6' }
+  breakdownCard: {
+    alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 13,
+    marginBottom: 12,
+    overflow: 'hidden',
+    padding: 15,
+  },
+  centerContent: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  emptyPanel: {
+    alignItems: 'center',
+    gap: 10,
+    justifyContent: 'center',
+    minHeight: 150,
+    padding: 18,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  feeAmount: {
+    fontSize: 15,
+    fontWeight: '900',
+    marginLeft: 10,
+  },
+  feeTextBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  feeTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  feeType: {
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 3,
+    textTransform: 'capitalize',
+  },
+  iconCage: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
+  },
+  infoBox: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+    padding: 16,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 20,
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  ledgerHero: {
+    marginBottom: 18,
+    padding: 20,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontWeight: '800',
+    marginTop: 16,
+  },
+  paymentButtonWrap: {
+    marginBottom: 24,
+  },
+  clearedButton: {
+    alignItems: 'center',
+    borderRadius: 8,
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'center',
+    marginBottom: 24,
+    padding: 18,
+  },
+  clearedButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  progressFill: {
+    borderRadius: 8,
+    height: '100%',
+  },
+  progressTrack: {
+    borderRadius: 8,
+    height: 12,
+    marginTop: 24,
+    overflow: 'hidden',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    marginBottom: 14,
+  },
+  statBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  statBlockRight: {
+    alignItems: 'flex-end',
+    flex: 1,
+    minWidth: 0,
+  },
+  statRow: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+    gap: 16,
+    justifyContent: 'space-between',
+  },
+  valuePaid: {
+    fontSize: 25,
+    fontWeight: '900',
+    marginTop: 6,
+    textAlign: 'right',
+  },
+  valueTotal: {
+    fontSize: 25,
+    fontWeight: '900',
+    marginTop: 6,
+  },
 });

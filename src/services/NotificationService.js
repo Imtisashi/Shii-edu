@@ -84,16 +84,16 @@ export const useNotifications = ({ limit: limitCount = 50, onNotification, onErr
         }
       },
       (err) => {
-        console.error('Error fetching notifications:', err);
-        setError(err);
+        console.warn('Notifications are unavailable for this session; showing an empty inbox.', err?.code || err?.message || '');
+        setNotifications([]);
+        setError(null);
         setLoading(false);
-        if (onError) onError(err);
       }
     );
 
     // Return cleanup function
     return () => unsubscribe();
-  }, [currentUser, userData, limitCount, onNotification, onError]);
+  }, [currentUser, userData, limitCount, onNotification]);
 
   // Mark notification as read
   const markAsRead = useCallback(async (notificationId) => {

@@ -6,6 +6,7 @@ import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { createUnifiedNotification } from '../../services/unifiedNotificationService';
+import { useInstituteTheme } from '../../hooks/useInstituteTheme';
 
 const createdAtToMillis = (createdAt) => {
   if (!createdAt) return 0;
@@ -28,6 +29,7 @@ const isCampusBroadcast = (notice) => {
 
 export default function ManageNotices() {
   const { userData } = useAuth();
+  const { colors, styles } = useInstituteTheme(baseStyles);
   
   const [viewMode, setViewMode] = useState('list');
   const [notices, setNotices] = useState([]);
@@ -39,7 +41,10 @@ export default function ManageNotices() {
 
   // --- 1. FETCH ACTIVE NOTICES ---
   useEffect(() => {
-    if (!userData?.instituteId) return;
+    if (!userData?.instituteId) {
+      setLoadingList(false);
+      return undefined;
+    }
 
     const q = query(
       collection(db, "notifications"),
@@ -52,6 +57,10 @@ export default function ManageNotices() {
         .filter(isCampusBroadcast)
         .sort((a, b) => createdAtToMillis(b.createdAt) - createdAtToMillis(a.createdAt));
       setNotices(noticeList);
+      setLoadingList(false);
+    }, (error) => {
+      console.error('Campus broadcasts query failed:', error);
+      setNotices([]);
       setLoadingList(false);
     });
 
@@ -157,7 +166,7 @@ export default function ManageNotices() {
             )}
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <Ionicons name="notifications-off-outline" size={50} color="#CBD5E0" />
+              <Ionicons name="notifications-off-outline" size={50} color={colors.muted} />
                 <Text style={styles.emptyText}>No active announcements.</Text>
               </View>
             }
@@ -169,11 +178,11 @@ export default function ManageNotices() {
 
   // --- RENDER: ADD FORM VIEW ---
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={styles.keyboardRoot} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
         
         <TouchableOpacity style={styles.backBtn} onPress={() => setViewMode('list')}>
-          <Ionicons name="arrow-back" size={24} color="#4A5568" />
+          <Ionicons name="arrow-back" size={24} color={colors.textSoft} />
           <Text style={styles.backBtnText}>Back to Board</Text>
         </TouchableOpacity>
 
@@ -184,6 +193,7 @@ export default function ManageNotices() {
           <TextInput 
             style={styles.input} 
             placeholder="e.g. Campus Closed Tomorrow" 
+            placeholderTextColor={colors.muted}
             value={title} 
             onChangeText={setTitle} 
             returnKeyType="next"
@@ -193,6 +203,7 @@ export default function ManageNotices() {
           <TextInput 
             style={[styles.input, styles.textArea]} 
             placeholder="Type the full announcement details here..." 
+            placeholderTextColor={colors.muted}
             value={message} 
             onChangeText={setMessage} 
             multiline={true}
@@ -209,28 +220,29 @@ export default function ManageNotices() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC', padding: 20 },
+const baseStyles = StyleSheet.create({
+  keyboardRoot: { flex: 1, backgroundColor: '#02030A' },
+  container: { flex: 1, backgroundColor: '#02030A', padding: 20 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#1E293B' },
-  headerSub: { fontSize: 14, color: '#64748B' },
-  addBtnSmall: { backgroundColor: '#4A90E2', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+  headerTitle: { fontSize: 24, fontWeight: '900', color: '#F8FAFC' },
+  headerSub: { fontSize: 14, color: '#B9C6DD', fontWeight: '700', marginTop: 4 },
+  addBtnSmall: { backgroundColor: '#4A90E2', borderColor: '#334155', borderRadius: 8, borderWidth: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10 },
   addBtnSmallText: { color: '#fff', fontWeight: 'bold', marginLeft: 4 },
-  noticeCard: { backgroundColor: '#fff', padding: 20, borderRadius: 12, flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12, elevation: 2, borderLeftWidth: 4, borderLeftColor: '#4A90E2' },
+  noticeCard: { backgroundColor: '#0F172A', borderColor: '#4A90E2', borderRadius: 8, borderWidth: 1, padding: 20, flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
   noticeInfo: { flex: 1, paddingRight: 10 },
-  noticeTitle: { fontSize: 16, fontWeight: 'bold', color: '#2D3748' },
-  noticeMessage: { fontSize: 14, color: '#4A5568', marginTop: 5, lineHeight: 20 },
-  noticeMeta: { fontSize: 11, color: '#A0AEC0', marginTop: 10, fontStyle: 'italic' },
-  deleteBtn: { padding: 10, backgroundColor: '#FFF5F5', borderRadius: 8 },
+  noticeTitle: { fontSize: 16, fontWeight: '900', color: '#F8FAFC' },
+  noticeMessage: { fontSize: 14, color: '#B9C6DD', marginTop: 5, lineHeight: 20 },
+  noticeMeta: { fontSize: 11, color: '#8EA4C8', marginTop: 10, fontWeight: '800' },
+  deleteBtn: { padding: 10, backgroundColor: '#450A0A', borderColor: '#7F1D1D', borderRadius: 8, borderWidth: 1 },
   emptyState: { alignItems: 'center', marginTop: 80 },
-  emptyText: { marginTop: 10, color: '#A0AEC0', fontSize: 16, fontWeight: '500' },
+  emptyText: { marginTop: 10, color: '#B9C6DD', fontSize: 16, fontWeight: '800' },
   backBtn: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  backBtnText: { color: '#4A5568', fontWeight: 'bold', marginLeft: 8, fontSize: 16 },
-  formCard: { backgroundColor: '#fff', padding: 20, borderRadius: 15, elevation: 3 },
-  formTitle: { fontSize: 20, fontWeight: 'bold', color: '#2D3748', marginBottom: 15 },
-  label: { fontSize: 14, fontWeight: 'bold', color: '#2D3748', marginBottom: 5, marginTop: 10 },
-  input: { backgroundColor: '#F7FAFC', padding: 15, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', fontSize: 15 },
+  backBtnText: { color: '#B9C6DD', fontWeight: 'bold', marginLeft: 8, fontSize: 16 },
+  formCard: { backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1, padding: 20 },
+  formTitle: { fontSize: 20, fontWeight: '900', color: '#F8FAFC', marginBottom: 15 },
+  label: { fontSize: 14, fontWeight: 'bold', color: '#B9C6DD', marginBottom: 5, marginTop: 10 },
+  input: { backgroundColor: '#020617', color: '#F8FAFC', padding: 15, borderRadius: 8, borderWidth: 1, borderColor: '#334155', fontSize: 15, outlineStyle: 'none' },
   textArea: { height: 120 },
-  submitBtn: { backgroundColor: '#4A90E2', padding: 18, borderRadius: 12, alignItems: 'center', marginTop: 25 },
+  submitBtn: { backgroundColor: '#4A90E2', borderColor: '#334155', borderRadius: 8, borderWidth: 1, padding: 18, alignItems: 'center', marginTop: 25},
   submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
 });

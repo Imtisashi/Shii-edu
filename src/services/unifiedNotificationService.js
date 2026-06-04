@@ -75,7 +75,7 @@ export const useUnifiedNotifications = ({ limit: limitCount = 50, onNotification
       where("instituteId", "==", userData.instituteId)
     );
 
-    const notificationRole = ['student', 'teacher', 'admin'].includes(userData.role)
+    const notificationRole = ['student', 'teacher', 'admin', 'parent', 'driver'].includes(userData.role)
       ? userData.role
       : 'student';
 
@@ -91,7 +91,12 @@ export const useUnifiedNotifications = ({ limit: limitCount = 50, onNotification
           .filter((notification) => {
             if (userData.role === 'superadmin') return true;
             const targets = notification.targetRoles || [];
-            return targets.includes(notificationRole) || targets.includes('all');
+            const recipientUids = Array.isArray(notification.recipientUids) ? notification.recipientUids : [];
+            const parentStudentMatch = userData.role === 'parent' &&
+              userData.linkedStudentUid &&
+              recipientUids.includes(userData.linkedStudentUid);
+            const recipientMatch = recipientUids.length === 0 || recipientUids.includes(currentUser.uid) || parentStudentMatch;
+            return recipientMatch && (targets.includes(notificationRole) || targets.includes('all'));
           })
           .sort((a, b) => createdAtToMillis(b.createdAt) - createdAtToMillis(a.createdAt))
           .slice(0, limitCount || undefined);
@@ -106,10 +111,10 @@ export const useUnifiedNotifications = ({ limit: limitCount = 50, onNotification
         }
       },
       (err) => {
-        console.error('Error fetching notifications:', err);
-        setError(err);
+        console.warn('Notifications are unavailable for this session; showing an empty inbox.', err?.code || err?.message || '');
+        setNotifications([]);
+        setError(null);
         setLoading(false);
-        if (onError) onError(err);
       }
     );
 
@@ -121,7 +126,7 @@ export const useUnifiedNotifications = ({ limit: limitCount = 50, onNotification
         unsubscribeRef.current = null;
       }
     };
-  }, [currentUser, userData, limitCount, onNotification, onError]);
+  }, [currentUser, userData, limitCount, onNotification]);
 
   // Mark notification as read
   const markAsRead = useCallback(async (notificationId) => {
@@ -275,7 +280,7 @@ export const createUnifiedNotification = async (notificationData) => {
     }
 
     // Validate targetRoles
-    const validRoles = ['student', 'teacher', 'admin', 'superadmin', 'all'];
+    const validRoles = ['student', 'teacher', 'parent', 'driver', 'admin', 'superadmin', 'all'];
     if (targetRoles && !Array.isArray(targetRoles)) {
       throw new Error('targetRoles must be an array');
     }

@@ -1,1 +1,1 @@
-export { uploadSignedCloudinaryAsset as uploadInstitutionAsset } from './cloudinaryMediaService';
+export { uploadSignedSupabaseAsset as uploadInstitutionAsset } from './supabaseMediaService';

@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from '../../../firebaseConfig';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useEffect, useMemo, useState } from 'react';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '../../../firebaseConfig';
+import { SmoothSpinner } from '../../components/ui/LoadingState';
+import StudentScreenScaffold, { EnterprisePanel, ScreenIntro } from '../../components/student/StudentScreenScaffold';
+import { useAuth } from '../../contexts/AuthContext';
+import { useRootLayout } from '../../contexts/RootLayoutContext';
+import { listSupabaseGrades } from '../../services/supabaseTenantDataService';
 
 const timestampToMillis = (timestamp) => {
   if (!timestamp) return 0;
@@ -14,156 +17,347 @@ const timestampToMillis = (timestamp) => {
   return Number.isNaN(parsed) ? 0 : parsed;
 };
 
-export default function Grades() {
-  const { userData } = useAuth();
-  const [grades, setGrades] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ average: 0, totalExams: 0 });
+const formatDate = (timestamp) => {
+  const millis = timestampToMillis(timestamp);
+  return millis ? new Date(millis).toLocaleDateString() : 'Date pending';
+};
 
-  useEffect(() => {
-    if (!userData?.uid) return;
+const toPercentage = (item) => {
+  const explicit = Number(item?.percentage);
+  if (Number.isFinite(explicit)) return explicit;
+  const marks = Number(item?.marks || 0);
+  const totalMarks = Number(item?.totalMarks || 0);
+  return totalMarks > 0 ? (marks / totalMarks) * 100 : 0;
+};
 
-    // Listen for grades belonging ONLY to this student
-    const q = query(
-      collection(db, "grades"),
-      where("studentId", "==", userData.uid)
-    );
+const mergeGradeLists = (...lists) => {
+  const byId = new Map();
+  lists.flat().forEach((grade) => {
+    if (!grade) return;
+    const key = String(grade.supabaseId || grade.id || `${grade.subject}-${grade.examType}-${grade.timestamp}`);
+    byId.set(key, grade);
+  });
+  return Array.from(byId.values())
+    .sort((a, b) => timestampToMillis(b.timestamp || b.createdAt) - timestampToMillis(a.timestamp || a.createdAt));
+};
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const gradeList = snapshot.docs
-        .map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }))
-        .sort((a, b) => timestampToMillis(b.timestamp) - timestampToMillis(a.timestamp));
+function LoadingState() {
+  const { colors } = useRootLayout();
 
-      // Calculate simple stats
-      if (gradeList.length > 0) {
-        const sum = gradeList.reduce((acc, curr) => acc + curr.percentage, 0);
-        setStats({
-          average: (sum / gradeList.length).toFixed(1),
-          totalExams: gradeList.length
-        });
-      } else {
-        setStats({ average: 0, totalExams: 0 });
-      }
+  return (
+    <StudentScreenScaffold accentVariant="amber" scroll={false} style={styles.centerContent}>
+      <SmoothSpinner size={42} color={colors.amber} trackColor={colors.hairline} />
+      <Text style={[styles.loadingText, { color: colors.textSoft }]}>Loading grades...</Text>
+    </StudentScreenScaffold>
+  );
+}
 
-      setGrades(gradeList);
-      setLoading(false);
-    }, (error) => {
-      console.error('Grades query failed:', error);
-      setGrades([]);
-      setStats({ average: 0, totalExams: 0 });
-      setLoading(false);
-    });
+function StatsHero({ average, totalExams }) {
+  const { colors } = useRootLayout();
 
-    return () => unsubscribe();
-  }, [userData?.uid]);
-
-  const renderGradeItem = ({ item }) => (
-    <View style={styles.gradeCard}>
-      <View style={styles.cardLeft}>
-        <Text style={styles.subjectText}>{item.subject}</Text>
-        <Text style={styles.examTypeText}>{item.examType}</Text>
-        <Text style={styles.dateText}>
-          {item.timestamp?.toDate ? item.timestamp.toDate().toLocaleDateString() : 'Date pending'} - {item.teacherName || 'Faculty'}
-        </Text>
+  return (
+    <EnterprisePanel style={styles.statsHero}>
+      <View style={styles.statBox}>
+        <Text style={[styles.statLabel, { color: colors.muted }]}>Average score</Text>
+        <Text style={[styles.statValue, { color: colors.text }]}>{average}%</Text>
       </View>
-      <View style={styles.cardRight}>
-        <Text style={styles.scoreText}>{item.marks}/{item.totalMarks}</Text>
-        <View style={[
-          styles.percentBadge, 
-          { backgroundColor: item.percentage >= 40 ? '#E8F5E9' : '#FFEBEE' }
-        ]}>
-          <Text style={[
-            styles.percentText, 
-            { color: item.percentage >= 40 ? '#2E7D32' : '#C62828' }
-          ]}>
-            {item.percentage.toFixed(0)}%
+      <View style={[styles.divider, { backgroundColor: colors.hairline }]} />
+      <View style={styles.statBox}>
+        <Text style={[styles.statLabel, { color: colors.muted }]}>Exams recorded</Text>
+        <Text style={[styles.statValue, { color: colors.text }]}>{totalExams}</Text>
+      </View>
+    </EnterprisePanel>
+  );
+}
+
+function GradeCard({ item }) {
+  const { colors, radii } = useRootLayout();
+  const percentage = toPercentage(item);
+  const passed = percentage >= 40;
+  const statusColor = passed ? colors.emerald : '#F87171';
+  const statusSoft = passed ? colors.emeraldSoft : '#450A0A';
+
+  return (
+    <View
+      style={[
+        styles.gradeCard,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.hairline,
+          borderRadius: radii.card,
+        },
+      ]}
+    >
+      <View style={styles.gradeLeft}>
+        <View style={[styles.subjectIcon, { backgroundColor: colors.amberSoft, borderColor: colors.hairline }]}>
+          <Ionicons name="school" size={20} color={colors.amber} />
+        </View>
+        <View style={styles.gradeText}>
+          <Text numberOfLines={1} style={[styles.subjectText, { color: colors.text }]}>
+            {item.subject || 'Untitled subject'}
+          </Text>
+          <Text numberOfLines={1} style={[styles.examText, { color: colors.textSoft }]}>
+            {item.examType || 'Assessment'}
+          </Text>
+          <Text numberOfLines={1} style={[styles.metaText, { color: colors.muted }]}>
+            {formatDate(item.timestamp || item.createdAt)} - {item.teacherName || 'Faculty'}
           </Text>
         </View>
       </View>
-    </View>
-  );
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <SmoothSpinner size="large" color="#4A90E2" />
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-      {/* Performance Summary Header */}
-      <View style={styles.summaryHeader}>
-        <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Average Score</Text>
-          <Text style={styles.statValue}>{stats.average}%</Text>
-        </View>
-        <View style={styles.divider} />
-        <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Exams Recorded</Text>
-          <Text style={styles.statValue}>{stats.totalExams}</Text>
+      <View style={styles.gradeRight}>
+        <Text style={[styles.scoreText, { color: colors.text }]}>
+          {Number(item.marks || 0)}/{Number(item.totalMarks || 0)}
+        </Text>
+        <View style={[styles.percentBadge, { backgroundColor: statusSoft, borderColor: colors.hairline }]}>
+          <Text style={[styles.percentText, { color: statusColor }]}>{percentage.toFixed(0)}%</Text>
         </View>
       </View>
-
-      <Text style={styles.sectionTitle}>Academic History</Text>
-      
-      <FlatList
-        data={grades}
-        keyExtractor={(item) => item.id}
-        renderItem={renderGradeItem}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="school-outline" size={50} color="#CBD5E0" />
-            <Text style={styles.emptyText}>No grades have been published yet.</Text>
-          </View>
-        }
-      />
     </View>
   );
 }
 
+function EmptyState() {
+  const { colors } = useRootLayout();
+
+  return (
+    <View style={styles.emptyState}>
+      <View style={[styles.emptyIcon, { backgroundColor: colors.amberSoft, borderColor: colors.hairline }]}>
+        <Ionicons name="school-outline" size={34} color={colors.amber} />
+      </View>
+      <Text style={[styles.emptyTitle, { color: colors.text }]}>No grades yet</Text>
+      <Text style={[styles.emptyText, { color: colors.muted }]}>Published results will appear here.</Text>
+    </View>
+  );
+}
+
+export default function Grades() {
+  const { currentUser, userData } = useAuth();
+  const { colors } = useRootLayout();
+  const [grades, setGrades] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userData?.uid || !userData?.instituteId) {
+      setGrades([]);
+      setLoading(false);
+      return undefined;
+    }
+
+    setLoading(true);
+    let didCancel = false;
+    let supabaseGrades = [];
+    let firestoreGrades = [];
+    const publish = () => {
+      if (didCancel) return;
+      setGrades(mergeGradeLists(supabaseGrades, firestoreGrades));
+      setLoading(false);
+    };
+
+    if (currentUser) {
+      listSupabaseGrades(currentUser)
+        .then((result) => {
+          supabaseGrades = Array.isArray(result?.grades) ? result.grades : [];
+          publish();
+        })
+        .catch((error) => {
+          console.warn('Supabase grades unavailable, using Firestore fallback:', error);
+          publish();
+        });
+    }
+
+    const gradesQuery = query(
+      collection(db, 'grades'),
+      where('studentId', '==', userData.uid),
+      where('instituteId', '==', userData.instituteId)
+    );
+
+    const unsubscribe = onSnapshot(gradesQuery, (snapshot) => {
+      firestoreGrades = snapshot.docs.map((document) => ({ id: document.id, ...document.data() }));
+      publish();
+    }, (error) => {
+      console.warn('Grades Firestore fallback failed:', error);
+      firestoreGrades = [];
+      publish();
+    });
+
+    return () => {
+      didCancel = true;
+      unsubscribe();
+    };
+  }, [currentUser, userData?.instituteId, userData?.uid]);
+
+  const stats = useMemo(() => {
+    if (!grades.length) return { average: '0.0', totalExams: 0 };
+    const sum = grades.reduce((acc, item) => acc + toPercentage(item), 0);
+    return {
+      average: (sum / grades.length).toFixed(1),
+      totalExams: grades.length,
+    };
+  }, [grades]);
+
+  if (loading) return <LoadingState />;
+
+  return (
+    <StudentScreenScaffold accentVariant="amber" scroll={false} style={styles.scaffoldContent}>
+      <ScreenIntro
+        accentColor={colors.amber}
+        eyebrow="Academic record"
+        subtitle="Marks, percentages, and exam history published by your institute."
+        title="Grades"
+        trailing={<Ionicons name="school" size={27} color={colors.amber} />}
+      />
+      <StatsHero average={stats.average} totalExams={stats.totalExams} />
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Academic history</Text>
+      <FlatList
+        data={grades}
+        keyExtractor={(item) => item.id}
+        ListEmptyComponent={<EmptyState />}
+        contentContainerStyle={styles.listContent}
+        renderItem={({ item }) => <GradeCard item={item} />}
+        showsVerticalScrollIndicator={false}
+      />
+    </StudentScreenScaffold>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC', padding: 16 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  listContent: { paddingBottom: 80 },
-  summaryHeader: { 
-    backgroundColor: '#1E293B', 
-    padding: 20, 
-    borderRadius: 20, 
-    flexDirection: 'row', 
-    justifyContent: 'space-around',
-    marginBottom: 25,
-    elevation: 4
+  centerContent: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
   },
-  statBox: { alignItems: 'center' },
-  statLabel: { color: '#94A3B8', fontSize: 12, textTransform: 'uppercase', marginBottom: 5 },
-  statValue: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
-  divider: { width: 1, height: '100%', backgroundColor: '#334155' },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1E293B', marginBottom: 15 },
-  gradeCard: { 
-    backgroundColor: '#fff', 
-    padding: 15, 
-    borderRadius: 15, 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    marginBottom: 12,
-    elevation: 2,
+  divider: {
+    height: 58,
+    width: 1,
+  },
+  emptyIcon: {
+    alignItems: 'center',
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#F1F5F9'
+    height: 72,
+    justifyContent: 'center',
+    marginBottom: 16,
+    width: 72,
   },
-  cardLeft: { flex: 1 },
-  subjectText: { fontSize: 16, fontWeight: 'bold', color: '#1E293B' },
-  examTypeText: { fontSize: 13, color: '#64748B', marginVertical: 2 },
-  dateText: { fontSize: 11, color: '#94A3B8' },
-  cardRight: { alignItems: 'flex-end', justifyContent: 'center' },
-  scoreText: { fontSize: 14, fontWeight: 'bold', color: '#475569', marginBottom: 5 },
-  percentBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  percentText: { fontWeight: 'bold', fontSize: 12 },
-  emptyContainer: { alignItems: 'center', marginTop: 50 },
-  emptyText: { color: '#94A3B8', marginTop: 10, fontSize: 14 }
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 240,
+    paddingHorizontal: 20,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  examText: {
+    fontSize: 13,
+    fontWeight: '800',
+    marginTop: 3,
+  },
+  gradeCard: {
+    alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    overflow: 'hidden',
+    padding: 16,
+  },
+  gradeLeft: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: 13,
+    minWidth: 0,
+  },
+  gradeRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
+  gradeText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  listContent: {
+    paddingBottom: 8,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontWeight: '800',
+    marginTop: 16,
+  },
+  metaText: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  percentBadge: {
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  percentText: {
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  scaffoldContent: {
+    flex: 1,
+  },
+  scoreText: {
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    marginBottom: 14,
+    marginTop: 22,
+  },
+  statBox: {
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+  statValue: {
+    fontSize: 29,
+    fontWeight: '900',
+    marginTop: 6,
+  },
+  statsHero: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 18,
+    padding: 20,
+  },
+  subjectIcon: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
+  },
+  subjectText: {
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 0,
+  },
 });
