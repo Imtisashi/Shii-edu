@@ -6,7 +6,7 @@ export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 const description =
-  'Edu-shii Privacy Policy covering institute data, student records, payment metadata, DPDP Act alignment, COPPA-aware minimization, and liability limits.';
+  'Shii-Edu Privacy Policy covering institute data, student records, payment metadata, DPDP Act alignment, COPPA-aware minimization, and liability limits.';
 
 export function generateMetadata() {
   return routeMetadata({

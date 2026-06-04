@@ -10,7 +10,7 @@ export default function NotFound() {
             Not found
           </span>
           <h1>Page not found</h1>
-          <p>The requested Edu-shii route is not available on the public SSR surface.</p>
+          <p>The requested Shii-Edu route is not available on the public SSR surface.</p>
           <a className="button" href="/">
             Return to operations
           </a>

@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import DynamicHeader from '../../components/DynamicHeader';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
 import { listSupabaseUsers } from '../../services/supabaseTenantDataService';
@@ -448,10 +448,7 @@ export default function ManageUsers({ navigation }) {
       </View>
 
       {loading ? (
-        <View style={styles.centerContainer}>
-          <SmoothSpinner color={colors.accent} size="large" />
-          <Text style={[styles.loadingText, { color: colors.textSoft }]}>Syncing institute directory...</Text>
-        </View>
+        <RosterSkeleton rowCount={7} />
       ) : (
         <FlatList
           contentContainerStyle={[

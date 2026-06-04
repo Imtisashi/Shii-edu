@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Image,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -14,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BrandLogo from '../../components/BrandLogo';
+import BrandWordmark from '../../components/BrandWordmark';
 import EnterpriseAuthBackground from '../../components/auth/EnterpriseAuthBackground';
 import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
@@ -54,6 +56,14 @@ type InstituteAuthValue = {
   clearAuthError: () => void;
   loginWithInstitute: (input: InstituteLoginInput) => Promise<unknown>;
   unlockWithBiometrics: () => Promise<unknown>;
+};
+
+const REGISTRATION_EMAIL = 'sashimiofficials@gmail.com';
+
+const openRegistrationEmail = () => {
+  const subject = encodeURIComponent('Institute onboarding request');
+  const body = encodeURIComponent('Hello Shii-Edu team,\n\nPlease contact us about registering our institute.\n\nInstitute name:\nContact person:\nPhone:\n');
+  Linking.openURL(`mailto:${REGISTRATION_EMAIL}?subject=${subject}&body=${body}`).catch(() => {});
 };
 
 export default function InstituteLoginScreen() {
@@ -168,7 +178,7 @@ export default function InstituteLoginScreen() {
     biometricCapability.available
   );
   const biometricLabel = biometricCapability.label;
-  const returningInstituteName = cachedInstituteIdentity?.instituteName || 'Edu Shii';
+  const returningInstituteName = cachedInstituteIdentity?.instituteName || 'Shii-Edu';
   const returningLogoUrl = cachedInstituteIdentity?.logoUrl || null;
   const hasReturningInstitute = Boolean(cachedInstituteIdentity?.instituteName);
 
@@ -193,8 +203,8 @@ export default function InstituteLoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {layout.isDesktop ? (
-            <View style={styles.desktopBrandPanel}>
+          <View style={[styles.brandPanel, layout.isDesktop ? styles.brandPanelDesktop : styles.brandPanelMobile]}>
+            <View style={styles.platformLockup}>
               {returningLogoUrl ? (
                 <Image
                   accessibilityLabel={`${returningInstituteName} logo`}
@@ -205,22 +215,41 @@ export default function InstituteLoginScreen() {
               ) : (
                 <BrandLogo size={68} variant="light" style={styles.brandIcon} />
               )}
-              <Text style={styles.brandEyebrow}>Campus Workspace Access</Text>
-              <Text style={styles.brandTitle}>{returningInstituteName}</Text>
-              <Text style={styles.brandCopy}>
-                A focused workspace for daily campus work: classes, fees, notices, media, reports, and transport.
-              </Text>
-              <View style={styles.brandFeatureRow}>
-                <Ionicons name="shield-checkmark" size={18} color="#67E8F9" />
-                <Text style={styles.brandFeatureText}>Credentials are verified against your Institute ID</Text>
-              </View>
-              <View style={styles.brandFeatureRow}>
-                <Ionicons name="color-palette-outline" size={18} color="#67E8F9" />
-                <Text style={styles.brandFeatureText}>Your logo, roles, and campus tools load after verification</Text>
+              <View style={styles.platformCopy}>
+                <BrandWordmark color="#F8FAFC" size={layout.isMobile ? 'md' : 'lg'} />
+                <Text style={styles.brandEyebrow}>Institute Access Control</Text>
               </View>
             </View>
-          ) : null}
 
+            <Text style={styles.brandTitle}>A secure landing point for every institute role.</Text>
+            <Text style={styles.brandCopy}>
+              Verify the institute, confirm the user, then open the campus workspace assigned to that role.
+            </Text>
+
+            <View style={styles.structureGraphic} accessibilityLabel="Institute verification flow">
+              <View style={[styles.structureNode, styles.structureNodeStrong]}>
+                <Ionicons name="business-outline" size={19} color="#67E8F9" />
+                <Text style={styles.structureNodeText}>Institute</Text>
+              </View>
+              <View style={styles.structureRail} />
+              <View style={styles.structureNode}>
+                <Ionicons name="id-card-outline" size={19} color="#CBD5E1" />
+                <Text style={styles.structureNodeText}>User</Text>
+              </View>
+              <View style={styles.structureRail} />
+              <View style={styles.structureNode}>
+                <Ionicons name="shield-checkmark-outline" size={19} color="#CBD5E1" />
+                <Text style={styles.structureNodeText}>Workspace</Text>
+              </View>
+            </View>
+
+            <View style={styles.brandFeatureRow}>
+              <Ionicons name="lock-closed-outline" size={18} color="#67E8F9" />
+              <Text style={styles.brandFeatureText}>Supabase-protected tenant checks before workspace access.</Text>
+            </View>
+          </View>
+
+          <View style={[styles.authSector, layout.isDesktop && styles.authSectorDesktop]}>
           <View
             style={[
               styles.card,
@@ -243,8 +272,9 @@ export default function InstituteLoginScreen() {
                   <BrandLogo size={58} style={undefined} />
                 )}
               </View>
+              <BrandWordmark color="#F8FAFC" size={layout.isMobile ? 'sm' : 'md'} style={styles.formWordmark} />
               <Text style={[styles.title, layout.isMobile && styles.titleMobile]}>
-                {hasReturningInstitute ? returningInstituteName : 'Edu Shii'}
+                {hasReturningInstitute ? returningInstituteName : 'Secure institute login'}
               </Text>
               <Text style={styles.subtitle}>
                 {hasReturningInstitute
@@ -385,6 +415,21 @@ export default function InstituteLoginScreen() {
               </TouchableOpacity>
             </View>
 
+            <View style={styles.registrationBlock}>
+              <Text style={styles.registrationText}>
+                Is your institute not registered? Contact us to onboard.
+              </Text>
+              <TouchableOpacity
+                accessibilityLabel="Contact for Registration"
+                activeOpacity={0.84}
+                onPress={openRegistrationEmail}
+                style={styles.registrationButton}
+              >
+                <Ionicons name="mail-outline" size={18} color="#020617" />
+                <Text style={styles.registrationButtonText}>Contact for Registration</Text>
+              </TouchableOpacity>
+            </View>
+
             <View style={styles.footer}>
               <Ionicons name="lock-closed-outline" size={15} color="#67E8F9" />
               <Text style={styles.footerText}>Every session opens only your institute workspace</Text>
@@ -393,6 +438,7 @@ export default function InstituteLoginScreen() {
               <Text style={styles.supportText}>Your password remains available if biometric access is unavailable.</Text>
             ) : null}
             <Text style={styles.supportText}>Contact your institute administrator if your password needs to be reset.</Text>
+          </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -405,26 +451,41 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   container: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
   containerMobile: { alignItems: 'stretch' },
-  containerDesktop: { flexDirection: 'row', paddingHorizontal: 40, gap: 28 },
+  containerDesktop: { alignItems: 'stretch', flexDirection: 'row', gap: 22, paddingHorizontal: 40 },
   containerCompact: { paddingHorizontal: 14 },
-  desktopBrandPanel: {
-    flex: 1,
-    maxWidth: 520,
-    alignSelf: 'stretch',
+  authSector: {
+    alignItems: 'center',
     justifyContent: 'center',
-    padding: 28,
-    borderRadius: 8,
-    backgroundColor: '#0F172A',
-    borderWidth: 1,
-    borderColor: '#334155',
+    width: '100%',
   },
-  brandIcon: { marginBottom: 22 },
-  brandLogoImage: { borderRadius: 8, height: 68, marginBottom: 22, width: 68 },
-  brandEyebrow: { color: '#93C5FD', fontSize: 13, fontWeight: '700', marginBottom: 10 },
-  brandTitle: { color: '#F8FAFC', fontSize: 34, fontWeight: '800' },
-  brandCopy: { color: '#CBD5E1', fontSize: 16, lineHeight: 24, marginTop: 12, marginBottom: 24, maxWidth: 430 },
+  authSectorDesktop: {
+    flex: 1,
+    minWidth: 0,
+  },
+  brandPanel: {
+    backgroundColor: '#0F172A',
+    borderColor: '#334155',
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: 'center',
+  },
+  brandPanelDesktop: {
+    flex: 1,
+    alignSelf: 'stretch',
+    minWidth: 0,
+    padding: 34,
+  },
+  brandPanelMobile: {
+    marginBottom: 14,
+    padding: 18,
+  },
+  brandIcon: { flexShrink: 0 },
+  brandLogoImage: { borderRadius: 8, flexShrink: 0, height: 68, width: 68 },
+  brandEyebrow: { color: '#93C5FD', fontSize: 12, fontWeight: '900', letterSpacing: 0, marginTop: 2 },
+  brandTitle: { color: '#F8FAFC', fontSize: 31, fontWeight: '900', lineHeight: 38, marginTop: 24, maxWidth: 520 },
+  brandCopy: { color: '#CBD5E1', fontSize: 16, fontWeight: '700', lineHeight: 24, marginTop: 12, maxWidth: 470 },
   brandFeatureRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12 },
-  brandFeatureText: { flex: 1, color: '#E2E8F0', marginLeft: 10, fontSize: 14, fontWeight: '600' },
+  brandFeatureText: { flex: 1, color: '#E2E8F0', marginLeft: 10, fontSize: 14, fontWeight: '800', lineHeight: 20 },
   biometricButton: {
     alignItems: 'center',
     backgroundColor: '#082F49',
@@ -462,7 +523,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#334155',
   },
-  cardDesktop: { maxWidth: 440 },
+  cardDesktop: { maxWidth: 480 },
   cardMobile: { alignSelf: 'center', maxWidth: '100%', borderRadius: 8, padding: 18 },
   cardCompact: { padding: 16, borderRadius: 8 },
   header: { alignItems: 'center', marginBottom: 30 },
@@ -473,6 +534,7 @@ const styles = StyleSheet.create({
   titleMobile: { fontSize: 24 },
   subtitle: { fontSize: 14, color: '#CBD5E1', textAlign: 'center' },
   form: { marginBottom: 14 },
+  formWordmark: { marginBottom: 4 },
   formLogoImage: { borderRadius: 8, height: 58, width: 58 },
   label: { fontSize: 12, fontWeight: '700', color: '#E2E8F0', marginBottom: 8 },
   inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#020617', borderWidth: 1, borderColor: '#334155', borderRadius: 8, marginBottom: 13 },
@@ -517,6 +579,80 @@ const styles = StyleSheet.create({
   loginBtn: { minHeight: 52, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', backgroundColor: '#2563EB', paddingVertical: 14, borderRadius: 8 },
   loginBtnDisabled: { opacity: 0.66 },
   loginBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800', marginLeft: 8 },
+  platformCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  platformLockup: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 15,
+    minWidth: 0,
+  },
+  registrationBlock: {
+    backgroundColor: '#111827',
+    borderColor: '#334155',
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 12,
+    marginTop: 4,
+    padding: 14,
+  },
+  registrationButton: {
+    alignItems: 'center',
+    backgroundColor: '#67E8F9',
+    borderRadius: 8,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    minHeight: 46,
+    paddingHorizontal: 14,
+  },
+  registrationButtonText: {
+    color: '#020617',
+    fontSize: 14,
+    fontWeight: '900',
+    marginLeft: 8,
+  },
+  registrationText: {
+    color: '#E2E8F0',
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 19,
+    textAlign: 'center',
+  },
+  structureGraphic: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    marginTop: 26,
+    maxWidth: 520,
+  },
+  structureNode: {
+    alignItems: 'center',
+    backgroundColor: '#111827',
+    borderColor: '#334155',
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+    minHeight: 78,
+    justifyContent: 'center',
+    padding: 10,
+  },
+  structureNodeStrong: {
+    backgroundColor: '#082F49',
+    borderColor: '#0E7490',
+  },
+  structureNodeText: {
+    color: '#E2E8F0',
+    fontSize: 12,
+    fontWeight: '900',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  structureRail: {
+    backgroundColor: '#334155',
+    height: 1,
+    width: 18,
+  },
   footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#334155' },
   footerText: { fontSize: 12, color: '#CBD5E1', marginLeft: 6, fontWeight: '700' },
   supportText: { color: '#94A3B8', fontSize: 11, lineHeight: 16, marginTop: 10, textAlign: 'center' },

@@ -701,7 +701,7 @@ p {
   width: 40px;
 }
 
-.landing-brand span {
+.landing-brand > span {
   display: grid;
   gap: 1px;
 }
@@ -712,11 +712,44 @@ p {
   line-height: 1.25rem;
 }
 
-.landing-brand span span {
+.landing-brand > span > span {
   color: #475569;
   font-size: 0.75rem;
   font-weight: 750;
   line-height: 1rem;
+}
+
+.shii-wordmark {
+  align-items: baseline;
+  display: inline-flex;
+  font-family: Impact, "Arial Black", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 0.9;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.shii-wordmark-major {
+  font-size: 1.2em;
+  line-height: 0.86;
+}
+
+.shii-wordmark-rest {
+  font-size: 0.7em;
+  line-height: 0.9;
+}
+
+.nav-wordmark {
+  font-size: 1rem;
+}
+
+.hero-wordmark .shii-wordmark-major {
+  font-size: 1em;
+}
+
+.hero-wordmark .shii-wordmark-rest {
+  font-size: 0.58em;
 }
 
 .landing-links {

@@ -14,6 +14,13 @@ const systemMono = Platform.select({
   default: 'monospace',
 });
 
+const blockSans = Platform.select({
+  android: 'Roboto',
+  ios: 'System',
+  web: 'Impact, "Arial Black", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  default: 'System',
+});
+
 const lightColors = {
   textPrimary: '#0F172A',
   textSecondary: '#334155',
@@ -73,6 +80,7 @@ export const Colors = {
 };
 
 export const Fonts = {
+  block: blockSans,
   body: systemSans,
   caption: systemSans,
   display: systemSans,

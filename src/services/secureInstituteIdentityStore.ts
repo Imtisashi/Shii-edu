@@ -148,7 +148,7 @@ export const writeCachedInstituteIdentity = async (
   const normalizedIdentity: CachedInstituteIdentity = {
     biometricEnabled: Boolean(identity.biometricEnabled),
     instituteId: identity.instituteId.trim(),
-    instituteName: identity.instituteName.trim() || 'Edu Shii',
+    instituteName: identity.instituteName.trim() || 'Shii-Edu',
     logoUrl: identity.logoUrl?.trim() || null,
     uid: identity.uid.trim(),
     updatedAt: new Date().toISOString(),

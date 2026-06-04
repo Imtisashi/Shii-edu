@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Platform, KeyboardAvoidingView, Switch } from 'react-native';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton, SmoothSpinner } from '../../components/ui/LoadingState';
 import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
@@ -174,7 +174,7 @@ export default function ManageTeachers() {
       {/* TAB 1: ROSTER DIRECTORY */}
       {activeTab === 'roster' && (
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {loading ? <SmoothSpinner size="large" color="#10B981" /> : teachers.length === 0 ? (
+          {loading ? <RosterSkeleton rowCount={5} /> : teachers.length === 0 ? (
             <Text style={styles.emptyText}>No teachers found in the database.</Text>
           ) : (
             teachers.map(t => (

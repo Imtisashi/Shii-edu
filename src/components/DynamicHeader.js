@@ -6,6 +6,8 @@ import { useAuth } from '../contexts/AuthContext';
 import useResponsiveLayout from '../hooks/useResponsiveLayout';
 import { Fonts, Radius, Spacing } from '../constants/theme';
 import { useRootLayout } from '../contexts/RootLayoutContext';
+import EdgeDrawerButton from './navigation/EdgeDrawerButton';
+import { openNearestDrawer } from '../navigation/openNearestDrawer';
 
 export default function DynamicHeader({ title, showBack = false }) {
   const { userData } = useAuth();
@@ -80,6 +82,7 @@ export default function DynamicHeader({ title, showBack = false }) {
   const instituteName = brand.name;
   const logoUrl = brand.logoUrl;
   const logoSize = layout.isCompact ? 34 : 40;
+  const hasDrawer = Boolean(navigation.openDrawer || navigation.getParent?.()?.openDrawer || navigation.getParent?.()?.getParent?.()?.openDrawer);
   const monogram = instituteName
     .split(/\s+/)
     .filter(Boolean)
@@ -89,6 +92,9 @@ export default function DynamicHeader({ title, showBack = false }) {
   const topPadding = Platform.OS === 'web'
     ? Math.max(insets.top, layout.isMobile ? 10 : 14)
     : Math.max(insets.top, 20) + 6;
+  const openMenu = () => {
+    openNearestDrawer(navigation);
+  };
 
   return (
     <View
@@ -125,6 +131,10 @@ export default function DynamicHeader({ title, showBack = false }) {
             >
               <Ionicons name="arrow-back" size={layout.isCompact ? 20 : 22} color={colors.textSoft} />
             </Pressable>
+          ) : hasDrawer ? (
+            <View style={styles.menuButtonWrap}>
+              <EdgeDrawerButton onPress={openMenu} size={layout.isCompact ? 38 : 42} />
+            </View>
           ) : null}
 
           {logoUrl ? (
@@ -163,30 +173,35 @@ export default function DynamicHeader({ title, showBack = false }) {
           )}
 
           <View style={styles.textContainer}>
-            <Text style={[styles.instituteName, layout.isCompact && styles.instituteNameCompact, { color: colors.muted, fontFamily: typography.label }]} numberOfLines={1}>
+            <Text style={[styles.instituteName, layout.isCompact && styles.instituteNameCompact, { color: colors.text, fontFamily: typography.block }]} numberOfLines={1}>
               {instituteName}
             </Text>
             {title ? <Text style={[styles.pageTitle, layout.isCompact && styles.pageTitleCompact, { color: colors.text, fontFamily: typography.title }]} numberOfLines={1}>{title}</Text> : null}
           </View>
         </View>
 
-        <Pressable
-          accessibilityLabel="Open notifications"
-          accessibilityRole="button"
-          onPress={handleBellPress}
-          style={[
-            styles.notificationButton,
-            layout.isCompact && styles.notificationButtonCompact,
-            {
-              backgroundColor: colors.cardStrong,
-              borderColor: colors.hairline,
-              minHeight: controls.touchTarget,
-              minWidth: controls.touchTarget,
-            },
-          ]}
-        >
-          <Ionicons name="notifications-outline" size={layout.isCompact ? 20 : 22} color={colors.textSoft} />
-        </Pressable>
+        <View style={styles.rightActions}>
+          {showBack && hasDrawer ? (
+            <EdgeDrawerButton onPress={openMenu} size={layout.isCompact ? 38 : 42} />
+          ) : null}
+          <Pressable
+            accessibilityLabel="Open notifications"
+            accessibilityRole="button"
+            onPress={handleBellPress}
+            style={[
+              styles.notificationButton,
+              layout.isCompact && styles.notificationButtonCompact,
+              {
+                backgroundColor: colors.cardStrong,
+                borderColor: colors.hairline,
+                minHeight: controls.touchTarget,
+                minWidth: controls.touchTarget,
+              },
+            ]}
+          >
+            <Ionicons name="notifications-outline" size={layout.isCompact ? 20 : 22} color={colors.textSoft} />
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -231,8 +246,9 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontFamily: Fonts.body,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '900',
     letterSpacing: 0,
+    textTransform: 'uppercase',
   },
   instituteNameCompact: {
     fontSize: 12,
@@ -289,6 +305,13 @@ const styles = StyleSheet.create({
   placeholderLogoCompact: {
     borderRadius: Radius.sm,
     marginRight: Spacing.sm,
+  },
+  menuButtonWrap: {
+    marginRight: Spacing.md,
+  },
+  rightActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
   },
   textContainer: {
     flex: 1,

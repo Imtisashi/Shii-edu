@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, Image, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
 import { fetchFacultyDirectory } from '../../services/facultyDirectoryService';
@@ -149,10 +149,7 @@ export default function TeachersProfile() {
   return (
     <View style={[styles.container, { backgroundColor: colors.page }]}>
       {loading ? (
-        <View style={styles.loadingState}>
-          <SmoothSpinner size={42} color={colors.emerald} trackColor={colors.hairline} />
-          <Text style={[styles.loadingText, { color: colors.textSoft }]}>Loading faculty...</Text>
-        </View>
+        <RosterSkeleton rowCount={5} showFilters={false} />
       ) : (
         <FlatList
           data={teachers}

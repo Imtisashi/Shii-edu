@@ -6,10 +6,10 @@ const configuredOrigins = String(process.env.APP_ORIGIN || '')
 const productionOrigin = configuredOrigins.find((origin) => /^https:\/\/.+/i.test(origin));
 
 export const SITE = {
-  name: 'Edu-shii',
+  name: 'Shii-Edu',
   origin: process.env.NEXT_PUBLIC_APP_ORIGIN || productionOrigin || 'https://shii-edu.vercel.app',
   description:
-    'Edu-shii is an education operations platform for institute administration, academics, fees, media, notices, and transport workflows.',
+    'Shii-Edu is an education operations platform for institute administration, academics, fees, media, notices, and transport workflows.',
   updatedAt: '2026-06-04',
 };
 

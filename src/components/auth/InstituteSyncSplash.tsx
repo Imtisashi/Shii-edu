@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
+import { SkeletonBlock } from '../ui/LoadingState';
 
 type LoadingProfile = {
   instituteData?: {
@@ -48,7 +49,7 @@ export default function InstituteSyncSplash() {
   const instituteName = instituteData?.name ||
     loadingProfile?.instituteName ||
     cachedInstituteIdentity?.instituteName ||
-    'Edu Shii';
+    'Shii-Edu';
   const logoUrl = instituteData?.branding?.logoUrl ||
     instituteData?.settings?.branding?.logoUrl ||
     instituteData?.logoUrl ||
@@ -102,12 +103,15 @@ export default function InstituteSyncSplash() {
         </View>
 
         <Text numberOfLines={2} style={[styles.instituteName, { color: colors.text }]}>
-          Loading {instituteName}...
+          {instituteName}
         </Text>
         <Text style={[styles.stageLabel, { color: colors.textSoft }]}>{stageLabel}</Text>
 
         <View style={styles.progressRow}>
-          <ActivityIndicator color={colors.accent} size="small" />
+          <View style={styles.progressSkeleton}>
+            <SkeletonBlock height={4} radius={8} width="100%" />
+            <SkeletonBlock height={4} radius={8} width="64%" />
+          </View>
           <View style={[styles.securePill, { backgroundColor: colors.card, borderColor: colors.hairline }]}>
             <Ionicons name="shield-checkmark" size={15} color={colors.accent} />
             <Text style={[styles.secureText, { color: colors.textSoft }]}>Verified institute session</Text>
@@ -159,6 +163,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginTop: 26,
+  },
+  progressSkeleton: {
+    gap: 4,
+    width: 46,
   },
   screen: {
     alignItems: 'center',

@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 import BrandLogo from '../../components/BrandLogo';
+import BrandWordmark from '../../components/BrandWordmark';
 import EnterpriseAuthBackground from '../../components/auth/EnterpriseAuthBackground';
 import { DURATION, EASING } from '../../utils/animations';
 
@@ -166,7 +167,7 @@ export default function Login() {
             <Animated.View style={[styles.desktopBrandPanel, introStyle]}>
               <BrandLogo size={68} variant="light" style={styles.brandIcon} />
               <Text style={styles.brandEyebrow}>Institute Access Control</Text>
-              <Text style={styles.brandTitle}>Edu Shii</Text>
+              <BrandWordmark color="#F8FAFC" size="lg" style={styles.brandTitle} />
               <Text style={styles.brandCopy}>
                 A structured education workspace for superadmins, administrators, teachers, students, and parents.
               </Text>
@@ -186,7 +187,7 @@ export default function Login() {
               <View style={[styles.logoCage, layout.isMobile && styles.logoCageMobile]}>
                 <BrandLogo size={58} />
               </View>
-              <Text style={[styles.title, layout.isMobile && styles.titleMobile]}>Edu Shii</Text>
+              <BrandWordmark color="#F8FAFC" size={layout.isMobile ? 'sm' : 'md'} style={[styles.title, layout.isMobile && styles.titleMobile]} />
               <Text style={styles.subtitle}>Sign in to your institute workspace</Text>
             </View>
 

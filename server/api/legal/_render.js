@@ -1,4 +1,4 @@
-const SITE_NAME = 'Edu-shii';
+const SITE_NAME = 'Shii-Edu';
 const DEFAULT_ORIGIN = 'https://shii-edu.vercel.app';
 const UPDATED_AT = '2026-06-04';
 
@@ -158,7 +158,7 @@ ${sectionHtml}
         </article>
       </main>
       <footer>
-        These documents are generated for the Edu-shii service and should be reviewed by qualified counsel before relying on them as legal advice.
+        These documents are generated for the Shii-Edu service and should be reviewed by qualified counsel before relying on them as legal advice.
       </footer>
     </div>
   </body>

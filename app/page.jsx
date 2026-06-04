@@ -19,7 +19,7 @@ export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 const description =
-  'Edu-shii is an institute-branded education operations workspace for academics, communication, payments, media, transport, and role-aware administration.';
+  'Shii-Edu is an institute-branded education operations workspace for academics, communication, payments, media, transport, and role-aware administration.';
 
 export function generateMetadata() {
   return routeMetadata({
@@ -87,6 +87,17 @@ const legalRows = [
   ['Terms of Service', 'Role access, uploads, AI, transport, indemnity, liability limits', '/terms'],
 ];
 
+function ShiiEduWordmark({ className = '' }) {
+  return (
+    <span className={`shii-wordmark ${className}`.trim()} aria-label="Shii-Edu">
+      <span className="shii-wordmark-major">S</span>
+      <span className="shii-wordmark-rest">HII-</span>
+      <span className="shii-wordmark-major">E</span>
+      <span className="shii-wordmark-rest">DU</span>
+    </span>
+  );
+}
+
 export default function HomePage() {
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -101,10 +112,10 @@ export default function HomePage() {
   return (
     <div className="landing-page">
       <header className="landing-nav" aria-label="Primary">
-        <a className="landing-brand" href="/" aria-label="Edu-shii home">
+        <a className="landing-brand" href="/" aria-label="Shii-Edu home">
           <img src="/assets/images/icon.png" alt="" width="40" height="40" />
           <span>
-            <strong>Edu-shii</strong>
+            <strong><ShiiEduWordmark className="nav-wordmark" /></strong>
             <span>Institute workspace</span>
           </span>
         </a>
@@ -142,7 +153,7 @@ export default function HomePage() {
               <span aria-hidden="true">/</span>
               <span>Last reviewed {SITE.updatedAt}</span>
             </div>
-            <h1 id="landing-title">Edu-shii</h1>
+            <h1 id="landing-title"><ShiiEduWordmark className="hero-wordmark" /></h1>
             <p>
               A campus-owned workspace for attendance, routines, notices, fees, uploads, messages, reports, transport,
               and role-aware administration.
@@ -165,7 +176,7 @@ export default function HomePage() {
             <div>
               <h2 id="workspace-title">One operational surface, branded by the institute.</h2>
               <p>
-                Edu-shii keeps each school or college visible through workspace name, logo, colors, and role-specific
+                Shii-Edu keeps each school or college visible through workspace name, logo, colors, and role-specific
                 navigation while the shared platform does the heavy lifting behind the scenes.
               </p>
             </div>
@@ -190,7 +201,7 @@ export default function HomePage() {
               <h2 id="roles-title">Every role gets the right amount of product.</h2>
               <p>
                 Admins need control, teachers need speed, parents need clarity, and drivers need only the route view.
-                Edu-shii keeps those responsibilities separate.
+                Shii-Edu keeps those responsibilities separate.
               </p>
             </div>
           </div>

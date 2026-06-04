@@ -1,9 +1,11 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
 import { sharedStackScreenOptions, sharedTabScreenOptions } from './animatedScreenOptions';
 import EnterpriseTabBar from '../components/navigation/EnterpriseTabBar';
+import RoleDrawerContent from '../components/navigation/RoleDrawerContent';
 import { useRootLayout } from '../contexts/RootLayoutContext';
 
 // Import Admin Screens
@@ -24,9 +26,12 @@ import CommunicationHub from '../screens/shared/CommunicationHub';
 import FleetTrackingScreen from '../screens/shared/FleetTrackingScreen';
 import SyllabusTutor from '../screens/shared/SyllabusTutor';
 import AICommandCenter from '../screens/admin/AICommandCenter';
+import AccountProfileScreen from '../screens/shared/AccountProfileScreen';
+import AccountSettingsScreen from '../screens/shared/AccountSettingsScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
+const Drawer = createDrawerNavigator();
 
 // --- THE ADMIN BOTTOM BAR ---
 function AdminBottomTabs() {
@@ -60,7 +65,7 @@ function AdminBottomTabs() {
 }
 
 // --- THE MASTER STACK ---
-export default function AdminNavigator() {
+function AdminStackNavigator() {
   const { colors } = useRootLayout();
 
   return (
@@ -96,5 +101,38 @@ export default function AdminNavigator() {
       <Stack.Screen name="SyllabusTutor" component={SyllabusTutor} options={{ title: 'Syllabus Tutor' }} />
       <Stack.Screen name="AICommandCenter" component={AICommandCenter} options={{ title: 'AI Command Center' }} />
     </Stack.Navigator>
+  );
+}
+
+export default function AdminNavigator() {
+  const { colors } = useRootLayout();
+
+  return (
+    <Drawer.Navigator
+      drawerContent={(props) => (
+        <RoleDrawerContent
+          {...props}
+          dashboardRoute="AdminDashboard"
+          profileRoute="AdminProfile"
+          settingsRoute="AdminSettings"
+        />
+      )}
+      screenOptions={{
+        ...sharedStackScreenOptions,
+        drawerActiveBackgroundColor: colors.accentSoft,
+        drawerActiveTintColor: colors.text,
+        drawerInactiveTintColor: colors.muted,
+        drawerLabelStyle: { fontWeight: '900' },
+        drawerStyle: { backgroundColor: colors.page, width: 292 },
+        drawerType: 'front',
+        headerShown: false,
+        overlayColor: colors.overlay,
+        sceneContainerStyle: { backgroundColor: colors.page },
+      }}
+    >
+      <Drawer.Screen name="AdminDashboard" component={AdminStackNavigator} />
+      <Drawer.Screen name="AdminProfile" component={AccountProfileScreen} />
+      <Drawer.Screen name="AdminSettings" component={AccountSettingsScreen} />
+    </Drawer.Navigator>
   );
 }

@@ -3,6 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import HomeDashboardScreen from '../home/HomeDashboardScreen';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
+import { openNearestDrawer } from '../../navigation/openNearestDrawer';
 
 export default function TeacherHome() {
   const navigation = useNavigation();
@@ -138,6 +139,7 @@ export default function TeacherHome() {
       instituteName={brand.name}
       notices={notices}
       onLogout={logout}
+      onOpenMenu={() => openNearestDrawer(navigation)}
       onOpenNotifications={() => navigation.navigate('TeacherNotifs')}
       primaryActions={actions.slice(0, 4)}
       profileMeta={[

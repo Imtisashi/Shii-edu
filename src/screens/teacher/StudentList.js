@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, Image } from 'react-native';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { RosterSkeleton } from '../../components/ui/LoadingState';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
@@ -159,9 +159,7 @@ export default function StudentList() {
       </View>
 
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <SmoothSpinner size="large" color="#8E24AA" />
-        </View>
+        <RosterSkeleton rowCount={6} />
       ) : (
         <FlatList
           data={filteredStudents}

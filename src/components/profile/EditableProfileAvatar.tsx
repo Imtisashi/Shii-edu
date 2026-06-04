@@ -1,7 +1,6 @@
 /* eslint-disable react-hooks/immutability */
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Pressable,
   StyleProp,
@@ -28,6 +27,7 @@ import { useRootLayout } from '../../contexts/RootLayoutContext';
 import { pickAndUploadProfileImage, ProfileImageUploadResult } from '../../services/profileImageUpload';
 import { updateSupabaseProfileMedia } from '../../services/supabaseTenantDataService';
 import { showNativeError } from '../../utils/userFeedback';
+import { SmoothSpinner } from '../ui/LoadingState';
 
 type EditableProfileAvatarProps = {
   disabled?: boolean;
@@ -232,7 +232,7 @@ export default function EditableProfileAvatar({
 
           {uploading ? (
             <View style={[styles.loadingOverlay, { backgroundColor: colors.cardStrong }]}>
-              <ActivityIndicator color={colors.accent} size="small" />
+              <SmoothSpinner color={colors.accent} size="small" />
             </View>
           ) : null}
         </View>
@@ -252,7 +252,7 @@ export default function EditableProfileAvatar({
             ]}
           >
             {uploading ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
+              <SmoothSpinner color="#FFFFFF" size="small" />
             ) : (
               <Ionicons name="camera" size={iconSize} color="#FFFFFF" />
             )}

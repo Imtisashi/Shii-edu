@@ -225,7 +225,7 @@ export default function BrandingSettings() {
       });
       setDirty(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      showMessage('Branding Saved', 'Your institute logo and palette are now live across Edu Shii.');
+      showMessage('Branding Saved', 'Your institute logo and palette are now live across Shii-Edu.');
     } catch (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       showMessage('Save Failed', error.message || 'The institute branding could not be saved.');

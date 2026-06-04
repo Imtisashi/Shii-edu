@@ -82,7 +82,7 @@ const storeInstituteSession = async (
       ? biometricEnabled
       : Boolean(previousIdentity?.biometricEnabled),
     instituteId: normalizeInstituteId(instituteId),
-    instituteName: details.instituteName || previousIdentity?.instituteName || 'Edu Shii',
+    instituteName: details.instituteName || previousIdentity?.instituteName || 'Shii-Edu',
     logoUrl: details.logoUrl || previousIdentity?.logoUrl || null,
     uid,
     userId: normalizeUserId(userId),
@@ -300,7 +300,7 @@ export function AuthProvider({ children, appMode = 'combined' }) {
     enableBiometrics = false,
   }) => {
     if (!isInstituteMode) {
-      throw createAuthError('Institute login is only available in the Edu Shii application.');
+      throw createAuthError('Institute login is only available in the Shii-Edu application.');
     }
 
     const normalizedInstituteId = assertLoginInstituteId(instituteId);
@@ -430,7 +430,7 @@ export function AuthProvider({ children, appMode = 'combined' }) {
 
   const unlockWithBiometrics = useCallback(async () => {
     if (!isInstituteMode) {
-      throw createAuthError('Biometric institute access is only available in the Edu Shii application.');
+      throw createAuthError('Biometric institute access is only available in the Shii-Edu application.');
     }
 
     const user = auth.currentUser;

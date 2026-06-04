@@ -181,9 +181,9 @@ export const startSupabaseDriverRouteTracking = async ({
         distanceInterval: 15,
         foregroundService: {
           killServiceOnDestroy: false,
-          notificationBody: 'Edu-shii is actively tracking this route live.',
+          notificationBody: 'Shii-Edu is actively tracking this route live.',
           notificationColor: '#16A34A',
-          notificationTitle: 'Edu-shii Driver Tracker',
+          notificationTitle: 'Shii-Edu Driver Tracker',
         },
         pausesUpdatesAutomatically: false,
         showsBackgroundLocationIndicator: true,

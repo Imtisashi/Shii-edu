@@ -80,7 +80,7 @@ export default function StudentHome() {
   }, [openStudentScreen]);
 
   const studentName = userData?.name || userData?.displayName || 'Student';
-  const instituteName = userData?.instituteData?.name || userData?.instituteName || 'Edu Shii';
+  const instituteName = userData?.instituteData?.name || userData?.instituteName || 'Shii-Edu';
   const userRole = userData?.role;
   const userUid = userData?.uid;
 

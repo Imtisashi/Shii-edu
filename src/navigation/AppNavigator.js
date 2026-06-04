@@ -99,7 +99,7 @@ export default function AppNavigator() {
         </View>
         <Text style={styles.profileIssueTitle}>Unsupported Institute Role</Text>
         <Text style={styles.profileIssueText}>
-          This account role is not enabled in the Edu Shii application.
+          This account role is not enabled in the Shii-Edu application.
         </Text>
         <TouchableOpacity style={styles.profileIssueButton} onPress={logout}>
           <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />

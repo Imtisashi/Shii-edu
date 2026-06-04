@@ -231,7 +231,7 @@ export default function ManageAdminUsers() {
                   <Ionicons name="person" size={26} color="#2563EB" />
                 </View>
                 <Text style={styles.modalTitle}>Edit Administrator</Text>
-                <Text style={styles.modalSubtitle}>This updates the Firestore profile shown throughout Edu Shii.</Text>
+                <Text style={styles.modalSubtitle}>This updates the Firestore profile shown throughout Shii-Edu.</Text>
               </View>
 
               <View style={styles.inputContainer}>

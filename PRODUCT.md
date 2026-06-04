@@ -6,11 +6,11 @@ product
 
 ## Users
 
-Edu-shii serves schools, colleges, institutes, administrators, teachers, students, parents, drivers, and platform operators. They use it during active operations: attendance, schedules, notices, assignments, fees, reports, uploads, transport tracking, profile management, and tenant administration. Most users need quick confirmation, predictable controls, and role-appropriate access more than decorative storytelling.
+Shii-Edu serves schools, colleges, institutes, administrators, teachers, students, parents, drivers, and platform operators. They use it during active operations: attendance, schedules, notices, assignments, fees, reports, uploads, transport tracking, profile management, and tenant administration. Most users need quick confirmation, predictable controls, and role-appropriate access more than decorative storytelling.
 
 ## Product Purpose
 
-Edu-shii is a multi-tenant education operations platform. It exists to centralize institute administration, academic workflows, student and parent communication, payment metadata, media uploads, and transport coordination behind tenant isolation and role-based access. Success means an authorized user can complete a task with confidence, understand the current state of the institute, and never see data outside their role or institute boundary.
+Shii-Edu is a multi-tenant education operations platform. It exists to centralize institute administration, academic workflows, student and parent communication, payment metadata, media uploads, and transport coordination behind tenant isolation and role-based access. Success means an authorized user can complete a task with confidence, understand the current state of the institute, and never see data outside their role or institute boundary.
 
 ## Brand Personality
 

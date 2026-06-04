@@ -1,27 +1,27 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
-  Animated,
-  Platform,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
-import { EASING } from '../../utils/animations';
-
-const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 function SkeletonBlock({ height, shimmerTranslate, style }) {
+  const shimmerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: shimmerTranslate.value }],
+  }));
+
   return (
     <View style={[styles.skeletonBlock, { height }, style]}>
       <Animated.View
         pointerEvents="none"
-        style={[
-          styles.shimmer,
-          {
-            transform: [{ translateX: shimmerTranslate }],
-          },
-        ]}
+        style={[styles.shimmer, shimmerStyle]}
       />
     </View>
   );
@@ -42,30 +42,27 @@ export default function AttendanceSkeleton({
     scale,
     spacing,
   } = useRootLayout();
-  const shimmerProgress = useRef(new Animated.Value(0)).current;
   const accentColor = colors[accent] || colors.emerald;
   const rows = useMemo(
     () => Array.from({ length: Math.max(1, rowCount) }, (_, index) => index),
     [rowCount]
   );
-  const shimmerTranslate = shimmerProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-180, 420],
-  });
+  const shimmerTranslate = useSharedValue(-180);
 
   useEffect(() => {
-    const animation = Animated.loop(
-      Animated.timing(shimmerProgress, {
-        duration: 220,
-        easing: EASING.measuredEaseInOut,
-        toValue: 1,
-        useNativeDriver: USE_NATIVE_DRIVER,
-      })
+    shimmerTranslate.value = withRepeat(
+      withTiming(420, {
+        duration: 1250,
+        easing: Easing.bezier(0.32, 0.72, 0, 1),
+      }),
+      -1,
+      false
     );
 
-    animation.start();
-    return () => animation.stop();
-  }, [shimmerProgress]);
+    return () => {
+      shimmerTranslate.value = -180;
+    };
+  }, [shimmerTranslate]);
 
   return (
     <View
@@ -84,8 +81,6 @@ export default function AttendanceSkeleton({
           },
         ]}
       >
-        <Text style={[styles.label, { color: colors.textSoft }]}>{label}</Text>
-
         <View
           style={[
             styles.hero,

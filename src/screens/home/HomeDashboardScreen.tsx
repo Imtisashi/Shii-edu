@@ -367,7 +367,7 @@ export default function HomeDashboardScreen({
                     style={styles.institutionLogo}
                   />
                 ) : (
-                  <Text style={[styles.institutionInitials, { color: colors.accent, fontFamily: typography.title }]}>
+                  <Text style={[styles.institutionInitials, { color: colors.accent, fontFamily: typography.block }]}>
                     {instituteInitials}
                   </Text>
                 )}
@@ -376,7 +376,7 @@ export default function HomeDashboardScreen({
                 <Text numberOfLines={1} style={[styles.institutionLabel, { color: colors.muted }]}>
                   Workspace
                 </Text>
-                <Text numberOfLines={2} style={[styles.instituteName, { color: colors.text, fontFamily: typography.title }]}>
+                <Text numberOfLines={2} style={[styles.instituteName, { color: colors.text, fontFamily: typography.block }]}>
                   {instituteName}
                 </Text>
               </View>
@@ -608,9 +608,10 @@ const styles = StyleSheet.create({
   },
   instituteName: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '900',
     letterSpacing: 0,
     lineHeight: 22,
+    textTransform: 'uppercase',
   },
   institutionCopy: {
     flex: 1,

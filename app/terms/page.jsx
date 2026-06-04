@@ -6,7 +6,7 @@ export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 const description =
-  'Edu-shii Terms of Service covering institute workspace access, uploads, payments, AI assistance, transport features, indemnity, and limitation of liability.';
+  'Shii-Edu Terms of Service covering institute workspace access, uploads, payments, AI assistance, transport features, indemnity, and limitation of liability.';
 
 export function generateMetadata() {
   return routeMetadata({

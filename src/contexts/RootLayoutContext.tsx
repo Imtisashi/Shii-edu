@@ -79,6 +79,7 @@ type RootLayoutSpacing = {
 };
 
 type RootLayoutTypography = {
+  block: string;
   caption: string;
   display: string;
   label: string;
@@ -435,12 +436,14 @@ const buildNativeWindTokens = (
 
 const typography: RootLayoutTypography = Platform.select({
   web: {
+    block: 'Impact, "Arial Black", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     caption: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
     display: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
     label: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
     title: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
   },
   default: {
+    block: 'System',
     caption: 'System',
     display: 'System',
     label: 'System',
