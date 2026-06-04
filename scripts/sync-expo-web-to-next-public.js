@@ -39,4 +39,11 @@ if (fs.existsSync(iconSource) && !fs.existsSync(iconTarget)) {
   fs.copyFileSync(iconSource, iconTarget);
 }
 
+const heroVideoSource = path.join(root, 'assets', 'videos', 'cosmic-campus.mp4');
+const heroVideoTarget = path.join(publicDir, 'assets', 'videos', 'cosmic-campus.mp4');
+if (fs.existsSync(heroVideoSource)) {
+  ensureDirectory(path.dirname(heroVideoTarget));
+  fs.copyFileSync(heroVideoSource, heroVideoTarget);
+}
+
 console.log('Synced Expo web export into Next public assets.');

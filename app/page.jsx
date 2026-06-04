@@ -1,13 +1,16 @@
 import {
+  ArrowRight,
   Bus,
+  CalendarCheck2,
   FileCheck2,
   FileLock2,
   GraduationCap,
   Landmark,
   Layers3,
   LockKeyhole,
-  RadioTower,
+  MessageSquareText,
   ShieldCheck,
+  UploadCloud,
   Users,
 } from 'lucide-react';
 import { routeMetadata, SITE } from './lib/site';
@@ -16,7 +19,7 @@ export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 const description =
-  'Edu-shii gives each institute a secure operations workspace for academics, communication, payments, media, transport, and role-aware administration.';
+  'Edu-shii is an institute-branded education operations workspace for academics, communication, payments, media, transport, and role-aware administration.';
 
 export function generateMetadata() {
   return routeMetadata({
@@ -26,55 +29,62 @@ export function generateMetadata() {
   });
 }
 
-const systems = [
-  ['Institute data boundary', 'Row-level policies keep each campus workspace scoped to its members.', 'Active'],
-  ['Payment metadata', 'No raw card, CVV, UPI credential, or banking secret is stored.', 'Minimal'],
-  ['Signed media uploads', 'Files are routed through institute and purpose-specific storage paths.', 'Scoped'],
-  ['Realtime communication', 'Broadcast and message channels are bound to institute topics.', 'Checked'],
-];
-
-const roles = [
+const workstreams = [
   {
-    icon: ShieldCheck,
-    title: 'Superadmin',
-    points: ['Institute provisioning', 'Platform-wide audit', 'Workspace recovery controls'],
+    icon: CalendarCheck2,
+    title: 'Academic rhythm',
+    body: 'Attendance, routines, grades, assignments, notices, and reports stay close to the people who run them each day.',
   },
   {
-    icon: Landmark,
-    title: 'Institute Admin',
-    points: ['Users, fees, notices', 'Branding and schedule control', 'Bulk import governance'],
+    icon: MessageSquareText,
+    title: 'Communication',
+    body: 'Broadcasts, reminders, messages, and realtime updates carry institute context without exposing unrelated campus data.',
   },
   {
-    icon: GraduationCap,
-    title: 'Teacher',
-    points: ['Attendance and grades', 'Assignments and course media', 'AI-assisted routine review'],
-  },
-  {
-    icon: Users,
-    title: 'Student and Parent',
-    points: ['Routine, notices, fees', 'Course progress', 'Transport and reports'],
+    icon: UploadCloud,
+    title: 'Files and media',
+    body: 'Gallery items, question papers, syllabi, profile images, and course files use scoped upload paths before storage.',
   },
   {
     icon: Bus,
-    title: 'Driver',
-    points: ['Route visibility', 'Location updates', 'Operational status only'],
+    title: 'Transport view',
+    body: 'Drivers and operators get route visibility, location updates, and status controls without unnecessary admin surface area.',
+  },
+];
+
+const roleGroups = [
+  {
+    icon: ShieldCheck,
+    title: 'Superadmin',
+    body: 'Provision institutes, review platform health, and recover workspaces from one governed surface.',
   },
   {
-    icon: LockKeyhole,
-    title: 'Server APIs',
-    points: ['Firebase and Supabase bridge', 'Stripe webhook verification', 'Server-side AI prompts'],
+    icon: Landmark,
+    title: 'Institute admin',
+    body: 'Manage people, fees, notices, branding, schedules, and import controls for one campus identity.',
   },
+  {
+    icon: GraduationCap,
+    title: 'Teachers',
+    body: 'Handle attendance, assignments, grades, course media, and routine review from focused teaching views.',
+  },
+  {
+    icon: Users,
+    title: 'Students and parents',
+    body: 'Read notices, routines, fees, reports, course progress, and transport updates in their own role view.',
+  },
+];
+
+const trustRows = [
+  ['Institute data boundary', 'Row-level policies keep each campus workspace scoped to its members.', 'Active'],
+  ['Payment metadata', 'No raw card, CVV, UPI credential, or banking secret is stored.', 'Minimal'],
+  ['Signed media uploads', 'Files are routed through institute and purpose-specific storage paths.', 'Scoped'],
+  ['Legal pages', 'Privacy, terms, robots, sitemap, metadata, and JSON-LD are server-rendered.', 'Ready'],
 ];
 
 const legalRows = [
   ['Privacy Policy', 'DPDP aligned, COPPA-aware, processor/controller boundaries', '/privacy'],
   ['Terms of Service', 'Role access, uploads, AI, transport, indemnity, liability limits', '/terms'],
-];
-
-const readinessItems = [
-  ['Role-aware', 'Superadmin, admin, teacher, student, parent, and driver views stay separated by responsibility.'],
-  ['Institute-branded', 'Workspace color, name, and logo can follow each school or college identity.'],
-  ['Server-rendered public pages', 'SEO, legal, robots, sitemap, and metadata load through the Next.js App Router.'],
 ];
 
 export default function HomePage() {
@@ -89,170 +99,162 @@ export default function HomePage() {
   };
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar" aria-label="Primary">
-        <div className="brand-lockup">
-          <img className="brand-mark" src="/assets/images/icon.png" alt="" width="40" height="40" />
-          <div className="brand-text">
-            <span className="brand-name">Edu-shii</span>
-            <span className="brand-mode">Institute operations</span>
-          </div>
-        </div>
+    <div className="landing-page">
+      <header className="landing-nav" aria-label="Primary">
+        <a className="landing-brand" href="/" aria-label="Edu-shii home">
+          <img src="/assets/images/icon.png" alt="" width="40" height="40" />
+          <span>
+            <strong>Edu-shii</strong>
+            <span>Institute workspace</span>
+          </span>
+        </a>
 
-        <nav className="nav-list" aria-label="Public sections">
-          <a className="nav-link" href="#operations" aria-current="page">
-            <Layers3 size={16} aria-hidden="true" />
-            Operations
-          </a>
-          <a className="nav-link" href="#roles">
-            <Users size={16} aria-hidden="true" />
-            Role gates
-          </a>
-          <a className="nav-link" href="#pipeline">
-            <RadioTower size={16} aria-hidden="true" />
-            Pipeline
-          </a>
-          <a className="nav-link" href="#legal">
-            <FileLock2 size={16} aria-hidden="true" />
-            Legal
-          </a>
+        <nav className="landing-links" aria-label="Landing sections">
+          <a href="#workspace">Workspace</a>
+          <a href="#roles">Roles</a>
+          <a href="#trust">Trust</a>
+          <a href="#legal">Legal</a>
         </nav>
 
-        <div className="sidebar-note">
-          <strong>SSR public surface</strong>
-          <span>Rendered by Next.js App Router with semantic sections, metadata, sitemap, and JSON-LD.</span>
-        </div>
-      </aside>
+        <a className="landing-login" href="/login">
+          <LockKeyhole size={16} aria-hidden="true" />
+          Institute login
+        </a>
+      </header>
 
-      <main id="main" className="main">
-        <div className="topbar">
-          <span className="topbar-title">Production readiness console</span>
-          <div className="topbar-actions">
-            <a className="button secondary" href="/privacy">
-              <FileLock2 size={16} aria-hidden="true" />
-              View privacy policy
-            </a>
-            <a className="button" href="/terms">
-              <FileCheck2 size={16} aria-hidden="true" />
-              View terms
-            </a>
+      <main id="main">
+        <section className="landing-hero" aria-labelledby="landing-title">
+          <video
+            className="landing-hero-media"
+            src="/assets/videos/cosmic-campus.mp4"
+            poster="/assets/images/icon.png"
+            autoPlay
+            muted
+            loop
+            playsInline
+            aria-hidden="true"
+          />
+          <div className="landing-hero-scrim" aria-hidden="true" />
+          <div className="landing-hero-content">
+            <div className="landing-kicker">
+              <span className="status-dot" aria-hidden="true" />
+              <span>Institute-led education operations</span>
+              <span aria-hidden="true">/</span>
+              <span>Last reviewed {SITE.updatedAt}</span>
+            </div>
+            <h1 id="landing-title">Edu-shii</h1>
+            <p>
+              A campus-owned workspace for attendance, routines, notices, fees, uploads, messages, reports, transport,
+              and role-aware administration.
+            </p>
+            <div className="landing-actions">
+              <a className="landing-primary-action" href="/login">
+                Open institute login
+                <ArrowRight size={17} aria-hidden="true" />
+              </a>
+              <a className="landing-secondary-action" href="#workspace">
+                Explore workspace
+              </a>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <div className="content">
-          <section id="operations" className="hero-console" aria-labelledby="operations-title">
-            <div className="hero-copy">
-              <div className="status-line">
-                <span className="status-dot" aria-hidden="true" />
-                <span>Institute operations workspace</span>
-                <span aria-hidden="true">/</span>
-                <span>Last reviewed {SITE.updatedAt}</span>
-              </div>
-              <h1 id="operations-title">A cleaner control room for every campus.</h1>
-              <p className="baseline-copy">
-                Edu-shii gives schools and colleges one structured workspace for users, attendance, routines, fees,
-                media, messages, AI assistance, and transport. The interface keeps each institute visible while the data
-                boundary stays quiet and firm.
+        <section id="workspace" className="landing-band workspace-band" aria-labelledby="workspace-title">
+          <div className="landing-section-head">
+            <Layers3 size={22} aria-hidden="true" />
+            <div>
+              <h2 id="workspace-title">One operational surface, branded by the institute.</h2>
+              <p>
+                Edu-shii keeps each school or college visible through workspace name, logo, colors, and role-specific
+                navigation while the shared platform does the heavy lifting behind the scenes.
               </p>
-              <div className="readiness-list" aria-label="Readiness summary">
-                {readinessItems.map(([title, body]) => (
-                  <div className="readiness-item" key={title}>
-                    <ShieldCheck size={16} aria-hidden="true" />
-                    <span>
-                      <strong>{title}</strong>
-                      <span>{body}</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
             </div>
+          </div>
+          <div className="workstream-grid">
+            {workstreams.map(({ body, icon: Icon, title }) => (
+              <article className="workstream-item" key={title}>
+                <span className="workstream-icon">
+                  <Icon size={19} aria-hidden="true" />
+                </span>
+                <h3>{title}</h3>
+                <p>{body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
 
-            <div id="pipeline" className="panel" aria-labelledby="pipeline-title">
-              <div className="panel-header">
-                <h2 id="pipeline-title">Readiness Gates</h2>
-                <span className="badge success">Active</span>
-              </div>
-              <div className="panel-body">
-                {systems.map(([title, meta, state]) => (
-                  <div className="system-row" key={title}>
-                    <span>
-                      <span className="row-title">{title}</span>
-                      <span className="row-meta">{meta}</span>
-                    </span>
-                    <span className="badge success">{state}</span>
-                  </div>
-                ))}
-              </div>
+        <section id="roles" className="landing-band roles-band" aria-labelledby="roles-title">
+          <div className="landing-section-head">
+            <Users size={22} aria-hidden="true" />
+            <div>
+              <h2 id="roles-title">Every role gets the right amount of product.</h2>
+              <p>
+                Admins need control, teachers need speed, parents need clarity, and drivers need only the route view.
+                Edu-shii keeps those responsibilities separate.
+              </p>
             </div>
-          </section>
-
-          <section id="roles" className="section-band" aria-labelledby="roles-title">
-            <div className="section-head">
-              <div>
-                <h2 id="roles-title">Role Boundaries</h2>
-                <p>Each person lands in a workflow shaped by institute membership and daily responsibility.</p>
-              </div>
-              <span className="badge">RBAC mapped to RLS</span>
-            </div>
-            <div className="grid">
-              {roles.map(({ icon: Icon, points, title }) => (
-                <article className="role-card" key={title}>
-                  <span className="role-icon">
-                    <Icon size={18} aria-hidden="true" />
-                  </span>
+          </div>
+          <div className="role-lanes">
+            {roleGroups.map(({ body, icon: Icon, title }) => (
+              <article className="role-lane" key={title}>
+                <Icon size={20} aria-hidden="true" />
+                <span>
                   <h3>{title}</h3>
-                  <ul className="role-list">
-                    {points.map((point) => (
-                      <li key={point}>{point}</li>
-                    ))}
-                  </ul>
-                </article>
-              ))}
-            </div>
-          </section>
+                  <p>{body}</p>
+                </span>
+              </article>
+            ))}
+          </div>
+        </section>
 
-          <section className="grid" aria-label="Operational workflow standards">
-            <article className="drawer-spec">
-              <h2>Daily Workflows</h2>
+        <section id="trust" className="landing-band trust-band" aria-labelledby="trust-title">
+          <div className="landing-section-head">
+            <ShieldCheck size={22} aria-hidden="true" />
+            <div>
+              <h2 id="trust-title">Trust is part of the interface.</h2>
               <p>
-                Attendance, routines, grades, assignments, notices, reports, and fees are grouped by role so users can
-                move directly to the next useful task.
+                Access boundaries, upload handling, payment limits, and legal pages are visible where they matter,
+                without turning daily work into a security manual.
               </p>
-            </article>
-            <article className="toast-spec">
-              <h2>Communication</h2>
-              <p>
-                Broadcasts, messages, reminders, and realtime updates keep institute context visible without exposing
-                unrelated campus data.
-              </p>
-            </article>
-            <article className="drawer-spec">
-              <h2>Files and Media</h2>
-              <p>
-                Gallery items, documents, question papers, syllabi, and profile images use scoped upload paths before
-                storage or processor handoff.
-              </p>
-            </article>
-          </section>
+            </div>
+          </div>
+          <div className="trust-table">
+            {trustRows.map(([title, body, state]) => (
+              <div className="trust-row" key={title}>
+                <span>
+                  <strong>{title}</strong>
+                  <span>{body}</span>
+                </span>
+                <em>{state}</em>
+              </div>
+            ))}
+          </div>
+        </section>
 
-          <section id="legal" className="panel" aria-labelledby="legal-title">
-            <div className="panel-header">
-              <h2 id="legal-title">Legal Surface</h2>
-              <span className="badge warning">Counsel review advised</span>
+        <section id="legal" className="landing-band legal-band" aria-labelledby="legal-title">
+          <div className="landing-section-head">
+            <FileLock2 size={22} aria-hidden="true" />
+            <div>
+              <h2 id="legal-title">Public pages are ready to share.</h2>
+              <p>
+                The landing page, policy pages, sitemap, robots file, and metadata render from the server for a stable
+                public entry point.
+              </p>
             </div>
-            <div className="panel-body">
-              {legalRows.map(([title, meta, href]) => (
-                <a className="legal-row" href={href} key={href}>
-                  <span>
-                    <span className="row-title">{title}</span>
-                    <span className="row-meta">{meta}</span>
-                  </span>
-                  <span className="badge">Open</span>
-                </a>
-              ))}
-            </div>
-          </section>
-        </div>
+          </div>
+          <div className="legal-link-grid">
+            {legalRows.map(([title, body, href]) => (
+              <a className="legal-link-card" href={href} key={href}>
+                <FileCheck2 size={18} aria-hidden="true" />
+                <span>
+                  <strong>{title}</strong>
+                  <span>{body}</span>
+                </span>
+                <ArrowRight size={17} aria-hidden="true" />
+              </a>
+            ))}
+          </div>
+        </section>
       </main>
 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
