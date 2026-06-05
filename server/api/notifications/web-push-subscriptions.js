@@ -1,21 +1,55 @@
 const { z } = require('zod');
 const {
-  admin,
-  authenticateUserProfile,
-  createRequestId,
-  getAdminServices,
-  getBody,
-  handleOptions,
-  sendError,
-  setCorsHeaders,
-} = require('../_lib/firebaseAdmin');
-const { assertRateLimit } = require('../_lib/rateLimit');
-const {
   WEB_PUSH_COLLECTION,
   getVapidConfig,
   hashEndpoint,
   normalizeWebPushSubscription,
 } = require('../_lib/webPush');
+
+const DEFAULT_ALLOWED_ORIGINS = [
+  'http://localhost:19006',
+  'http://127.0.0.1:19006',
+  'http://localhost:3064',
+  'http://127.0.0.1:3064',
+  'https://shii-edu.vercel.app',
+];
+
+const createRequestId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+const parseAllowedOrigins = () => {
+  const configured = process.env.APP_ORIGIN || '';
+  return [...DEFAULT_ALLOWED_ORIGINS, ...configured.split(',')]
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+    .filter((origin, index, origins) => origins.indexOf(origin) === index);
+};
+
+const setCorsHeaders = (req, res) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = parseAllowedOrigins();
+  const isVercelPreview = origin && /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
+
+  if (origin && (allowedOrigins.includes(origin) || isVercelPreview)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+};
+
+const handleOptions = (req, res) => {
+  setCorsHeaders(req, res);
+  if (req.method === 'OPTIONS') {
+    res.status(204).end();
+    return true;
+  }
+
+  return false;
+};
+
+const getFirebaseHelpers = () => require('../_lib/firebaseAdmin');
+const getRateLimitHelpers = () => require('../_lib/rateLimit');
 
 const PushSubscriptionSchema = z.object({
   endpoint: z.string().trim().url().max(2048),
@@ -50,6 +84,12 @@ const handleConfig = (res) => {
 };
 
 const handleRegister = async (req, res, body) => {
+  const {
+    admin,
+    authenticateUserProfile,
+    getAdminServices,
+  } = getFirebaseHelpers();
+  const { assertRateLimit } = getRateLimitHelpers();
   const actor = await authenticateUserProfile(req, [
     'admin',
     'driver',
@@ -111,12 +151,14 @@ module.exports = async (req, res) => {
       return;
     }
 
+    const { getBody } = getFirebaseHelpers();
     const body = await getBody(req);
     const action = String(body?.action || '').trim();
     if (action === 'register') return await handleRegister(req, res, body);
 
     res.status(400).json({ success: false, error: 'Unknown web push action.', requestId });
   } catch (error) {
+    const { sendError } = getFirebaseHelpers();
     sendError(res, error, 'Web push request failed.', requestId);
   }
 };
