@@ -3,7 +3,7 @@ import { authenticatedFetch } from './apiClient';
 
 const ensureUser = () => {
   if (!auth.currentUser) {
-    throw new Error('You must be signed in to use Edu-Hub AI.');
+    throw new Error('You must be signed in to use Shii-Edu AI.');
   }
 
   return auth.currentUser;

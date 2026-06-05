@@ -22,6 +22,8 @@ const {
   callSupabaseTenantBridge,
   stripInstituteIdForTenantActor,
 } = require('../../_lib/supabaseTenantBridge');
+const { assertFeatureEnabled } = require('../../_lib/featureEntitlements');
+const { assertRateLimit } = require('../../_lib/rateLimit');
 
 const MAX_IMPORT_ROWS = 500;
 const AUTH_CONCURRENCY = 10;
@@ -155,6 +157,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const actor = await authenticateUserProfile(req, ['admin', 'superadmin']);
+    assertRateLimit({ actor, req, scope: 'admin:user-bulk-import', limit: 6, windowMs: 5 * 60 * 1000 });
     const { firestore } = getAdminServices();
     const body = await getBody(req);
     const instituteId = assertInstituteId(body.instituteId || actor.profile.instituteId);
@@ -180,6 +183,7 @@ module.exports = async function handler(req, res) {
       error.statusCode = 404;
       throw error;
     }
+    await assertFeatureEnabled({ firestore, instituteId, featureKey: 'people' });
 
     const instituteData = instituteSnap.data() || {};
     const institutionType = normalizeText(instituteData.institutionType || instituteData.type || 'SCHOOL').toUpperCase();

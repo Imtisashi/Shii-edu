@@ -11,6 +11,7 @@ const {
   setCorsHeaders,
 } = require('../_lib/firebaseAdmin');
 const { getStripeClient, trustedReturnUrl } = require('../_lib/stripe');
+const { assertRateLimit } = require('../_lib/rateLimit');
 
 const RequestSchema = z.object({
   idempotencyKey: z.string().trim().min(8).max(180).optional(),
@@ -49,6 +50,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const actor = await authenticateUserProfile(req, ['student', 'parent']);
+    assertRateLimit({ actor, req, scope: 'payments:create-intent', limit: 12, windowMs: 60 * 1000 });
     const { firestore } = getAdminServices();
     const body = parseBody(await getBody(req));
     const invoiceRef = firestore.collection('feeInvoices').doc(body.invoiceId);
@@ -77,11 +79,11 @@ module.exports = async function handler(req, res) {
     const amountMinor = Number(invoice.balanceAmountMinor || Math.round(Number(invoice.balanceAmount || invoice.amount || 0) * 100));
     const currency = String(invoice.currency || 'INR').toLowerCase();
     const idempotencyKey = body.idempotencyKey
-      ? `edu-shii:${body.idempotencyKey}`
-      : `edu-shii:${invoiceSnap.id}:${amountMinor}`;
+      ? `shii-edu:${body.idempotencyKey}`
+      : `shii-edu:${invoiceSnap.id}:${amountMinor}`;
     const orderId = `stripe_${crypto.createHash('sha256').update(idempotencyKey).digest('hex').slice(0, 32)}`;
     const metadata = {
-      app: 'edu-shii',
+      app: 'shii-edu',
       orderId,
       invoiceId: invoiceSnap.id,
       instituteId: invoice.instituteId,

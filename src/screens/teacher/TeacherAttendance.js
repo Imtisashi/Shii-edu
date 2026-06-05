@@ -425,7 +425,7 @@ export default function TeacherAttendance() {
     <ScreenErrorBoundary
       screenName="TeacherAttendance"
       title="Attendance is recovering"
-      message="The attendance roster hit a rendering problem. The rest of Edu-Hub is still safe."
+      message="The attendance roster hit a rendering problem. The rest of Shii-Edu is still safe."
     >
       <TeacherAttendanceContent />
     </ScreenErrorBoundary>

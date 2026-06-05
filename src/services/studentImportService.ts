@@ -128,8 +128,8 @@ export const downloadStudentImportTemplate = async (
 ) => {
   const csv = buildCsv(institutionType);
   const fileName = institutionType === 'COLLEGE'
-    ? 'edu-hub-college-student-import-template.csv'
-    : 'edu-hub-school-student-import-template.csv';
+    ? 'shii-edu-college-student-import-template.csv'
+    : 'shii-edu-school-student-import-template.csv';
 
   if (Platform.OS === 'web') {
     downloadOnWeb(csv, fileName);

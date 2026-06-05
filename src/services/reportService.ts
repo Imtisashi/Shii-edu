@@ -90,7 +90,7 @@ const buildDocument = ({
 }): string => {
   const primary = brand.primaryColor || '#1D4ED8';
   const accent = brand.accentColor || '#0EA5E9';
-  const instituteName = escapeHtml(brand.name || 'Edu-Hub Institute');
+  const instituteName = escapeHtml(brand.name || 'Shii-Edu Institute');
   const logo = brand.logoUrl
     ? `<img class="logo" src="${escapeHtml(brand.logoUrl)}" alt="${instituteName} logo" />`
     : `<div class="logo-fallback">${escapeHtml((brand.name || 'EH').slice(0, 2).toUpperCase())}</div>`;
@@ -176,7 +176,7 @@ const buildDocument = ({
       </div>
     </div>
     ${body}
-    <div class="footer">Generated securely by Edu-Hub on ${escapeHtml(new Date().toLocaleString())}</div>
+    <div class="footer">Generated securely by Shii-Edu on ${escapeHtml(new Date().toLocaleString())}</div>
   </body>
 </html>`;
 };

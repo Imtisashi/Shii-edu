@@ -5,21 +5,30 @@ type TenantAction =
   | 'createAttendanceRecords'
   | 'createGalleryItem'
   | 'createGrade'
+  | 'createNotification'
   | 'createRoutine'
   | 'createProfile'
   | 'createProfiles'
   | 'createPyq'
+  | 'deleteNotification'
   | 'deleteGalleryItem'
   | 'deletePyq'
   | 'deleteRoutine'
+  | 'getOfficeHours'
   | 'listAssignments'
   | 'listAttendance'
+  | 'listConversationMessages'
+  | 'listConversations'
   | 'listGallery'
   | 'listGrades'
+  | 'listNotifications'
   | 'listPyqs'
   | 'listRoutines'
   | 'listUsers'
+  | 'markAllNotificationsRead'
+  | 'markNotificationRead'
   | 'saveBranding'
+  | 'saveInstituteFeatures'
   | 'updateOwnProfile'
   | 'updateProfileMedia';
 
@@ -277,6 +286,88 @@ export const deleteSupabaseGalleryItem = (
     action: 'deleteGalleryItem',
     currentUser,
     payload: { id },
+  })
+);
+
+export const listSupabaseNotifications = (
+  currentUser: User | null | undefined,
+  limit = 50
+) => (
+  callSupabaseTenantData<{ notifications: unknown[] }>({
+    action: 'listNotifications',
+    currentUser,
+    payload: { limit },
+  })
+);
+
+export const markSupabaseNotificationRead = (
+  currentUser: User | null | undefined,
+  id: string
+) => (
+  callSupabaseTenantData({
+    action: 'markNotificationRead',
+    currentUser,
+    payload: { id },
+  })
+);
+
+export const markAllSupabaseNotificationsRead = (
+  currentUser: User | null | undefined
+) => (
+  callSupabaseTenantData({
+    action: 'markAllNotificationsRead',
+    currentUser,
+  })
+);
+
+export const deleteSupabaseNotification = (
+  currentUser: User | null | undefined,
+  id: string
+) => (
+  callSupabaseTenantData({
+    action: 'deleteNotification',
+    currentUser,
+    payload: { id },
+  })
+);
+
+export const createSupabaseNotification = (
+  currentUser: User | null | undefined,
+  payload: TenantPayload
+) => (
+  callSupabaseTenantData<{ notification: unknown }>({
+    action: 'createNotification',
+    currentUser,
+    payload,
+  })
+);
+
+export const listSupabaseConversations = (
+  currentUser: User | null | undefined
+) => (
+  callSupabaseTenantData<{ conversations: unknown[] }>({
+    action: 'listConversations',
+    currentUser,
+  })
+);
+
+export const listSupabaseConversationMessages = (
+  currentUser: User | null | undefined,
+  conversationId: string
+) => (
+  callSupabaseTenantData<{ messages: unknown[] }>({
+    action: 'listConversationMessages',
+    currentUser,
+    payload: { conversationId },
+  })
+);
+
+export const getSupabaseOfficeHours = (
+  currentUser: User | null | undefined
+) => (
+  callSupabaseTenantData<{ officeHours: unknown | null }>({
+    action: 'getOfficeHours',
+    currentUser,
   })
 );
 

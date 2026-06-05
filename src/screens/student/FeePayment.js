@@ -148,10 +148,16 @@ export default function FeePayment() {
     [invoices]
   );
 
-  if (!feeData) return <LoadingState />;
+  if (!feeData) {
+    return (
+      <StudentScreenScaffold style={styles.scaffoldContent} title="Fees">
+        <LoadingState />
+      </StudentScreenScaffold>
+    );
+  }
 
   return (
-    <StudentScreenScaffold accentVariant="bronze">
+    <StudentScreenScaffold accentVariant="bronze" style={styles.scaffoldContent} title="Fees">
       <ScreenIntro
         accentColor={colors.bronze}
         eyebrow="Finance ledger"
@@ -307,6 +313,9 @@ const styles = StyleSheet.create({
     height: 12,
     marginTop: 24,
     overflow: 'hidden',
+  },
+  scaffoldContent: {
+    flex: 1,
   },
   sectionTitle: {
     fontSize: 18,

@@ -2,6 +2,10 @@
 .env.*
 !.env.example
 !.env*.example
+.codex-context.md
+codex.md
+.ai-instructions/
+prompt-history.txt
 node_modules
 .expo
 web-build

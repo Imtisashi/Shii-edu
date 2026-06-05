@@ -2,19 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   addDoc,
   collection,
-  query,
-  where,
-  onSnapshot,
-  orderBy,
-  limit as limitQuery,
-  doc,
-  updateDoc,
-  arrayUnion,
-  writeBatch,
   serverTimestamp
 } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../../firebaseConfig';
+import {
+  listSupabaseNotifications,
+  markAllSupabaseNotificationsRead,
+  markSupabaseNotificationRead,
+} from './supabaseTenantDataService';
 
 /**
  * Custom hook for real-time notifications
@@ -31,8 +27,9 @@ export const useNotifications = ({ limit: limitCount = 50, onNotification, onErr
   const [error, setError] = useState(null);
 
   // Fetch notifications based on user role
-  const fetchNotifications = useCallback(() => {
+  const fetchNotifications = useCallback(async () => {
     if (!currentUser?.uid || !userData?.instituteId) {
+      setNotifications([]);
       setLoading(false);
       return;
     }
@@ -40,68 +37,26 @@ export const useNotifications = ({ limit: limitCount = 50, onNotification, onErr
     setLoading(true);
     setError(null);
 
-    let notificationsQuery;
-
-    // Base query for institute-specific notifications
-    const baseQuery = query(
-      collection(db, "notifications"),
-      where("instituteId", "==", userData.instituteId),
-      orderBy("createdAt", "desc")
-    );
-
-    // Role-specific filters
-    const notificationRole = ['student', 'teacher', 'admin'].includes(userData.role)
-      ? userData.role
-      : 'student';
-
-    if (userData.role === 'superadmin') {
-      notificationsQuery = baseQuery;
-    } else {
-      notificationsQuery = query(
-        baseQuery,
-        where("targetRoles", "array-contains-any", [notificationRole, "all"])
-      );
-    }
-
-    // Apply limit if specified
-    const finalQuery = limitCount ? query(notificationsQuery, limitQuery(limitCount)) : notificationsQuery;
-
-    // Set up real-time listener
-    const unsubscribe = onSnapshot(
-      finalQuery,
-      (snapshot) => {
-        const newNotifications = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-
-        setNotifications(newNotifications);
-        setLoading(false);
-
-        // Call onNotification callback if provided and we have new notifications
-        if (onNotification && newNotifications.length > 0) {
-          onNotification(newNotifications[0]); // Pass the most recent notification
-        }
-      },
-      (err) => {
-        console.warn('Notifications are unavailable for this session; showing an empty inbox.', err?.code || err?.message || '');
-        setNotifications([]);
-        setError(null);
-        setLoading(false);
+    try {
+      const result = await listSupabaseNotifications(currentUser, limitCount);
+      const newNotifications = Array.isArray(result?.notifications) ? result.notifications : [];
+      setNotifications(newNotifications);
+      if (onNotification && newNotifications.length > 0) {
+        onNotification(newNotifications[0]);
       }
-    );
-
-    // Return cleanup function
-    return () => unsubscribe();
-  }, [currentUser, userData, limitCount, onNotification]);
+    } catch (err) {
+      setNotifications([]);
+      setError(null);
+      if (onError) onError(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUser, userData, limitCount, onNotification, onError]);
 
   // Mark notification as read
   const markAsRead = useCallback(async (notificationId) => {
     try {
-      const notificationRef = doc(db, "notifications", notificationId);
-      await updateDoc(notificationRef, {
-        readBy: arrayUnion(currentUser.uid)
-      });
+      await markSupabaseNotificationRead(currentUser, notificationId);
 
       // Update local state
       setNotifications(prev =>
@@ -112,7 +67,6 @@ export const useNotifications = ({ limit: limitCount = 50, onNotification, onErr
         )
       );
     } catch (err) {
-      console.error('Error marking notification as read:', err);
       if (onError) onError(err);
     }
   }, [currentUser, onError]);
@@ -120,20 +74,7 @@ export const useNotifications = ({ limit: limitCount = 50, onNotification, onErr
   // Clear all notifications (for user)
   const clearNotifications = useCallback(async () => {
     try {
-      const userNotifications = notifications.filter(notif =>
-        notif.targetRoles?.includes(userData.role) ||
-        notif.targetRoles?.includes('all')
-      );
-
-      const batch = writeBatch(db);
-      userNotifications.forEach(notif => {
-        const notifRef = doc(db, "notifications", notif.id);
-        batch.update(notifRef, {
-          readBy: arrayUnion(currentUser.uid)
-        });
-      });
-
-      await batch.commit();
+      await markAllSupabaseNotificationsRead(currentUser);
 
       // Update local state
       setNotifications(prev =>
@@ -143,15 +84,22 @@ export const useNotifications = ({ limit: limitCount = 50, onNotification, onErr
         }))
       );
     } catch (err) {
-      console.error('Error clearing notifications:', err);
       if (onError) onError(err);
     }
-  }, [currentUser, notifications, userData, onError]);
+  }, [currentUser, onError]);
 
   // Effect to set up/unsubscribe listener
   useEffect(() => {
-    const unsubscribe = fetchNotifications();
-    return unsubscribe;
+    let active = true;
+    const load = async () => {
+      if (active) await fetchNotifications();
+    };
+    load();
+    const intervalId = setInterval(load, 45000);
+    return () => {
+      active = false;
+      clearInterval(intervalId);
+    };
   }, [fetchNotifications]);
 
   return {
@@ -182,6 +130,7 @@ export const createNotification = async (notificationData) => {
       message: message.trim(),
       type: type || 'info',
       targetRoles: targetRoles || ['student'], // Default to student
+      recipientUids: Array.isArray(notificationData.recipientUids) ? notificationData.recipientUids : [],
       instituteId,
       relatedId: relatedId || null,
       relatedType: relatedType || null,

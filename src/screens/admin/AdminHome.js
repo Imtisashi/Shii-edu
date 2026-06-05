@@ -2,12 +2,15 @@ import React, { useMemo } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import HomeDashboardScreen from '../home/HomeDashboardScreen';
 import { useAuth } from '../../contexts/AuthContext';
+import { useInstitution } from '../../contexts/InstitutionContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
+import { filterByFeatureAccess, isFeatureEnabled } from '../../constants/featureEntitlements';
 import { openNearestDrawer } from '../../navigation/openNearestDrawer';
 
 export default function AdminHome() {
   const navigation = useNavigation();
   const { brand, colors } = useRootLayout();
+  const { instituteData } = useInstitution();
   const { logout, notifications, userData } = useAuth();
 
   const adminName = userData?.name || 'Administrator';
@@ -19,6 +22,7 @@ export default function AdminHome() {
   const actions = useMemo(() => [
     {
       color: '#2563EB',
+      featureKey: 'people',
       icon: 'people',
       key: 'users',
       onPress: () => navigation.navigate('Users'),
@@ -28,6 +32,7 @@ export default function AdminHome() {
     },
     {
       color: '#7C3AED',
+      featureKey: 'people',
       icon: 'briefcase',
       key: 'faculty',
       onPress: () => navigation.navigate('ManageTeachers'),
@@ -37,6 +42,7 @@ export default function AdminHome() {
     },
     {
       color: '#DC2626',
+      featureKey: 'routines',
       icon: 'calendar',
       key: 'routine',
       onPress: () => navigation.navigate('ManageRoutines'),
@@ -46,6 +52,7 @@ export default function AdminHome() {
     },
     {
       color: '#047857',
+      featureKey: 'finance',
       icon: 'wallet',
       key: 'ledger',
       onPress: () => navigation.navigate('Ledger'),
@@ -55,6 +62,7 @@ export default function AdminHome() {
     },
     {
       color: '#B45309',
+      featureKey: 'notices',
       icon: 'megaphone',
       key: 'broadcasts',
       onPress: () => navigation.navigate('Broadcasts'),
@@ -64,6 +72,7 @@ export default function AdminHome() {
     },
     {
       color: '#2563EB',
+      featureKey: 'courses',
       icon: 'play-circle',
       key: 'courses',
       onPress: () => navigation.navigate('Courses'),
@@ -73,6 +82,7 @@ export default function AdminHome() {
     },
     {
       color: '#EA580C',
+      featureKey: 'media',
       icon: 'images',
       key: 'gallery',
       onPress: () => navigation.navigate('UploadGallery'),
@@ -82,6 +92,7 @@ export default function AdminHome() {
     },
     {
       color: '#DC2626',
+      featureKey: 'pyq',
       icon: 'document-attach',
       key: 'pyq',
       onPress: () => navigation.navigate('UploadPYQ'),
@@ -91,6 +102,7 @@ export default function AdminHome() {
     },
     {
       color: '#64748B',
+      featureKey: 'routines',
       icon: 'calendar-number',
       key: 'calendar',
       onPress: () => navigation.navigate('ManageHolidays'),
@@ -100,6 +112,7 @@ export default function AdminHome() {
     },
     {
       color: colors.accent,
+      featureKey: 'branding',
       icon: 'color-palette',
       key: 'branding',
       onPress: () => navigation.navigate('BrandingSettings'),
@@ -109,6 +122,7 @@ export default function AdminHome() {
     },
     {
       color: '#0369A1',
+      featureKey: 'reports',
       icon: 'print',
       key: 'reports',
       onPress: () => navigation.navigate('ReportsCenter'),
@@ -118,6 +132,7 @@ export default function AdminHome() {
     },
     {
       color: '#0F766E',
+      featureKey: 'messages',
       icon: 'chatbubbles',
       key: 'messages',
       onPress: () => navigation.navigate('CommunicationHub'),
@@ -127,6 +142,7 @@ export default function AdminHome() {
     },
     {
       color: '#16A34A',
+      featureKey: 'transport',
       icon: 'bus',
       key: 'fleet',
       onPress: () => navigation.navigate('FleetTracking'),
@@ -136,6 +152,7 @@ export default function AdminHome() {
     },
     {
       color: '#7C3AED',
+      featureKey: 'ai',
       icon: 'sparkles',
       key: 'ai',
       onPress: () => navigation.navigate('AICommandCenter'),
@@ -145,6 +162,7 @@ export default function AdminHome() {
     },
     {
       color: '#4F46E5',
+      featureKey: 'ai',
       icon: 'library',
       key: 'syllabus',
       onPress: () => navigation.navigate('SyllabusTutor'),
@@ -153,6 +171,10 @@ export default function AdminHome() {
       title: 'Syllabus AI',
     },
   ], [colors, navigation]);
+  const visibleActions = useMemo(
+    () => filterByFeatureAccess(actions, instituteData),
+    [actions, instituteData]
+  );
 
   const notices = useMemo(
     () => (notifications || []).slice(0, 3).map((item, index) => ({
@@ -172,14 +194,16 @@ export default function AdminHome() {
       notices={notices}
       onLogout={logout}
       onOpenMenu={() => openNearestDrawer(navigation)}
-      onOpenNotifications={() => navigation.navigate('Broadcasts')}
-      primaryActions={actions.slice(0, 4)}
+      onOpenNotifications={() => {
+        if (isFeatureEnabled(instituteData, 'notices')) navigation.navigate('Broadcasts');
+      }}
+      primaryActions={visibleActions.slice(0, 4)}
       profileMeta={[
         'Institute admin',
         isSchool ? 'School mode' : 'College mode',
         userData?.instituteId ? `Institute ${userData.instituteId}` : 'Institute pending',
       ]}
-      secondaryActions={actions.slice(4)}
+      secondaryActions={visibleActions.slice(4)}
       title="Dashboard"
       unreadCount={(notifications || []).length}
     />

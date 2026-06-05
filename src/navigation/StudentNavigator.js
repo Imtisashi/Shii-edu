@@ -7,7 +7,9 @@ import { sharedStackScreenOptions, sharedTabScreenOptions } from './animatedScre
 import EdgeDrawerButton from '../components/navigation/EdgeDrawerButton';
 import EnterpriseTabBar from '../components/navigation/EnterpriseTabBar';
 import RoleDrawerContent from '../components/navigation/RoleDrawerContent';
+import { useInstitution } from '../contexts/InstitutionContext';
 import { useRootLayout } from '../contexts/RootLayoutContext';
+import { isFeatureEnabled } from '../constants/featureEntitlements';
 
 // Import all Student Screens
 import StudentHome from '../screens/student/StudentHome';
@@ -31,9 +33,24 @@ import AccountSettingsScreen from '../screens/shared/AccountSettingsScreen';
 const Drawer = createDrawerNavigator();
 const Tab = createBottomTabNavigator();
 
+const studentDrawerLinks = [
+  { featureKey: 'media', icon: 'images-outline', label: 'Gallery', routeName: 'Gallery' },
+  { featureKey: 'attendance', icon: 'bar-chart-outline', label: 'Attendance', routeName: 'Attendance' },
+  { featureKey: 'courses', icon: 'play-circle-outline', label: 'Courses', routeName: 'Courses' },
+  { featureKey: 'grades', icon: 'school-outline', label: 'Grades', routeName: 'Grades' },
+  { featureKey: 'routines', icon: 'calendar-outline', label: 'Routine', routeName: 'Routine' },
+  { featureKey: 'pyq', icon: 'document-text-outline', label: 'PYQs', routeName: 'PYQs' },
+  { featureKey: 'finance', icon: 'wallet-outline', label: 'Fee Payment', routeName: 'Fee Payment' },
+  { featureKey: 'notices', icon: 'notifications-outline', label: 'Notifications', routeName: 'Notifications' },
+  { featureKey: 'messages', icon: 'chatbubbles-outline', label: 'Messages', routeName: 'CommunicationHub' },
+  { featureKey: 'transport', icon: 'bus-outline', label: 'Live Fleet', routeName: 'Live Fleet' },
+  { featureKey: 'ai', icon: 'sparkles-outline', label: 'Syllabus Tutor', routeName: 'SyllabusTutor' },
+];
+
 // --- THE BOTTOM TAB NAVIGATOR (for quick access) ---
 function BottomTabNavigator() {
   const { colors } = useRootLayout();
+  const { instituteData } = useInstitution();
 
   return (
     <Tab.Navigator
@@ -55,9 +72,9 @@ function BottomTabNavigator() {
       })}
     >
       <Tab.Screen name="Home" component={StudentHome} />
-      <Tab.Screen name="Tasks" component={Assignments} />
-      <Tab.Screen name="Notices" component={Notices} />
-      <Tab.Screen name="Faculty" component={TeachersProfile} />
+      {isFeatureEnabled(instituteData, 'assignments') ? <Tab.Screen name="Tasks" component={Assignments} /> : null}
+      {isFeatureEnabled(instituteData, 'notices') ? <Tab.Screen name="Notices" component={Notices} /> : null}
+      {isFeatureEnabled(instituteData, 'people') ? <Tab.Screen name="Faculty" component={TeachersProfile} /> : null}
     </Tab.Navigator>
   );
 }
@@ -65,15 +82,17 @@ function BottomTabNavigator() {
 // --- THE MAIN DRAWER NAVIGATOR ---
 export default function StudentNavigator() {
   const { colors } = useRootLayout();
+  const { instituteData } = useInstitution();
 
   return (
     <Drawer.Navigator
       drawerContent={(props) => (
         <RoleDrawerContent
           {...props}
-          dashboardRoute="Home"
+          dashboardRoute="StudentDashboard"
           profileRoute="StudentProfile"
           settingsRoute="StudentSettings"
+          workspaceLinks={studentDrawerLinks}
         />
       )}
       screenOptions={({ navigation }) => ({
@@ -102,7 +121,7 @@ export default function StudentNavigator() {
       })}
     >
       {/* Home screen is the bottom tab navigator */}
-      <Drawer.Screen name="Home" component={BottomTabNavigator} options={{
+      <Drawer.Screen name="StudentDashboard" component={BottomTabNavigator} options={{
         drawerLabel: 'Home',
         headerShown: false,
         drawerIcon: ({ focused, color }) => (
@@ -111,83 +130,83 @@ export default function StudentNavigator() {
       }} />
 
       {/* Other screens accessible from the drawer */}
-      <Drawer.Screen name="Gallery" component={GalleryView} options={{
+      {isFeatureEnabled(instituteData, 'media') ? <Drawer.Screen name="Gallery" component={GalleryView} options={{
         drawerLabel: 'Gallery',
         drawerIcon: ({ focused, color }) => (
           <Ionicons name={focused ? 'images' : 'images-outline'} size={24} color={color} />
         )
-      }} />
+      }} /> : null}
 
-      <Drawer.Screen name="Attendance" component={AttendanceView} options={{
+      {isFeatureEnabled(instituteData, 'attendance') ? <Drawer.Screen name="Attendance" component={AttendanceView} options={{
         drawerLabel: 'Attendance',
         drawerIcon: ({ focused, color }) => (
           <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} size={24} color={color} />
         )
-      }} />
+      }} /> : null}
 
-      <Drawer.Screen name="Courses" component={CoursePlayerScreen} options={{
+      {isFeatureEnabled(instituteData, 'courses') ? <Drawer.Screen name="Courses" component={CoursePlayerScreen} options={{
         drawerLabel: 'Courses',
         drawerIcon: ({ focused, color }) => (
           <Ionicons name={focused ? 'play-circle' : 'play-circle-outline'} size={24} color={color} />
         )
-      }} />
+      }} /> : null}
 
-      <Drawer.Screen name="Grades" component={Grades} options={{
+      {isFeatureEnabled(instituteData, 'grades') ? <Drawer.Screen name="Grades" component={Grades} options={{
         drawerLabel: 'Grades',
         drawerIcon: ({ focused, color }) => (
           <Ionicons name={focused ? 'school' : 'school-outline'} size={24} color={color} />
         )
-      }} />
+      }} /> : null}
 
-      <Drawer.Screen name="Routine" component={Routine} options={{
+      {isFeatureEnabled(instituteData, 'routines') ? <Drawer.Screen name="Routine" component={Routine} options={{
         drawerLabel: 'Routine',
         drawerIcon: ({ focused, color }) => (
           <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
         )
-      }} />
+      }} /> : null}
 
-      <Drawer.Screen name="PYQs" component={PYQView} options={{
+      {isFeatureEnabled(instituteData, 'pyq') ? <Drawer.Screen name="PYQs" component={PYQView} options={{
         drawerLabel: 'PYQs',
         drawerIcon: ({ focused, color }) => (
           <Ionicons name={focused ? 'document-text' : 'document-text-outline'} size={24} color={color} />
         )
-      }} />
+      }} /> : null}
 
-      <Drawer.Screen name="Fee Payment" component={FeePayment} options={{
+      {isFeatureEnabled(instituteData, 'finance') ? <Drawer.Screen name="Fee Payment" component={FeePayment} options={{
         drawerLabel: 'Fee Payment',
         drawerIcon: ({ focused, color }) => (
           <Ionicons name={focused ? 'wallet' : 'wallet-outline'} size={24} color={color} />
         )
-      }} />
+      }} /> : null}
 
       {/* We can add more screens as needed */}
-      <Drawer.Screen name="Notifications" component={StudentNotifications} options={{
+      {isFeatureEnabled(instituteData, 'notices') ? <Drawer.Screen name="Notifications" component={StudentNotifications} options={{
         drawerLabel: 'Notifications',
         drawerIcon: ({ focused, color }) => (
           <Ionicons name={focused ? 'notifications' : 'notifications-outline'} size={24} color={color} />
         )
-      }} />
+      }} /> : null}
 
-      <Drawer.Screen name="CommunicationHub" component={CommunicationHub} options={{
+      {isFeatureEnabled(instituteData, 'messages') ? <Drawer.Screen name="CommunicationHub" component={CommunicationHub} options={{
         drawerLabel: 'Messages',
         drawerIcon: ({ focused, color }) => (
           <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} size={24} color={color} />
         )
-      }} />
+      }} /> : null}
 
-      <Drawer.Screen name="Live Fleet" component={FleetTrackingScreen} options={{
+      {isFeatureEnabled(instituteData, 'transport') ? <Drawer.Screen name="Live Fleet" component={FleetTrackingScreen} options={{
         drawerLabel: 'Live Fleet',
         drawerIcon: ({ focused, color }) => (
           <Ionicons name={focused ? 'bus' : 'bus-outline'} size={24} color={color} />
         )
-      }} />
+      }} /> : null}
 
-      <Drawer.Screen name="SyllabusTutor" component={SyllabusTutor} options={{
+      {isFeatureEnabled(instituteData, 'ai') ? <Drawer.Screen name="SyllabusTutor" component={SyllabusTutor} options={{
         drawerLabel: 'Syllabus Tutor',
         drawerIcon: ({ focused, color }) => (
           <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={24} color={color} />
         )
-      }} />
+      }} /> : null}
       <Drawer.Screen
         name="StudentProfile"
         component={AccountProfileScreen}

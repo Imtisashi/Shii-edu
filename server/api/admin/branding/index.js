@@ -14,6 +14,8 @@ const {
   createBrandingPayload,
   normalizeInstitutionType,
 } = require('../../_lib/institutionBranding');
+const { assertFeatureEnabled } = require('../../_lib/featureEntitlements');
+const { assertRateLimit } = require('../../_lib/rateLimit');
 
 const BrandingRequestSchema = z.object({
   instituteId: z.string().trim().min(1).max(160).optional(),
@@ -90,6 +92,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const actor = await authenticateUserProfile(req, ['admin', 'superadmin']);
+    assertRateLimit({ actor, req, scope: 'admin:branding', limit: 12, windowMs: 60 * 1000 });
     const { firestore } = getAdminServices();
     const body = parseRequest(await getBody(req));
     const actorInstituteId = String(actor.profile?.instituteId || '').trim();
@@ -115,6 +118,7 @@ module.exports = async function handler(req, res) {
       error.statusCode = 404;
       throw error;
     }
+    await assertFeatureEnabled({ firestore, instituteId, featureKey: 'branding' });
 
     const instituteData = instituteSnap.data() || {};
     const institutionType = normalizeInstitutionType(

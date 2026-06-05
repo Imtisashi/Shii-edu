@@ -5,6 +5,7 @@ import { RosterSkeleton } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
 import { fetchFacultyDirectory } from '../../services/facultyDirectoryService';
+import DynamicHeader from '../../components/DynamicHeader';
 
 const getInitial = (name) => String(name || 'F').trim().charAt(0).toUpperCase() || 'F';
 
@@ -142,12 +143,13 @@ export default function TeachersProfile() {
     maxWidth: isDesktop ? maxContentWidth : undefined,
     paddingBottom: Math.max(insets.bottom, 10) + 104,
     paddingHorizontal: spacing.pageX,
-    paddingTop: Math.max(insets.top, 12) + 26,
+    paddingTop: 18,
     width: '100%',
-  }), [insets.bottom, insets.top, isDesktop, maxContentWidth, spacing.pageX]);
+  }), [insets.bottom, isDesktop, maxContentWidth, spacing.pageX]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.page }]}>
+      <DynamicHeader title="Faculty" />
       {loading ? (
         <RosterSkeleton rowCount={5} showFilters={false} />
       ) : (

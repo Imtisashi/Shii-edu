@@ -32,7 +32,7 @@ export const registerDevicePushToken = async ({
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('edu-hub-default', {
       importance: Notifications.AndroidImportance.HIGH,
-      name: 'Edu-Hub notifications',
+      name: 'Shii-Edu notifications',
       vibrationPattern: [0, 250, 250, 250],
     });
   }

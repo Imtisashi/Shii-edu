@@ -13,6 +13,8 @@ const { assertUserId, toIdentifierKey } = require('../_lib/loginIdentifiers');
 const { sendExpoPushToUsers } = require('../_lib/expoPush');
 const { generateStructured, getGeminiConfig } = require('../_lib/gemini');
 const { assertNoPromptInjection } = require('../_lib/promptSafety');
+const { assertFeatureEnabled } = require('../_lib/featureEntitlements');
+const { assertRateLimit } = require('../_lib/rateLimit');
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const RequestSchema = z.object({
@@ -101,6 +103,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const actor = await authenticateUserProfile(req, ['admin']);
+    assertRateLimit({ actor, req, scope: 'ai:substitute-schedule', limit: 12, windowMs: 60 * 1000 });
     const instituteId = actor.profile?.instituteId;
     if (!instituteId) {
       const error = new Error('Your profile is not linked to an institute.');
@@ -110,6 +113,7 @@ module.exports = async function handler(req, res) {
     const body = parseBody(await getBody(req));
     assertNoPromptInjection(body.reason, 'Substitute scheduling reason');
     const { firestore } = getAdminServices();
+    await assertFeatureEnabled({ firestore, instituteId, featureKey: 'ai' });
     const teacherSnapshot = await firestore
       .collection('users')
       .where('instituteId', '==', instituteId)
@@ -302,7 +306,7 @@ module.exports = async function handler(req, res) {
       instituteId,
       recipientUids: [...recipientUids],
       title: 'Substitute class assigned',
-      body: `You have a substitute class on ${scheduleDay}. Open Edu-Hub for the schedule.`,
+      body: `You have a substitute class on ${scheduleDay}. Open Shii-Edu for the schedule.`,
       data: { type: 'substitute_assignment', date: body.date },
     }).catch((error) => console.warn('Substitute assignment push failed:', error));
 

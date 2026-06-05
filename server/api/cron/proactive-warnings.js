@@ -164,7 +164,7 @@ module.exports = async function handler(req, res) {
           recipientUids,
           relatedId: student.id,
           relatedType: warning.relatedType,
-          author: 'Edu-Hub Proactive Warnings',
+          author: 'Shii-Edu Proactive Warnings',
           data: {
             originalType: warning.relatedType,
             studentUid: student.id,

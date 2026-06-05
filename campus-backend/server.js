@@ -528,5 +528,5 @@ app.use((error, _req, res, _next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Edu-Hub backend running on port ${PORT}`);
+  console.log(`Shii-Edu backend running on port ${PORT}`);
 });

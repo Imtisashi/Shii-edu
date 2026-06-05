@@ -12,6 +12,7 @@ import { useSingleFlightAction } from '../../hooks/useSingleFlightAction';
 import { createUnifiedNotification } from '../../services/unifiedNotificationService';
 import ScreenErrorBoundary from '../../components/errors/ScreenErrorBoundary';
 import { createSupabaseAttendanceRecords, listSupabaseUsers } from '../../services/supabaseTenantDataService';
+import DynamicHeader from '../../components/DynamicHeader';
 
 const resolveStudentUid = (student = {}) => student.uid || student.authUid || student.id;
 const toDisplayText = (value, fallback = '') => (
@@ -251,98 +252,105 @@ function TakeAttendanceContent({ navigation }) {
   });
 
   if (loading) {
-    return <AttendanceSkeleton accent="violet" rowCount={5} />;
+    return (
+      <View style={styles.screen}>
+        <DynamicHeader title="Take Attendance" showBack />
+        <AttendanceSkeleton accent="violet" rowCount={5} />
+      </View>
+    );
   }
 
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          paddingBottom: Math.max(insets.bottom, 12) + 12,
-          paddingTop: Math.max(insets.top, 12) + 12,
-        },
-      ]}
-    >
-      <View style={styles.heroPanel}>
-        <Text style={styles.heroEyebrow}>Attendance session</Text>
-        <Text style={styles.heroTitle}>Take Attendance</Text>
-        <Text style={styles.heroCopy}>Tap a student row to toggle present or absent, then submit the session.</Text>
-      </View>
-      {errorMessage ? (
-        <View style={styles.warningCard}>
-          <Text style={styles.warningText}>{errorMessage}</Text>
+    <View style={styles.screen}>
+      <DynamicHeader title="Take Attendance" showBack />
+      <View
+        style={[
+          styles.container,
+          {
+            paddingBottom: Math.max(insets.bottom, 12) + 12,
+          },
+        ]}
+      >
+        <View style={styles.heroPanel}>
+          <Text style={styles.heroEyebrow}>Attendance session</Text>
+          <Text style={styles.heroTitle}>Take Attendance</Text>
+          <Text style={styles.heroCopy}>Tap a student row to toggle present or absent, then submit the session.</Text>
         </View>
-      ) : null}
+        {errorMessage ? (
+          <View style={styles.warningCard}>
+            <Text style={styles.warningText}>{errorMessage}</Text>
+          </View>
+        ) : null}
 
-      {instType === 'college' && (
-        <View style={styles.collegeHeader}>
-          <Text style={styles.label}>Select Subject:</Text>
-          <View style={styles.subjectRow}>
-            {SUBJECTS.map((sub) => (
-              <TouchableOpacity 
-                accessibilityLabel={`Select ${sub} subject`}
+        {instType === 'college' && (
+          <View style={styles.collegeHeader}>
+            <Text style={styles.label}>Select Subject:</Text>
+            <View style={styles.subjectRow}>
+              {SUBJECTS.map((sub) => (
+                <TouchableOpacity
+                  accessibilityLabel={`Select ${sub} subject`}
+                  accessibilityRole="button"
+                  key={sub}
+                  style={[styles.chip, selectedSubject === sub && styles.activeChip]}
+                  onPress={() => {
+                    setSelectedSubject(sub);
+                  }}
+                  disabled={isSubmitting}
+                >
+                  <Text style={[styles.chipText, selectedSubject === sub && styles.activeChipText]}>{sub}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
+        <FlatList
+          data={safeStudents}
+          keyExtractor={(item, index) => String(item?.id || resolveStudentUid(item) || index)}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>No students found</Text>
+              <Text style={styles.emptyText}>Student profiles will appear here when they are added to this institute.</Text>
+            </View>
+          }
+          renderItem={({ item }) => {
+            const studentKey = String(item?.id || resolveStudentUid(item) || '');
+            const isPresent = Boolean(safeAttendance[studentKey]);
+
+            return (
+              <TouchableOpacity
+                accessibilityLabel={`Mark ${toDisplayText(item?.name, 'student')} ${isPresent ? 'absent' : 'present'}`}
                 accessibilityRole="button"
-                key={sub} 
-                style={[styles.chip, selectedSubject === sub && styles.activeChip]}
+                style={[styles.card, !isPresent && styles.absent]}
                 onPress={() => {
-                  setSelectedSubject(sub);
+                  if (!studentKey) return;
+                  setAttendance((previous) => ({ ...previous, [studentKey]: !previous?.[studentKey] }));
                 }}
                 disabled={isSubmitting}
               >
-                <Text style={[styles.chipText, selectedSubject === sub && styles.activeChipText]}>{sub}</Text>
+                <Text numberOfLines={1} style={styles.studentName}>{toDisplayText(item?.name, 'Unnamed Student')}</Text>
+                <Ionicons name={isPresent ? "checkmark-circle" : "close-circle"} size={24} color={isPresent ? "#34D399" : "#F87171"} />
               </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      )}
+            );
+          }}
+          contentContainerStyle={styles.listContent}
+          initialNumToRender={12}
+          maxToRenderPerBatch={12}
+          removeClippedSubviews={Platform.OS !== 'web'}
+          showsVerticalScrollIndicator={false}
+          windowSize={7}
+        />
 
-      <FlatList
-        data={safeStudents}
-        keyExtractor={(item, index) => String(item?.id || resolveStudentUid(item) || index)}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No students found</Text>
-            <Text style={styles.emptyText}>Student profiles will appear here when they are added to this institute.</Text>
-          </View>
-        }
-        renderItem={({ item }) => {
-          const studentKey = String(item?.id || resolveStudentUid(item) || '');
-          const isPresent = Boolean(safeAttendance[studentKey]);
-
-          return (
-            <TouchableOpacity
-              accessibilityLabel={`Mark ${toDisplayText(item?.name, 'student')} ${isPresent ? 'absent' : 'present'}`}
-              accessibilityRole="button"
-              style={[styles.card, !isPresent && styles.absent]}
-              onPress={() => {
-                if (!studentKey) return;
-                setAttendance((previous) => ({ ...previous, [studentKey]: !previous?.[studentKey] }));
-              }}
-              disabled={isSubmitting}
-            >
-              <Text numberOfLines={1} style={styles.studentName}>{toDisplayText(item?.name, 'Unnamed Student')}</Text>
-              <Ionicons name={isPresent ? "checkmark-circle" : "close-circle"} size={24} color={isPresent ? "#34D399" : "#F87171"} />
-            </TouchableOpacity>
-          );
-        }}
-        contentContainerStyle={styles.listContent}
-        initialNumToRender={12}
-        maxToRenderPerBatch={12}
-        removeClippedSubviews={Platform.OS !== 'web'}
-        showsVerticalScrollIndicator={false}
-        windowSize={7}
-      />
-
-      <TouchableOpacity
-        accessibilityLabel="Submit attendance"
-        accessibilityRole="button"
-        style={[styles.submitBtn, (isSubmitting || safeStudents.length === 0) && styles.submitBtnDisabled]}
-        onPress={handleSubmitAttendance}
-        disabled={isSubmitting || safeStudents.length === 0}
-      >
-        {isSubmitting ? <SmoothSpinner color="#FFFFFF" size={24} /> : <Text style={styles.submitText}>Submit Attendance</Text>}
-      </TouchableOpacity>
+        <TouchableOpacity
+          accessibilityLabel="Submit attendance"
+          accessibilityRole="button"
+          style={[styles.submitBtn, (isSubmitting || safeStudents.length === 0) && styles.submitBtnDisabled]}
+          onPress={handleSubmitAttendance}
+          disabled={isSubmitting || safeStudents.length === 0}
+        >
+          {isSubmitting ? <SmoothSpinner color="#FFFFFF" size={24} /> : <Text style={styles.submitText}>Submit Attendance</Text>}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -360,6 +368,7 @@ export default function TakeAttendance(props) {
 }
 
 const baseStyles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#020617', overflow: 'hidden' },
   container: { flex: 1, backgroundColor: '#020617', padding: 16 },
   heroPanel: { backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1, marginBottom: 12, padding: 16 },
   heroEyebrow: { color: '#8EA4C8', fontSize: 12, fontWeight: '700' },

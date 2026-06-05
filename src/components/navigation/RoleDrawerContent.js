@@ -4,7 +4,9 @@ import { DrawerContentScrollView, DrawerItem } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
 import BrandWordmark from '../BrandWordmark';
 import { useAuth } from '../../contexts/AuthContext';
+import { useInstitution } from '../../contexts/InstitutionContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
+import { filterByFeatureAccess } from '../../constants/featureEntitlements';
 
 export default function RoleDrawerContent({
   dashboardParams,
@@ -15,8 +17,10 @@ export default function RoleDrawerContent({
   ...props
 }) {
   const { logout, userData } = useAuth();
+  const { instituteData } = useInstitution();
   const { brand, colors, typography } = useRootLayout();
   const role = String(userData?.role || 'workspace').trim() || 'workspace';
+  const visibleWorkspaceLinks = filterByFeatureAccess(workspaceLinks, instituteData);
 
   const drawerItemStyle = {
     borderRadius: 8,
@@ -56,10 +60,10 @@ export default function RoleDrawerContent({
           onPress={() => navigateTo(dashboardRoute, dashboardParams)}
           style={drawerItemStyle}
         />
-        {workspaceLinks.length > 0 ? (
+        {visibleWorkspaceLinks.length > 0 ? (
           <View style={[styles.linkGroup, { borderTopColor: colors.hairline }]}>
             <Text style={[styles.groupLabel, { color: colors.muted }]}>Workspace tools</Text>
-            {workspaceLinks.map((item) => (
+            {visibleWorkspaceLinks.map((item) => (
               <DrawerItem
                 icon={({ size }) => <Ionicons name={item.icon || 'ellipse-outline'} color={colors.text} size={size} />}
                 key={`${item.label}-${item.routeName}`}

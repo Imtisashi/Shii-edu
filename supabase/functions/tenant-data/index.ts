@@ -5,15 +5,24 @@ import { importX509, jwtVerify } from "https://esm.sh/jose@5.9.6";
 type WorkspaceAction =
   | "createGalleryItem"
   | "createInstituteWithProfiles"
+  | "createNotification"
   | "createProfile"
   | "createProfiles"
   | "createPyq"
   | "deleteGalleryItem"
+  | "deleteNotification"
   | "deletePyq"
+  | "getOfficeHours"
+  | "listConversationMessages"
+  | "listConversations"
   | "listGallery"
+  | "listNotifications"
   | "listPyqs"
   | "listUsers"
+  | "markAllNotificationsRead"
+  | "markNotificationRead"
   | "saveBranding"
+  | "saveInstituteFeatures"
   | "updateOwnProfile"
   | "updateProfileMedia";
 
@@ -65,27 +74,50 @@ const BASE_CORS_HEADERS = {
 };
 
 const SELF_PROFILE_ACTIONS = new Set<WorkspaceAction>(["updateOwnProfile", "updateProfileMedia"]);
-const STUDENT_READ_ACTIONS = new Set<WorkspaceAction>(["listGallery", "listPyqs"]);
+const STUDENT_READ_ACTIONS = new Set<WorkspaceAction>([
+  "listConversationMessages",
+  "listConversations",
+  "listGallery",
+  "listNotifications",
+  "listPyqs",
+  "markAllNotificationsRead",
+  "markNotificationRead",
+]);
 const FACULTY_ACTIONS = new Set<WorkspaceAction>([
+  "getOfficeHours",
+  "listConversationMessages",
+  "listConversations",
   "createPyq",
   "deletePyq",
   "listGallery",
+  "listNotifications",
   "listPyqs",
   "listUsers",
+  "markAllNotificationsRead",
+  "markNotificationRead",
   "updateOwnProfile",
   "updateProfileMedia",
 ]);
 const ADMIN_ACTIONS = new Set<WorkspaceAction>([
   "createGalleryItem",
+  "createNotification",
   "createProfile",
   "createProfiles",
   "createPyq",
   "deleteGalleryItem",
+  "deleteNotification",
   "deletePyq",
+  "getOfficeHours",
+  "listConversationMessages",
+  "listConversations",
   "listGallery",
+  "listNotifications",
   "listPyqs",
   "listUsers",
+  "markAllNotificationsRead",
+  "markNotificationRead",
   "saveBranding",
+  "saveInstituteFeatures",
   "updateOwnProfile",
   "updateProfileMedia",
 ]);
@@ -462,6 +494,379 @@ const listUsers = async (supabase: ReturnType<typeof getSupabaseClient>, actor: 
   return { users: (data || []).map((row) => mapProfile(row as ProfileRow)) };
 };
 
+const textArray = (value: unknown): string[] => (
+  Array.isArray(value) ? compactStrings(value) : []
+);
+
+const isAdminRole = (role: string): boolean => role === "admin" || role === "superadmin";
+
+const appNotificationRole = (role: string): string => (
+  role === "professor" ? "teacher" : role
+);
+
+const notificationVisibleForActor = (
+  notification: Record<string, unknown>,
+  actor: ActorContext
+): boolean => {
+  if (isAdminRole(actor.role)) return true;
+
+  const targetRoles = textArray(notification.target_roles).map((role) => role.toLowerCase());
+  const recipientIds = textArray(notification.recipient_ids);
+  const role = appNotificationRole(actor.role);
+  const roleMatches = targetRoles.length === 0 || targetRoles.includes("all") || targetRoles.includes(role);
+  const recipientMatches = recipientIds.length === 0 || recipientIds.includes(actor.profile.id);
+
+  return roleMatches && recipientMatches;
+};
+
+const mapNotification = (row: Record<string, unknown>, actor: ActorContext) => {
+  const readByProfileIds = textArray(row.read_by);
+  const recipientProfileIds = textArray(row.recipient_ids);
+  const actorHasRead = readByProfileIds.includes(actor.profile.id);
+  const actorIsRecipient = recipientProfileIds.includes(actor.profile.id);
+
+  return {
+    ...(readObject(row.metadata)),
+    author: readObject(row.author),
+    createdAt: row.created_at,
+    data: readObject(row.data),
+    dataSource: "supabase",
+    id: String(row.id || ""),
+    isRead: actorHasRead,
+    message: String(row.message || ""),
+    notificationType: row.notification_type || "general",
+    readBy: actorHasRead ? [actor.uid, actor.profile.id] : [],
+    readByProfileIds,
+    recipientProfileIds,
+    recipientUids: actorIsRecipient ? [actor.uid] : [],
+    relatedId: row.related_id || null,
+    relatedType: row.related_type || null,
+    supabaseId: String(row.id || ""),
+    targetRoles: textArray(row.target_roles),
+    title: String(row.title || "Notification"),
+    type: row.notification_type || "info",
+    updatedAt: row.updated_at,
+  };
+};
+
+const findVisibleNotification = async (
+  supabase: ReturnType<typeof getSupabaseClient>,
+  actor: ActorContext,
+  id: unknown
+) => {
+  const notificationId = requireText(id, "Notification ID", 80);
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("*")
+    .eq("id", notificationId)
+    .eq("institute_id", requireInstituteId(actor))
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data || !notificationVisibleForActor(data as Record<string, unknown>, actor)) {
+    throw new Error("Notification not found.");
+  }
+
+  return data as Record<string, unknown>;
+};
+
+const listNotifications = async (
+  supabase: ReturnType<typeof getSupabaseClient>,
+  actor: ActorContext,
+  payload: Record<string, unknown>
+) => {
+  const requestedLimit = Number(payload.limit || 50);
+  const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 50;
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("*")
+    .eq("institute_id", requireInstituteId(actor))
+    .order("created_at", { ascending: false })
+    .limit(isAdminRole(actor.role) ? limit : Math.min(limit * 4, 200));
+
+  if (error) throw error;
+  return {
+    notifications: (data || [])
+      .filter((row) => notificationVisibleForActor(row as Record<string, unknown>, actor))
+      .slice(0, limit)
+      .map((row) => mapNotification(row as Record<string, unknown>, actor)),
+  };
+};
+
+const resolveRecipientProfileIds = async (
+  supabase: ReturnType<typeof getSupabaseClient>,
+  actor: ActorContext,
+  payload: Record<string, unknown>
+): Promise<string[]> => {
+  const directIds = textArray(payload.recipientIds || payload.recipientProfileIds);
+  const legacyIds = textArray(payload.recipientUids || payload.recipientLegacyIds);
+  if (!legacyIds.length) return directIds;
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("institute_id", requireInstituteId(actor))
+    .in("legacy_firestore_id", legacyIds);
+
+  if (error) throw error;
+  return Array.from(new Set([
+    ...directIds,
+    ...(data || []).map((row) => String(row.id)),
+  ]));
+};
+
+const createNotification = async (
+  supabase: ReturnType<typeof getSupabaseClient>,
+  actor: ActorContext,
+  payload: Record<string, unknown>
+) => {
+  if (!isAdminRole(actor.role)) throw new Error("Only administrators can create notifications.");
+
+  const targetRoles = textArray(payload.targetRoles || payload.target_roles);
+  const row = {
+    author: readObject(payload.author) || {
+      name: actor.profile.full_name,
+      role: actor.role,
+      uid: actor.uid,
+    },
+    data: readObject(payload.data),
+    institute_id: requireInstituteId(actor),
+    message: requireText(payload.message, "Message", 4000),
+    metadata: readObject(payload.metadata),
+    notification_type: optionalText(payload.type || payload.notificationType || payload.notification_type, 80) || "info",
+    recipient_ids: await resolveRecipientProfileIds(supabase, actor, payload),
+    related_id: optionalText(payload.relatedId || payload.related_id, 200),
+    related_type: optionalText(payload.relatedType || payload.related_type, 100),
+    target_roles: targetRoles.length ? targetRoles : ["all"],
+    title: requireText(payload.title, "Title", 240),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await supabase
+    .from("notifications")
+    .insert(row)
+    .select("*")
+    .single();
+
+  if (error) throw error;
+  return { notification: mapNotification(data as Record<string, unknown>, actor) };
+};
+
+const markNotificationRead = async (
+  supabase: ReturnType<typeof getSupabaseClient>,
+  actor: ActorContext,
+  payload: Record<string, unknown>
+) => {
+  const notification = await findVisibleNotification(supabase, actor, payload.id);
+  const readBy = Array.from(new Set([...textArray(notification.read_by), actor.profile.id]));
+  const { error } = await supabase
+    .from("notifications")
+    .update({ read_by: readBy, updated_at: new Date().toISOString() })
+    .eq("id", notification.id)
+    .eq("institute_id", requireInstituteId(actor));
+
+  if (error) throw error;
+  return { id: notification.id, read: true };
+};
+
+const markAllNotificationsRead = async (
+  supabase: ReturnType<typeof getSupabaseClient>,
+  actor: ActorContext
+) => {
+  const { notifications } = await listNotifications(supabase, actor, { limit: 100 });
+  await Promise.all(notifications.map((notification) => markNotificationRead(supabase, actor, {
+    id: (notification as Record<string, unknown>).id,
+  })));
+  return { count: notifications.length, read: true };
+};
+
+const deleteNotification = async (
+  supabase: ReturnType<typeof getSupabaseClient>,
+  actor: ActorContext,
+  payload: Record<string, unknown>
+) => {
+  if (!isAdminRole(actor.role)) throw new Error("Only administrators can delete notifications.");
+  const id = requireText(payload.id, "Notification ID", 80);
+  const { error } = await supabase
+    .from("notifications")
+    .delete()
+    .eq("id", id)
+    .eq("institute_id", requireInstituteId(actor));
+
+  if (error) throw error;
+  return { deleted: true, id };
+};
+
+const conversationVisibleForActor = (
+  conversation: Record<string, unknown>,
+  actor: ActorContext
+): boolean => {
+  const participantIds = textArray(conversation.participant_ids);
+  const participantLegacyIds = textArray(conversation.participant_legacy_ids);
+  return participantIds.includes(actor.profile.id) || participantLegacyIds.includes(actor.uid);
+};
+
+const loadParticipantProfiles = async (
+  supabase: ReturnType<typeof getSupabaseClient>,
+  instituteId: string,
+  conversations: Record<string, unknown>[]
+) => {
+  const profileIds = Array.from(new Set(conversations.flatMap((conversation) => textArray(conversation.participant_ids))));
+  const legacyIds = Array.from(new Set(conversations.flatMap((conversation) => textArray(conversation.participant_legacy_ids))));
+  let rows: ProfileRow[] = [];
+
+  if (profileIds.length) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("institute_id", instituteId)
+      .in("id", profileIds);
+    if (error) throw error;
+    rows = [...rows, ...((data || []) as ProfileRow[])];
+  }
+
+  if (legacyIds.length) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("institute_id", instituteId)
+      .in("legacy_firestore_id", legacyIds);
+    if (error) throw error;
+    rows = [...rows, ...((data || []) as ProfileRow[])];
+  }
+
+  return new Map(rows.map((row) => [row.id, mapProfile(row)]));
+};
+
+const mapConversation = (
+  conversation: Record<string, unknown>,
+  profilesById: Map<string, ReturnType<typeof mapProfile>>
+) => {
+  const participantIds = textArray(conversation.participant_ids);
+  const participantProfiles = participantIds
+    .map((id) => profilesById.get(id))
+    .filter(Boolean);
+
+  return {
+    createdAt: conversation.created_at,
+    dataSource: "supabase",
+    id: String(conversation.id || ""),
+    lastMessage: conversation.last_message || "",
+    lastMessageAt: conversation.last_message_at || conversation.updated_at || conversation.created_at,
+    metadata: readObject(conversation.metadata),
+    participantProfiles,
+    participants: participantProfiles.map((profile) => profile?.uid).filter(Boolean),
+    supabaseId: String(conversation.id || ""),
+    title: conversation.title || null,
+    updatedAt: conversation.updated_at,
+  };
+};
+
+const listConversations = async (
+  supabase: ReturnType<typeof getSupabaseClient>,
+  actor: ActorContext
+) => {
+  const instituteId = requireInstituteId(actor);
+  const { data, error } = await supabase
+    .from("conversations")
+    .select("*")
+    .eq("institute_id", instituteId)
+    .order("updated_at", { ascending: false })
+    .limit(100);
+
+  if (error) throw error;
+  const visibleConversations = (data || [])
+    .map((row) => row as Record<string, unknown>)
+    .filter((row) => conversationVisibleForActor(row, actor));
+  const profilesById = await loadParticipantProfiles(supabase, instituteId, visibleConversations);
+
+  return {
+    conversations: visibleConversations.map((row) => mapConversation(row, profilesById)),
+  };
+};
+
+const findVisibleConversation = async (
+  supabase: ReturnType<typeof getSupabaseClient>,
+  actor: ActorContext,
+  id: unknown
+) => {
+  const conversationId = requireText(id, "Conversation ID", 100);
+  const { data, error } = await supabase
+    .from("conversations")
+    .select("*")
+    .eq("id", conversationId)
+    .eq("institute_id", requireInstituteId(actor))
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data || !conversationVisibleForActor(data as Record<string, unknown>, actor)) {
+    throw new Error("Conversation not found.");
+  }
+
+  return data as Record<string, unknown>;
+};
+
+const listConversationMessages = async (
+  supabase: ReturnType<typeof getSupabaseClient>,
+  actor: ActorContext,
+  payload: Record<string, unknown>
+) => {
+  const conversation = await findVisibleConversation(supabase, actor, payload.conversationId);
+  const { data, error } = await supabase
+    .from("messages")
+    .select("*,sender:profiles!messages_sender_id_fkey(*)")
+    .eq("conversation_id", conversation.id)
+    .eq("institute_id", requireInstituteId(actor))
+    .order("created_at", { ascending: true })
+    .limit(300);
+
+  if (error) throw error;
+  return {
+    messages: (data || []).map((row) => {
+      const record = row as Record<string, unknown>;
+      const sender = readObject(record.sender);
+      return {
+        createdAt: record.created_at,
+        dataSource: "supabase",
+        id: String(record.id || ""),
+        message: String(record.body || ""),
+        readByProfileIds: textArray(record.read_by),
+        senderName: sender.full_name || "User",
+        senderRole: sender.role || "user",
+        senderUid: record.sender_legacy_id || sender.legacy_firestore_id || record.sender_id,
+        supabaseId: String(record.id || ""),
+      };
+    }),
+  };
+};
+
+const getOfficeHours = async (
+  supabase: ReturnType<typeof getSupabaseClient>,
+  actor: ActorContext
+) => {
+  if (!["admin", "teacher", "professor"].includes(actor.role)) {
+    throw new Error("Only faculty and administrators can view office hours.");
+  }
+
+  const { data, error } = await supabase
+    .from("office_hour_policies")
+    .select("*")
+    .eq("teacher_id", actor.profile.id)
+    .maybeSingle();
+
+  if (error) throw error;
+  const policy = readObject(data?.policy);
+  return {
+    officeHours: data ? {
+      days: Array.isArray(policy.days) ? policy.days : ["mon", "tue", "wed", "thu", "fri"],
+      endTime: policy.endTime || "17:00",
+      startTime: policy.startTime || "09:00",
+      timeZone: policy.timeZone || "Asia/Kolkata",
+      updatedAt: data.updated_at,
+    } : null,
+  };
+};
+
 const updateOwnProfile = async (
   supabase: ReturnType<typeof getSupabaseClient>,
   actor: ActorContext,
@@ -724,6 +1129,61 @@ const saveBranding = async (
   return { institute: data };
 };
 
+const loadInstituteByPublicId = async (
+  supabase: ReturnType<typeof getSupabaseClient>,
+  instituteId: string
+) => {
+  const byLegacy = await supabase
+    .from("institutes")
+    .select("id,configuration,settings")
+    .eq("legacy_firestore_id", instituteId)
+    .maybeSingle();
+
+  if (byLegacy.error) throw byLegacy.error;
+  if (byLegacy.data) return byLegacy.data;
+
+  const byCode = await supabase
+    .from("institutes")
+    .select("id,configuration,settings")
+    .eq("institute_code", instituteId)
+    .maybeSingle();
+
+  if (byCode.error) throw byCode.error;
+  if (byCode.data) return byCode.data;
+
+  throw new Error("Institute not found.");
+};
+
+const saveInstituteFeatures = async (
+  supabase: ReturnType<typeof getSupabaseClient>,
+  actor: ActorContext,
+  payload: Record<string, unknown>
+) => {
+  if (actor.role !== "superadmin") throw new Error("Only Superadmin can update institute feature access.");
+
+  const publicInstituteId = requireText(payload.instituteId, "Institute ID", 160);
+  const features = readObject(payload.features);
+  const institute = await loadInstituteByPublicId(supabase, publicInstituteId);
+  const configuration = {
+    ...((institute?.configuration || {}) as Record<string, unknown>),
+    features,
+  };
+  const settings = {
+    ...((institute?.settings || {}) as Record<string, unknown>),
+    features,
+  };
+
+  const { data, error } = await supabase
+    .from("institutes")
+    .update({ configuration, settings, updated_at: new Date().toISOString() })
+    .eq("id", institute.id)
+    .select("id,institute_code,legacy_firestore_id,name,configuration,settings")
+    .single();
+
+  if (error) throw error;
+  return { institute: data };
+};
+
 const normalizeInstitutionType = (value: unknown): "school" | "college" => (
   String(value || "").trim().toLowerCase() === "college" ? "college" : "school"
 );
@@ -800,6 +1260,8 @@ const handleAction = async (
       return createGalleryItem(supabase, actor, payload);
     case "createInstituteWithProfiles":
       return createInstituteWithProfiles(supabase, actor, payload);
+    case "createNotification":
+      return createNotification(supabase, actor, payload);
     case "createProfile":
       return createProfile(supabase, actor, payload);
     case "createProfiles":
@@ -808,16 +1270,32 @@ const handleAction = async (
       return createPyq(supabase, actor, payload);
     case "deleteGalleryItem":
       return deleteById(supabase, actor, "gallery", payload.id);
+    case "deleteNotification":
+      return deleteNotification(supabase, actor, payload);
     case "deletePyq":
       return deleteById(supabase, actor, "pyqs", payload.id);
+    case "getOfficeHours":
+      return getOfficeHours(supabase, actor);
+    case "listConversationMessages":
+      return listConversationMessages(supabase, actor, payload);
+    case "listConversations":
+      return listConversations(supabase, actor);
     case "listGallery":
       return listGallery(supabase, actor);
+    case "listNotifications":
+      return listNotifications(supabase, actor, payload);
     case "listPyqs":
       return listPyqs(supabase, actor);
     case "listUsers":
       return listUsers(supabase, actor);
+    case "markAllNotificationsRead":
+      return markAllNotificationsRead(supabase, actor);
+    case "markNotificationRead":
+      return markNotificationRead(supabase, actor, payload);
     case "saveBranding":
       return saveBranding(supabase, actor, payload);
+    case "saveInstituteFeatures":
+      return saveInstituteFeatures(supabase, actor, payload);
     case "updateOwnProfile":
       return updateOwnProfile(supabase, actor, payload);
     case "updateProfileMedia":

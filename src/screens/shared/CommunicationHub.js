@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -11,13 +11,16 @@ import {
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
-import { db } from '../../../firebaseConfig';
 import DynamicHeader from '../../components/DynamicHeader';
 import { RosterSkeleton, SmoothSpinner } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
 import { authenticatedFetch } from '../../services/apiClient';
+import {
+  getSupabaseOfficeHours,
+  listSupabaseConversationMessages,
+  listSupabaseConversations,
+} from '../../services/supabaseTenantDataService';
 
 const OFFICE_DAYS = [
   { id: 'mon', label: 'M' },
@@ -63,61 +66,121 @@ export default function CommunicationHub() {
   const [savingHours, setSavingHours] = useState(false);
   const isFaculty = ['admin', 'teacher', 'professor'].includes(userData?.role);
 
+  const fetchConversations = useCallback(async () => {
+    try {
+      const result = await listSupabaseConversations(currentUser);
+      return Array.isArray(result?.conversations) ? result.conversations : [];
+    } catch (_supabaseError) {
+      try {
+        const result = await authenticatedFetch('/api/messages', currentUser, {
+          method: 'POST',
+          body: { action: 'listConversations' },
+        });
+        return Array.isArray(result?.conversations) ? result.conversations : [];
+      } catch (_apiError) {
+        return [];
+      }
+    }
+  }, [currentUser]);
+
+  const fetchMessages = useCallback(async (conversationId) => {
+    try {
+      const result = await listSupabaseConversationMessages(currentUser, conversationId);
+      return Array.isArray(result?.messages) ? result.messages : [];
+    } catch (_supabaseError) {
+      try {
+        const result = await authenticatedFetch('/api/messages', currentUser, {
+          method: 'POST',
+          body: { action: 'listMessages', conversationId },
+        });
+        return Array.isArray(result?.messages) ? result.messages : [];
+      } catch (_apiError) {
+        return [];
+      }
+    }
+  }, [currentUser]);
+
   useEffect(() => {
     if (!currentUser?.uid || !userData?.instituteId) {
       setConversations([]);
       setLoading(false);
       return undefined;
     }
-    const conversationQuery = query(
-      collection(db, 'conversations'),
-      where('instituteId', '==', userData.instituteId),
-      where('participants', 'array-contains', currentUser.uid)
-    );
-    return onSnapshot(conversationQuery, (snapshot) => {
-      const next = snapshot.docs
-        .map((document) => ({ id: document.id, ...document.data() }))
-        .sort((left, right) => timestampMillis(right.lastMessageAt) - timestampMillis(left.lastMessageAt));
-      setConversations(next);
+
+    let active = true;
+    const load = async () => {
+      const next = await fetchConversations();
+      if (!active) return;
+      const sorted = next.sort((left, right) => timestampMillis(right.lastMessageAt) - timestampMillis(left.lastMessageAt));
+      setConversations(sorted);
       setLoading(false);
-      if (!selectedConversationId && next.length > 0) setSelectedConversationId(next[0].id);
-    }, (error) => {
-      console.error('Conversation list failed:', error);
-      setConversations([]);
-      setLoading(false);
-    });
-  }, [currentUser?.uid, selectedConversationId, userData?.instituteId]);
+      setSelectedConversationId((current) => current || sorted[0]?.id || '');
+    };
+
+    setLoading(true);
+    load();
+    const intervalId = setInterval(load, 30000);
+    return () => {
+      active = false;
+      clearInterval(intervalId);
+    };
+  }, [currentUser?.uid, fetchConversations, userData?.instituteId]);
 
   useEffect(() => {
-    if (!selectedConversationId || !userData?.instituteId) {
+    if (!selectedConversationId || !currentUser?.uid) {
       setMessages([]);
       return undefined;
     }
-    const messageQuery = query(
-      collection(db, 'messages'),
-      where('instituteId', '==', userData.instituteId),
-      where('conversationId', '==', selectedConversationId)
-    );
-    return onSnapshot(messageQuery, (snapshot) => {
-      setMessages(snapshot.docs
-        .map((document) => ({ id: document.id, ...document.data() }))
-        .sort((left, right) => timestampMillis(left.createdAt) - timestampMillis(right.createdAt)));
-    }, (error) => {
-      console.error('Conversation messages failed:', error);
-      setMessages([]);
-    });
-  }, [selectedConversationId, userData?.instituteId]);
+
+    let active = true;
+    const load = async () => {
+      const next = await fetchMessages(selectedConversationId);
+      if (!active) return;
+      setMessages(next.sort((left, right) => timestampMillis(left.createdAt) - timestampMillis(right.createdAt)));
+    };
+
+    load();
+    const intervalId = setInterval(load, 15000);
+    return () => {
+      active = false;
+      clearInterval(intervalId);
+    };
+  }, [currentUser?.uid, fetchMessages, selectedConversationId]);
 
   useEffect(() => {
     if (!isFaculty || !currentUser?.uid) return undefined;
-    return onSnapshot(doc(db, 'officeHourPolicies', currentUser.uid), (snapshot) => {
-      if (!snapshot.exists()) return;
-      const policy = snapshot.data();
-      setOfficeDays(Array.isArray(policy.days) ? policy.days : DEFAULT_OFFICE_DAYS);
-      setStartTime(policy.startTime || '09:00');
-      setEndTime(policy.endTime || '17:00');
-    });
-  }, [currentUser?.uid, isFaculty]);
+
+    let active = true;
+    const load = async () => {
+      try {
+        const result = await getSupabaseOfficeHours(currentUser);
+        if (!active || !result?.officeHours) return;
+        const policy = result.officeHours;
+        setOfficeDays(Array.isArray(policy.days) ? policy.days : DEFAULT_OFFICE_DAYS);
+        setStartTime(policy.startTime || '09:00');
+        setEndTime(policy.endTime || '17:00');
+      } catch (_supabaseError) {
+        try {
+          const result = await authenticatedFetch('/api/messages', currentUser, {
+            method: 'POST',
+            body: { action: 'getOfficeHours' },
+          });
+          if (!active || !result?.officeHours) return;
+          const policy = result.officeHours;
+          setOfficeDays(Array.isArray(policy.days) ? policy.days : DEFAULT_OFFICE_DAYS);
+          setStartTime(policy.startTime || '09:00');
+          setEndTime(policy.endTime || '17:00');
+        } catch (_apiError) {
+          // Keep defaults when the hosted read endpoint is not available yet.
+        }
+      }
+    };
+
+    load();
+    return () => {
+      active = false;
+    };
+  }, [currentUser, isFaculty]);
 
   const selectedConversation = useMemo(
     () => conversations.find((conversation) => conversation.id === selectedConversationId) || null,
@@ -146,6 +209,8 @@ export default function CommunicationHub() {
       });
       setSelectedConversationId(result.conversationId);
       setRecipientUserId('');
+      const next = await fetchConversations();
+      setConversations(next);
     } catch (error) {
       showMessage('Conversation Unavailable', error.message || 'The conversation could not be started.');
     } finally {
@@ -166,6 +231,12 @@ export default function CommunicationHub() {
         },
       });
       setDraft('');
+      const [nextConversations, nextMessages] = await Promise.all([
+        fetchConversations(),
+        fetchMessages(selectedConversationId),
+      ]);
+      setConversations(nextConversations);
+      setMessages(nextMessages);
     } catch (error) {
       showMessage('Message Not Sent', error.message || 'The message could not be sent.');
     } finally {

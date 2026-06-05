@@ -6,7 +6,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { sharedStackScreenOptions, sharedTabScreenOptions } from './animatedScreenOptions';
 import EnterpriseTabBar from '../components/navigation/EnterpriseTabBar';
 import RoleDrawerContent from '../components/navigation/RoleDrawerContent';
+import { useInstitution } from '../contexts/InstitutionContext';
 import { useRootLayout } from '../contexts/RootLayoutContext';
+import { isFeatureEnabled } from '../constants/featureEntitlements';
 
 // Import Admin Screens
 import AdminHome from '../screens/admin/AdminHome';
@@ -34,26 +36,27 @@ const Tab = createBottomTabNavigator();
 const Drawer = createDrawerNavigator();
 
 const adminDrawerLinks = [
-  { icon: 'people-outline', label: 'Users', routeName: 'AdminDashboard', params: { screen: 'MainTabs', params: { screen: 'Users' } } },
-  { icon: 'wallet-outline', label: 'Ledger', routeName: 'AdminDashboard', params: { screen: 'MainTabs', params: { screen: 'Ledger' } } },
-  { icon: 'megaphone-outline', label: 'Broadcasts', routeName: 'AdminDashboard', params: { screen: 'MainTabs', params: { screen: 'Broadcasts' } } },
-  { icon: 'briefcase-outline', label: 'Faculty', routeName: 'AdminDashboard', params: { screen: 'ManageTeachers' } },
-  { icon: 'calendar-outline', label: 'Master schedule', routeName: 'AdminDashboard', params: { screen: 'ManageRoutines' } },
-  { icon: 'calendar-number-outline', label: 'Calendar', routeName: 'AdminDashboard', params: { screen: 'ManageHolidays' } },
-  { icon: 'person-add-outline', label: 'Add users', routeName: 'AdminDashboard', params: { screen: 'AddUser' } },
-  { icon: 'color-palette-outline', label: 'Brand studio', routeName: 'AdminDashboard', params: { screen: 'BrandingSettings' } },
-  { icon: 'play-circle-outline', label: 'Courses', routeName: 'AdminDashboard', params: { screen: 'Courses' } },
-  { icon: 'images-outline', label: 'Gallery', routeName: 'AdminDashboard', params: { screen: 'UploadGallery' } },
-  { icon: 'document-attach-outline', label: 'PYQ PDFs', routeName: 'AdminDashboard', params: { screen: 'UploadPYQ' } },
-  { icon: 'print-outline', label: 'Reports', routeName: 'AdminDashboard', params: { screen: 'ReportsCenter' } },
-  { icon: 'chatbubbles-outline', label: 'Messages', routeName: 'AdminDashboard', params: { screen: 'CommunicationHub' } },
-  { icon: 'bus-outline', label: 'Live fleet', routeName: 'AdminDashboard', params: { screen: 'FleetTracking' } },
-  { icon: 'sparkles-outline', label: 'AI command', routeName: 'AdminDashboard', params: { screen: 'AICommandCenter' } },
+  { featureKey: 'people', icon: 'people-outline', label: 'Users', routeName: 'AdminDashboard', params: { screen: 'MainTabs', params: { screen: 'Users' } } },
+  { featureKey: 'finance', icon: 'wallet-outline', label: 'Ledger', routeName: 'AdminDashboard', params: { screen: 'MainTabs', params: { screen: 'Ledger' } } },
+  { featureKey: 'notices', icon: 'megaphone-outline', label: 'Broadcasts', routeName: 'AdminDashboard', params: { screen: 'MainTabs', params: { screen: 'Broadcasts' } } },
+  { featureKey: 'people', icon: 'briefcase-outline', label: 'Faculty', routeName: 'AdminDashboard', params: { screen: 'ManageTeachers' } },
+  { featureKey: 'routines', icon: 'calendar-outline', label: 'Master schedule', routeName: 'AdminDashboard', params: { screen: 'ManageRoutines' } },
+  { featureKey: 'routines', icon: 'calendar-number-outline', label: 'Calendar', routeName: 'AdminDashboard', params: { screen: 'ManageHolidays' } },
+  { featureKey: 'people', icon: 'person-add-outline', label: 'Add users', routeName: 'AdminDashboard', params: { screen: 'AddUser' } },
+  { featureKey: 'branding', icon: 'color-palette-outline', label: 'Brand studio', routeName: 'AdminDashboard', params: { screen: 'BrandingSettings' } },
+  { featureKey: 'courses', icon: 'play-circle-outline', label: 'Courses', routeName: 'AdminDashboard', params: { screen: 'Courses' } },
+  { featureKey: 'media', icon: 'images-outline', label: 'Gallery', routeName: 'AdminDashboard', params: { screen: 'UploadGallery' } },
+  { featureKey: 'pyq', icon: 'document-attach-outline', label: 'PYQ PDFs', routeName: 'AdminDashboard', params: { screen: 'UploadPYQ' } },
+  { featureKey: 'reports', icon: 'print-outline', label: 'Reports', routeName: 'AdminDashboard', params: { screen: 'ReportsCenter' } },
+  { featureKey: 'messages', icon: 'chatbubbles-outline', label: 'Messages', routeName: 'AdminDashboard', params: { screen: 'CommunicationHub' } },
+  { featureKey: 'transport', icon: 'bus-outline', label: 'Live fleet', routeName: 'AdminDashboard', params: { screen: 'FleetTracking' } },
+  { featureKey: 'ai', icon: 'sparkles-outline', label: 'AI command', routeName: 'AdminDashboard', params: { screen: 'AICommandCenter' } },
 ];
 
 // --- THE ADMIN BOTTOM BAR ---
 function AdminBottomTabs() {
   const { colors } = useRootLayout();
+  const { instituteData } = useInstitution();
 
   return (
     <Tab.Navigator
@@ -75,9 +78,9 @@ function AdminBottomTabs() {
       })}
     >
       <Tab.Screen name="Dashboard" component={AdminHome} />
-      <Tab.Screen name="Users" component={ManageUsers} />
-      <Tab.Screen name="Ledger" component={FeeTracking} />
-      <Tab.Screen name="Broadcasts" component={ManageNotices} />
+      {isFeatureEnabled(instituteData, 'people') ? <Tab.Screen name="Users" component={ManageUsers} /> : null}
+      {isFeatureEnabled(instituteData, 'finance') ? <Tab.Screen name="Ledger" component={FeeTracking} /> : null}
+      {isFeatureEnabled(instituteData, 'notices') ? <Tab.Screen name="Broadcasts" component={ManageNotices} /> : null}
     </Tab.Navigator>
   );
 }
@@ -85,6 +88,7 @@ function AdminBottomTabs() {
 // --- THE MASTER STACK ---
 function AdminStackNavigator() {
   const { colors } = useRootLayout();
+  const { instituteData } = useInstitution();
 
   return (
     <Stack.Navigator 
@@ -105,19 +109,19 @@ function AdminStackNavigator() {
       <Stack.Screen name="MainTabs" component={AdminBottomTabs} options={{ headerShown: false }} />
       
       {/* 2. Hidden Pop-up Screens */}
-      <Stack.Screen name="ManageTeachers" component={ManageTeachers} options={{ title: 'Faculty Roster' }} />
-      <Stack.Screen name="ManageRoutines" component={ManageRoutines} options={{ title: 'Master Schedule' }} />
-      <Stack.Screen name="ManageHolidays" component={ManageHolidays} options={{ title: 'Campus Calendar' }} />
-      <Stack.Screen name="UploadGallery" component={UploadGallery} options={{ title: 'Event Gallery' }} />
-      <Stack.Screen name="UploadPYQ" component={UploadPYQ} options={{ title: 'PYQ PDF Uploads' }} />
-      <Stack.Screen name="AddUser" component={AddUser} options={{ title: 'Add Users' }} />
-      <Stack.Screen name="BrandingSettings" component={BrandingSettings} options={{ title: 'Brand Studio' }} />
-      <Stack.Screen name="Courses" component={CourseManager} options={{ title: 'Course Uploader' }} />
-      <Stack.Screen name="ReportsCenter" component={ReportsCenter} options={{ title: 'Reports Center' }} />
-      <Stack.Screen name="CommunicationHub" component={CommunicationHub} options={{ title: 'Communication Hub' }} />
-      <Stack.Screen name="FleetTracking" component={FleetTrackingScreen} options={{ title: 'Live Fleet' }} />
-      <Stack.Screen name="SyllabusTutor" component={SyllabusTutor} options={{ title: 'Syllabus Tutor' }} />
-      <Stack.Screen name="AICommandCenter" component={AICommandCenter} options={{ title: 'AI Command Center' }} />
+      {isFeatureEnabled(instituteData, 'people') ? <Stack.Screen name="ManageTeachers" component={ManageTeachers} options={{ title: 'Faculty Roster' }} /> : null}
+      {isFeatureEnabled(instituteData, 'routines') ? <Stack.Screen name="ManageRoutines" component={ManageRoutines} options={{ title: 'Master Schedule' }} /> : null}
+      {isFeatureEnabled(instituteData, 'routines') ? <Stack.Screen name="ManageHolidays" component={ManageHolidays} options={{ title: 'Campus Calendar' }} /> : null}
+      {isFeatureEnabled(instituteData, 'media') ? <Stack.Screen name="UploadGallery" component={UploadGallery} options={{ title: 'Event Gallery' }} /> : null}
+      {isFeatureEnabled(instituteData, 'pyq') ? <Stack.Screen name="UploadPYQ" component={UploadPYQ} options={{ title: 'PYQ PDF Uploads' }} /> : null}
+      {isFeatureEnabled(instituteData, 'people') ? <Stack.Screen name="AddUser" component={AddUser} options={{ title: 'Add Users' }} /> : null}
+      {isFeatureEnabled(instituteData, 'branding') ? <Stack.Screen name="BrandingSettings" component={BrandingSettings} options={{ title: 'Brand Studio' }} /> : null}
+      {isFeatureEnabled(instituteData, 'courses') ? <Stack.Screen name="Courses" component={CourseManager} options={{ title: 'Course Uploader' }} /> : null}
+      {isFeatureEnabled(instituteData, 'reports') ? <Stack.Screen name="ReportsCenter" component={ReportsCenter} options={{ title: 'Reports Center' }} /> : null}
+      {isFeatureEnabled(instituteData, 'messages') ? <Stack.Screen name="CommunicationHub" component={CommunicationHub} options={{ title: 'Communication Hub' }} /> : null}
+      {isFeatureEnabled(instituteData, 'transport') ? <Stack.Screen name="FleetTracking" component={FleetTrackingScreen} options={{ title: 'Live Fleet' }} /> : null}
+      {isFeatureEnabled(instituteData, 'ai') ? <Stack.Screen name="SyllabusTutor" component={SyllabusTutor} options={{ title: 'Syllabus Tutor' }} /> : null}
+      {isFeatureEnabled(instituteData, 'ai') ? <Stack.Screen name="AICommandCenter" component={AICommandCenter} options={{ title: 'AI Command Center' }} /> : null}
     </Stack.Navigator>
   );
 }

@@ -33,8 +33,8 @@ const setCorsHeaders = (req, res) => {
     res.setHeader('Vary', 'Origin');
   }
 
-  res.setHeader('Access-Control-Allow-Methods', 'POST,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Idempotency-Key');
 };
 
 const createRequestId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -306,6 +306,10 @@ const sendError = (res, error, fallbackMessage = 'Request failed.', requestId = 
   writeLog(JSON.stringify(logPayload));
 
   const response = { success: false, error: safeMessage, requestId };
+  if (error.retryAfterSeconds) {
+    res.setHeader('Retry-After', String(error.retryAfterSeconds));
+    response.retryAfterSeconds = error.retryAfterSeconds;
+  }
   if (isConfigurationError) {
     response.code = error.code || 'FIREBASE_ADMIN_CONFIG_MISSING';
     response.requiredEnv = FIREBASE_ADMIN_ENV_HINT;

@@ -1,0 +1,160 @@
+{
+  "defaultTier": "complete",
+  "features": [
+    {
+      "key": "people",
+      "label": "People and directory",
+      "description": "Student, staff, parent, driver, and faculty records.",
+      "category": "Core"
+    },
+    {
+      "key": "attendance",
+      "label": "Attendance",
+      "description": "Daily attendance capture and attendance views.",
+      "category": "Academics"
+    },
+    {
+      "key": "routines",
+      "label": "Routines and calendar",
+      "description": "Timetables, master schedules, holidays, and calendar events.",
+      "category": "Academics"
+    },
+    {
+      "key": "assignments",
+      "label": "Assignments",
+      "description": "Coursework, uploads, submissions, and teacher assignment flows.",
+      "category": "Academics"
+    },
+    {
+      "key": "grades",
+      "label": "Grades",
+      "description": "Marks, grade uploads, reports, and learner progress.",
+      "category": "Academics"
+    },
+    {
+      "key": "notices",
+      "label": "Notices and broadcasts",
+      "description": "Role-aware notices, alerts, broadcasts, and notifications.",
+      "category": "Communication"
+    },
+    {
+      "key": "messages",
+      "label": "Messages",
+      "description": "Role-scoped communication hub and conversations.",
+      "category": "Communication"
+    },
+    {
+      "key": "finance",
+      "label": "Fees and ledger",
+      "description": "Fee assignments, manual payments, dues, receipts, and payment metadata.",
+      "category": "Operations"
+    },
+    {
+      "key": "courses",
+      "label": "Courses",
+      "description": "Course media, lessons, resources, and course playback.",
+      "category": "Learning"
+    },
+    {
+      "key": "media",
+      "label": "Gallery and media",
+      "description": "Gallery uploads, institute media, and scoped media storage.",
+      "category": "Learning"
+    },
+    {
+      "key": "pyq",
+      "label": "PYQ library",
+      "description": "Previous-year question paper uploads and student access.",
+      "category": "Learning"
+    },
+    {
+      "key": "reports",
+      "label": "Reports",
+      "description": "Operational and academic report surfaces.",
+      "category": "Operations"
+    },
+    {
+      "key": "transport",
+      "label": "Transport and live fleet",
+      "description": "Driver portal, route visibility, and live fleet tracking.",
+      "category": "Operations"
+    },
+    {
+      "key": "ai",
+      "label": "AI assistance",
+      "description": "Syllabus tutor, smart compose, CSV mapping, and approved AI workflows.",
+      "category": "Advanced"
+    },
+    {
+      "key": "branding",
+      "label": "Brand studio",
+      "description": "Institute logo, palette, and theme controls.",
+      "category": "Advanced"
+    }
+  ],
+  "tiers": {
+    "starter": {
+      "label": "Starter",
+      "description": "Core institute operations for early rollout.",
+      "features": {
+        "people": true,
+        "attendance": true,
+        "routines": true,
+        "assignments": true,
+        "grades": true,
+        "notices": true,
+        "messages": false,
+        "finance": false,
+        "courses": false,
+        "media": false,
+        "pyq": false,
+        "reports": false,
+        "transport": false,
+        "ai": false,
+        "branding": false
+      }
+    },
+    "growth": {
+      "label": "Growth",
+      "description": "Full academic and communication workflows.",
+      "features": {
+        "people": true,
+        "attendance": true,
+        "routines": true,
+        "assignments": true,
+        "grades": true,
+        "notices": true,
+        "messages": true,
+        "finance": true,
+        "courses": true,
+        "media": true,
+        "pyq": true,
+        "reports": true,
+        "transport": false,
+        "ai": false,
+        "branding": true
+      }
+    },
+    "complete": {
+      "label": "Complete",
+      "description": "Every shipped module enabled for the institute.",
+      "features": {
+        "people": true,
+        "attendance": true,
+        "routines": true,
+        "assignments": true,
+        "grades": true,
+        "notices": true,
+        "messages": true,
+        "finance": true,
+        "courses": true,
+        "media": true,
+        "pyq": true,
+        "reports": true,
+        "transport": true,
+        "ai": true,
+        "branding": true
+      }
+    }
+  }
+}

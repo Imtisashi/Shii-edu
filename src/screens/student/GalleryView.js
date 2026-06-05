@@ -124,10 +124,16 @@ export default function GalleryView() {
     };
   }, [currentUser, userData?.instituteId]);
 
-  if (loading) return <LoadingState />;
+  if (loading) {
+    return (
+      <StudentScreenScaffold scroll={false} style={styles.scaffoldContent} title="Gallery">
+        <LoadingState />
+      </StudentScreenScaffold>
+    );
+  }
 
   return (
-    <StudentScreenScaffold accentVariant="blue" scroll={false} style={styles.scaffoldContent}>
+    <StudentScreenScaffold accentVariant="blue" scroll={false} style={styles.scaffoldContent} title="Gallery">
       <ScreenIntro
         accentColor="#F472B6"
         eyebrow="Campus gallery"

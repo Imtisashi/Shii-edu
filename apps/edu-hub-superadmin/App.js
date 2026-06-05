@@ -26,7 +26,7 @@ const linking = {
 const documentTitle = {
   formatter: (options) => {
     const routeTitle = options?.title;
-    return routeTitle ? `${routeTitle} | Edu-Hub Superadmin` : 'Edu-Hub Superadmin';
+    return routeTitle ? `${routeTitle} | Shii-Edu Superadmin` : 'Shii-Edu Superadmin';
   },
 };
 
@@ -75,7 +75,7 @@ function SuperadminAppNavigator() {
     return (
       <AccessState
         title="Internal Access Only"
-        message="This application is restricted to verified Edu-Hub superadmin accounts."
+        message="This application is restricted to verified Shii-Edu superadmin accounts."
         onSignOut={logout}
       />
     );
@@ -113,7 +113,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <GlobalErrorBoundary appName="Edu-Hub Superadmin">
+        <GlobalErrorBoundary appName="Shii-Edu Superadmin">
           <AuthProvider>
             <InstitutionProvider>
             <RootLayoutProvider>

@@ -65,6 +65,23 @@ export const deleteInstituteAsSuperAdmin = async (instituteId) => {
   }
 };
 
+export const updateInstituteFeatureSettings = async (instituteId, features) => {
+  try {
+    return await authenticatedFetch(`/api/super-admin/institutes/${encodeURIComponent(instituteId)}`, auth.currentUser, {
+      method: 'PATCH',
+      body: { features },
+    });
+  } catch (error) {
+    console.error('Error updating institute feature settings:', error);
+    return {
+      success: false,
+      error: error.message,
+      code: error.payload?.code,
+      requestId: error.payload?.requestId,
+    };
+  }
+};
+
 const deleteSnapshot = async (snapshot) => {
   if (snapshot.empty) return 0;
 
@@ -230,6 +247,7 @@ export const updateInstituteSettings = async (instituteId, settings) => {
 export default {
   createInstituteAndAdmin,
   deleteInstituteAsSuperAdmin,
+  updateInstituteFeatureSettings,
   inviteUserToInstitute,
   getInstituteStats,
   updateInstituteSettings

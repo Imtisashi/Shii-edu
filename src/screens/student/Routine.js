@@ -170,10 +170,16 @@ export default function Routine() {
     };
   }, [currentUser, profile.isSchool, profile.primary, profile.secondary, userData?.instituteId]);
 
-  if (loading) return <LoadingState />;
+  if (loading) {
+    return (
+      <StudentScreenScaffold scroll={false} style={styles.scaffoldContent} title="Routine">
+        <LoadingState />
+      </StudentScreenScaffold>
+    );
+  }
 
   return (
-    <StudentScreenScaffold accentVariant="blue" scroll={false} style={styles.scaffoldContent}>
+    <StudentScreenScaffold accentVariant="blue" scroll={false} style={styles.scaffoldContent} title="Routine">
       <ScreenIntro
         accentColor={colors.violet}
         eyebrow="Daily schedule"

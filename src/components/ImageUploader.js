@@ -69,7 +69,7 @@ export default function ImageUploader() {
           )}
         </TouchableOpacity>
       </View>
-      <Text style={styles.hint}>{uploading ? 'Uploading...' : 'Tap camera to change profile photo'}</Text>
+      <Text style={styles.hint}>{uploading ? 'Saving profile photo' : 'Tap camera to change profile photo'}</Text>
     </View>
   );
 }

@@ -36,8 +36,28 @@ const showMessage = (title, message) => {
   Alert.alert(title, message);
 };
 
-const isYouTubeUrl = (value) => /(?:youtube\.com|youtu\.be)/i.test(String(value || ''));
-const isHttpUrl = (value) => /^https?:\/\//i.test(String(value || ''));
+const parseHttpsUrl = (value) => {
+  try {
+    const parsed = new URL(String(value || '').trim());
+    return parsed.protocol === 'https:' ? parsed : null;
+  } catch (_error) {
+    return null;
+  }
+};
+const isYouTubeUrl = (value) => {
+  const parsed = parseHttpsUrl(value);
+  if (!parsed) return false;
+  const hostname = parsed.hostname.toLowerCase();
+  return hostname === 'youtu.be' || hostname === 'youtube.com' || hostname.endsWith('.youtube.com');
+};
+const isHttpsUrl = (value) => Boolean(parseHttpsUrl(value));
+const isSafeCloudinaryPublicId = (value) => {
+  const candidate = String(value || '').trim();
+  return /^[a-zA-Z0-9/_.-]+$/.test(candidate) &&
+    !candidate.includes('..') &&
+    !candidate.startsWith('/') &&
+    !candidate.endsWith('/');
+};
 
 const createLessonFromInput = ({ title, description, mediaInput, durationMinutes }) => {
   const cleanMedia = mediaInput.trim();
@@ -60,13 +80,17 @@ const createLessonFromInput = ({ title, description, mediaInput, durationMinutes
     };
   }
 
-  if (isHttpUrl(cleanMedia)) {
+  if (isHttpsUrl(cleanMedia)) {
     return {
       ...baseLesson,
       mediaProvider: 'external',
       playbackUrl: cleanMedia,
       externalUrl: cleanMedia,
     };
+  }
+
+  if (!isSafeCloudinaryPublicId(cleanMedia)) {
+    throw new Error('Use a secure YouTube/direct URL or a valid Cloudinary public ID.');
   }
 
   return {
@@ -137,12 +161,18 @@ export default function CourseManager({ navigation }) {
       return;
     }
 
-    const nextLesson = createLessonFromInput({
-      title: lessonTitle,
-      description: lessonDescription,
-      mediaInput,
-      durationMinutes,
-    });
+    let nextLesson;
+    try {
+      nextLesson = createLessonFromInput({
+        title: lessonTitle,
+        description: lessonDescription,
+        mediaInput,
+        durationMinutes,
+      });
+    } catch (error) {
+      showMessage('Invalid Media', error.message || 'Use a secure YouTube/direct URL or Cloudinary public ID.');
+      return;
+    }
 
     setDraftLessons((previous) => [...previous, nextLesson]);
     setLessonTitle('');

@@ -5,11 +5,19 @@ const {
   createRequestId,
   deleteWhere,
   getAdminServices,
+  getBody,
   handleOptions,
   resolveInstituteDocument,
   sendError,
   setCorsHeaders,
 } = require('../../_lib/firebaseAdmin');
+const { callSupabaseTenantBridge } = require('../../_lib/supabaseTenantBridge');
+const {
+  buildFeatureSettings,
+  normalizeFeatureOverrides,
+  normalizeFeatureTier,
+  resolveFeatureEntitlements,
+} = require('../../_lib/featureEntitlements');
 
 const INSTITUTE_SCOPED_COLLECTIONS = [
   'notices',
@@ -30,20 +38,28 @@ const getInstituteIdFromRequest = (req) => {
   return decodeURIComponent(pathParts[pathParts.length - 1] || '').trim();
 };
 
+const parseFeatureUpdate = (body = {}) => {
+  const rawFeatures = body.features && typeof body.features === 'object' ? body.features : body;
+  return {
+    overrides: normalizeFeatureOverrides(rawFeatures.overrides),
+    tier: normalizeFeatureTier(rawFeatures.tier),
+  };
+};
+
 module.exports = async (req, res) => {
   const requestId = createRequestId();
   if (handleOptions(req, res)) return;
   setCorsHeaders(req, res);
   res.setHeader('X-Request-Id', requestId);
 
-  if (req.method !== 'DELETE') {
-    res.setHeader('Allow', 'DELETE, OPTIONS');
+  if (!['DELETE', 'PATCH'].includes(req.method)) {
+    res.setHeader('Allow', 'DELETE, PATCH, OPTIONS');
     res.status(405).json({ success: false, error: 'Method not allowed.' });
     return;
   }
 
   try {
-    await authenticateSuperAdmin(req);
+    const authContext = await authenticateSuperAdmin(req);
     const { firestore } = getAdminServices();
     const requestedInstituteId = getInstituteIdFromRequest(req);
 
@@ -60,6 +76,61 @@ module.exports = async (req, res) => {
 
     const instituteData = institute.snap.data();
     const instituteId = instituteData.instituteId || institute.snap.id;
+
+    if (req.method === 'PATCH') {
+      const body = await getBody(req);
+      const requestedFeatures = parseFeatureUpdate(body);
+      const previousFeatures = instituteData.settings?.features ||
+        instituteData.configuration?.features ||
+        instituteData.features ||
+        {};
+      const featureSettings = buildFeatureSettings({
+        actorUid: authContext.uid,
+        overrides: requestedFeatures.overrides,
+        previous: previousFeatures,
+        tier: requestedFeatures.tier,
+      });
+      const timestamp = admin.firestore.FieldValue.serverTimestamp();
+
+      await institute.ref.update({
+        features: featureSettings,
+        'configuration.features': featureSettings,
+        'settings.features': featureSettings,
+        updatedAt: timestamp,
+        updatedBy: authContext.uid,
+      });
+
+      const supabaseMirror = await callSupabaseTenantBridge({
+        action: 'saveInstituteFeatures',
+        authorization: req.headers.authorization || '',
+        payload: {
+          features: featureSettings,
+          instituteId,
+        },
+      });
+
+      res.status(200).json({
+        success: true,
+        features: featureSettings,
+        entitlements: resolveFeatureEntitlements({
+          ...instituteData,
+          features: featureSettings,
+          configuration: {
+            ...(instituteData.configuration || {}),
+            features: featureSettings,
+          },
+          settings: {
+            ...(instituteData.settings || {}),
+            features: featureSettings,
+          },
+        }),
+        instituteId,
+        supabaseInstituteId: supabaseMirror.institute?.id || null,
+        requestId,
+      });
+      return;
+    }
+
     const usersSnapshot = await firestore
       .collection('users')
       .where('instituteId', '==', instituteId)

@@ -9,6 +9,8 @@ const {
   sendError,
   setCorsHeaders,
 } = require('../_lib/firebaseAdmin');
+const { assertFeatureEnabled } = require('../_lib/featureEntitlements');
+const { assertRateLimit } = require('../_lib/rateLimit');
 
 const PLAYBACK_ROLES = new Set(['student', 'teacher', 'professor', 'parent', 'admin', 'superadmin']);
 const UPLOAD_ROLES = new Set(['teacher', 'professor', 'admin', 'superadmin']);
@@ -31,6 +33,15 @@ const SAFE_RESOURCE_TYPES_BY_FOLDER = {
   'profile-pictures': new Set(['image']),
   pyqs: new Set(['raw']),
   syllabi: new Set(['raw']),
+};
+const FOLDER_FEATURES = {
+  assignments: 'assignments',
+  'course-media': 'courses',
+  gallery: 'media',
+  'institute-branding': 'branding',
+  'profile-pictures': null,
+  pyqs: 'pyq',
+  syllabi: 'ai',
 };
 const DEFAULT_PLAYBACK_TTL_SECONDS = 900;
 const MAX_PROFILE_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -393,7 +404,7 @@ const createProfileImageUploadSignature = ({ body, actor, config }) => {
   const timestamp = Math.floor(Date.now() / 1000);
   const folder = `institutions/${instituteId}/profile-pictures/${uid}`;
   const contextEntries = {
-    app: 'edu-hub-alpha',
+    app: 'shii-edu',
     instituteId,
     purpose: 'profile-picture',
     role: actor.role,
@@ -431,7 +442,8 @@ const createProfileImageUploadSignature = ({ body, actor, config }) => {
 
 const createPlaybackSignature = async ({ body, actor, firestore, config }) => {
   assertAllowedRole(actor.role, PLAYBACK_ROLES);
-  await assertInstituteCourseAccess({ firestore, courseId: body.courseId, actor });
+  const course = await assertInstituteCourseAccess({ firestore, courseId: body.courseId, actor });
+  await assertFeatureEnabled({ firestore, instituteId: course.instituteId, featureKey: 'courses' });
 
   const resourceType = sanitizeResourceType(body.resourceType || 'video');
   const deliveryType = sanitizeDeliveryType(body.deliveryType || 'authenticated');
@@ -483,13 +495,22 @@ module.exports = async function handler(req, res) {
   try {
     const body = parseCloudinaryRequest(await getBody(req));
     const actor = await authenticateUserProfile(req);
+    assertRateLimit({ actor, req, scope: `cloudinary:${body.action}`, limit: 36, windowMs: 60 * 1000 });
     const config = getCloudinaryConfig();
 
     if (body.action === 'upload') {
+      const { firestore } = getAdminServices();
+      const signature = createUploadSignature({ body, actor, config });
+      const folderHead = getFolderHead(signature.params.folder);
+      await assertFeatureEnabled({
+        firestore,
+        instituteId: resolveUploadInstituteId({ actor, requestedInstituteId: body.instituteId }),
+        featureKey: FOLDER_FEATURES[folderHead],
+      });
       res.status(200).json({
         success: true,
         requestId,
-        ...createUploadSignature({ body, actor, config }),
+        ...signature,
       });
       return;
     }

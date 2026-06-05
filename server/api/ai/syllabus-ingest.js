@@ -12,11 +12,13 @@ const {
 } = require('../_lib/firebaseAdmin');
 const { batchEmbedContents, getGeminiConfig } = require('../_lib/gemini');
 const { assertNoPromptInjection } = require('../_lib/promptSafety');
+const { assertFeatureEnabled } = require('../_lib/featureEntitlements');
 const {
   enqueueBackgroundTask,
   isInternalTaskExecution,
   startBackgroundTask,
 } = require('../_lib/backgroundTasks');
+const { assertRateLimit } = require('../_lib/rateLimit');
 
 const MAX_PDF_BYTES = 12 * 1024 * 1024;
 const MAX_CHUNKS = 160;
@@ -129,6 +131,9 @@ module.exports = async function handler(req, res) {
 
   try {
     const actor = await authenticateUserProfile(req, ['admin', 'teacher', 'professor']);
+    if (!isInternalTaskExecution(req)) {
+      assertRateLimit({ actor, req, scope: 'ai:syllabus-ingest', limit: 10, windowMs: 60 * 1000 });
+    }
     const instituteId = actor.profile?.instituteId;
     if (!instituteId) {
       const error = new Error('Your profile is not linked to an institute.');
@@ -137,6 +142,8 @@ module.exports = async function handler(req, res) {
     }
     const body = parseBody(await getBody(req));
     assertApprovedSyllabusUpload({ ...body, instituteId });
+    const { firestore } = getAdminServices();
+    await assertFeatureEnabled({ firestore, instituteId, featureKey: 'ai' });
 
     if (!isInternalTaskExecution(req)) {
       const task = await enqueueBackgroundTask({
@@ -185,7 +192,6 @@ module.exports = async function handler(req, res) {
       embeddings.push(...batchEmbeddings);
     }
 
-    const { firestore } = getAdminServices();
     const syllabusRef = firestore.collection('syllabi').doc();
     const timestamp = admin.firestore.FieldValue.serverTimestamp();
     const syllabus = {

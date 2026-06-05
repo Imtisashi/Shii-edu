@@ -132,10 +132,16 @@ export default function PYQView() {
     };
   }, [currentUser, userData?.instituteId]);
 
-  if (loading) return <LoadingState />;
+  if (loading) {
+    return (
+      <StudentScreenScaffold scroll={false} style={styles.scaffoldContent} title="PYQ Vault">
+        <LoadingState />
+      </StudentScreenScaffold>
+    );
+  }
 
   return (
-    <StudentScreenScaffold accentVariant="bronze" scroll={false} style={styles.scaffoldContent}>
+    <StudentScreenScaffold accentVariant="bronze" scroll={false} style={styles.scaffoldContent} title="PYQ Vault">
       <ScreenIntro
         accentColor="#F87171"
         eyebrow="Exam archive"

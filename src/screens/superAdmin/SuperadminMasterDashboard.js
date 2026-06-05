@@ -326,7 +326,7 @@ export default function SuperadminMasterDashboard() {
     >
       <View style={styles.hero}>
         <View style={styles.heroContent}>
-          <Text style={styles.eyebrow}>Edu-Hub alpha / Superadmin</Text>
+          <Text style={styles.eyebrow}>Shii-Edu / Superadmin</Text>
           <Text style={[styles.heroTitle, layout.isMobile && styles.heroTitleMobile]}>
             Platform Master Dashboard
           </Text>

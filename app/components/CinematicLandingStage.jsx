@@ -1,6 +1,5 @@
 'use client';
 
-import { motion, useReducedMotion } from 'motion/react';
 import {
   Bell,
   CalendarCheck2,
@@ -10,8 +9,6 @@ import {
   ShieldCheck,
   Users2,
 } from 'lucide-react';
-
-const ease = [0.22, 1, 0.36, 1];
 
 const timeline = [
   ['07:40', 'Morning attendance locks to teacher rosters'],
@@ -26,20 +23,10 @@ const metrics = [
 ];
 
 export default function CinematicLandingStage() {
-  const reduceMotion = useReducedMotion();
-  const entrance = reduceMotion
-    ? { initial: false, animate: { opacity: 1 } }
-    : {
-      initial: { scale: 0.985, y: 14 },
-      animate: { scale: 1, y: 0 },
-      transition: { duration: 0.8, ease },
-    };
-
   return (
-    <motion.div
+    <div
       aria-label="Animated Shii-Edu product preview"
       className="cinematic-stage"
-      {...entrance}
     >
       <div className="cinematic-video-frame" aria-hidden="true">
         <video
@@ -52,11 +39,7 @@ export default function CinematicLandingStage() {
         />
       </div>
 
-      <motion.div
-        className="cinematic-dashboard"
-        animate={reduceMotion ? undefined : { y: [0, -8, 0] }}
-        transition={reduceMotion ? undefined : { duration: 8, ease: 'easeInOut', repeat: Infinity }}
-      >
+      <div className="cinematic-dashboard">
         <div className="cinematic-topbar">
           <span />
           <strong>Institute command</strong>
@@ -89,25 +72,17 @@ export default function CinematicLandingStage() {
             </div>
           ))}
         </div>
-      </motion.div>
+      </div>
 
-      <motion.div
-        className="cinematic-floating-card card-one"
-        animate={reduceMotion ? undefined : { x: [0, 8, 0], y: [0, -5, 0] }}
-        transition={reduceMotion ? undefined : { duration: 7, ease: 'easeInOut', repeat: Infinity }}
-      >
+      <div className="cinematic-floating-card card-one">
         <CalendarCheck2 size={18} aria-hidden="true" />
         <span>Routine synced</span>
-      </motion.div>
+      </div>
 
-      <motion.div
-        className="cinematic-floating-card card-two"
-        animate={reduceMotion ? undefined : { x: [0, -7, 0], y: [0, 6, 0] }}
-        transition={reduceMotion ? undefined : { duration: 7.5, ease: 'easeInOut', repeat: Infinity }}
-      >
+      <div className="cinematic-floating-card card-two">
         <Route size={18} aria-hidden="true" />
         <span>Route live</span>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }

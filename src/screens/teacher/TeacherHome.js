@@ -2,12 +2,15 @@ import React, { useMemo } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import HomeDashboardScreen from '../home/HomeDashboardScreen';
 import { useAuth } from '../../contexts/AuthContext';
+import { useInstitution } from '../../contexts/InstitutionContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
+import { filterByFeatureAccess, isFeatureEnabled } from '../../constants/featureEntitlements';
 import { openNearestDrawer } from '../../navigation/openNearestDrawer';
 
 export default function TeacherHome() {
   const navigation = useNavigation();
   const { brand, colors } = useRootLayout();
+  const { instituteData } = useInstitution();
   const { logout, notifications, userData } = useAuth();
 
   const teacherName = userData?.name || 'Teacher';
@@ -23,6 +26,7 @@ export default function TeacherHome() {
   const actions = useMemo(() => [
     {
       color: '#047857',
+      featureKey: 'attendance',
       icon: 'checkmark-done-circle',
       key: 'attendance',
       onPress: () => navigation.navigate('Attendance'),
@@ -32,6 +36,7 @@ export default function TeacherHome() {
     },
     {
       color: '#2563EB',
+      featureKey: 'notices',
       icon: 'megaphone',
       key: 'notices',
       onPress: () => navigation.navigate('TeacherNotifs'),
@@ -41,6 +46,7 @@ export default function TeacherHome() {
     },
     {
       color: '#7C3AED',
+      featureKey: 'people',
       icon: 'people',
       key: 'students',
       onPress: () => navigation.navigate('Students'),
@@ -50,6 +56,7 @@ export default function TeacherHome() {
     },
     {
       color: '#DC2626',
+      featureKey: 'routines',
       icon: 'calendar',
       key: 'routine',
       onPress: () => navigation.navigate('Routine'),
@@ -59,6 +66,7 @@ export default function TeacherHome() {
     },
     {
       color: '#B45309',
+      featureKey: 'assignments',
       icon: 'document-text',
       key: 'assignments',
       onPress: () => navigation.navigate('Assignments'),
@@ -68,6 +76,7 @@ export default function TeacherHome() {
     },
     {
       color: '#2563EB',
+      featureKey: 'courses',
       icon: 'play-circle',
       key: 'courses',
       onPress: () => navigation.navigate('Courses'),
@@ -77,6 +86,7 @@ export default function TeacherHome() {
     },
     {
       color: '#DC2626',
+      featureKey: 'pyq',
       icon: 'document-attach',
       key: 'pyq',
       onPress: () => navigation.navigate('UploadPYQ'),
@@ -86,6 +96,7 @@ export default function TeacherHome() {
     },
     {
       color: '#EA580C',
+      featureKey: 'media',
       icon: 'images',
       key: 'gallery',
       onPress: () => navigation.navigate('GalleryView'),
@@ -95,6 +106,7 @@ export default function TeacherHome() {
     },
     {
       color: '#0369A1',
+      featureKey: 'reports',
       icon: 'print',
       key: 'reports',
       onPress: () => navigation.navigate('ReportsCenter'),
@@ -104,6 +116,7 @@ export default function TeacherHome() {
     },
     {
       color: '#0F766E',
+      featureKey: 'messages',
       icon: 'chatbubbles',
       key: 'messages',
       onPress: () => navigation.navigate('CommunicationHub'),
@@ -113,6 +126,7 @@ export default function TeacherHome() {
     },
     {
       color: '#4F46E5',
+      featureKey: 'ai',
       icon: 'library',
       key: 'syllabus',
       onPress: () => navigation.navigate('SyllabusTutor'),
@@ -121,6 +135,10 @@ export default function TeacherHome() {
       title: 'Syllabus AI',
     },
   ], [colors, navigation]);
+  const visibleActions = useMemo(
+    () => filterByFeatureAccess(actions, instituteData),
+    [actions, instituteData]
+  );
 
   const notices = useMemo(
     () => (notifications || []).slice(0, 3).map((item, index) => ({
@@ -140,14 +158,16 @@ export default function TeacherHome() {
       notices={notices}
       onLogout={logout}
       onOpenMenu={() => openNearestDrawer(navigation)}
-      onOpenNotifications={() => navigation.navigate('TeacherNotifs')}
-      primaryActions={actions.slice(0, 4)}
+      onOpenNotifications={() => {
+        if (isFeatureEnabled(instituteData, 'notices')) navigation.navigate('TeacherNotifs');
+      }}
+      primaryActions={visibleActions.slice(0, 4)}
       profileMeta={[
         assignmentLabel,
         isSchool ? 'School mode' : 'College mode',
         userData?.instituteId ? `Institute ${userData.instituteId}` : 'Institute pending',
       ]}
-      secondaryActions={actions.slice(4)}
+      secondaryActions={visibleActions.slice(4)}
       title="Faculty"
       unreadCount={(notifications || []).length}
     />

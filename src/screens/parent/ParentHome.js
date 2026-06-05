@@ -2,10 +2,13 @@ import React, { useCallback, useMemo } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import HomeDashboardScreen from '../home/HomeDashboardScreen';
 import { useAuth } from '../../contexts/AuthContext';
+import { useInstitution } from '../../contexts/InstitutionContext';
+import { filterByFeatureAccess, isFeatureEnabled } from '../../constants/featureEntitlements';
 
 export default function ParentHome() {
   const navigation = useNavigation();
   const { logout, notifications, userData } = useAuth();
+  const { instituteData } = useInstitution();
 
   const openScreen = useCallback((screen) => {
     const parentNavigation = navigation.getParent?.();
@@ -31,6 +34,7 @@ export default function ParentHome() {
   const primaryActions = useMemo(() => [
     {
       color: '#B7791F',
+      featureKey: 'finance',
       icon: 'wallet',
       key: 'fees',
       onPress: () => openScreen('Fee Payment'),
@@ -40,6 +44,7 @@ export default function ParentHome() {
     },
     {
       color: '#16A34A',
+      featureKey: 'transport',
       icon: 'bus',
       key: 'fleet',
       onPress: () => openScreen('Live Fleet'),
@@ -49,6 +54,7 @@ export default function ParentHome() {
     },
     {
       color: '#2563EB',
+      featureKey: 'messages',
       icon: 'chatbubbles',
       key: 'messages',
       onPress: () => openScreen('CommunicationHub'),
@@ -58,6 +64,7 @@ export default function ParentHome() {
     },
     {
       color: '#A78BFA',
+      featureKey: 'notices',
       icon: 'notifications',
       key: 'notifications',
       onPress: () => openScreen('Notifications'),
@@ -66,16 +73,22 @@ export default function ParentHome() {
       title: 'Alerts',
     },
   ], [openScreen]);
+  const visiblePrimaryActions = useMemo(
+    () => filterByFeatureAccess(primaryActions, instituteData),
+    [instituteData, primaryActions]
+  );
 
   return (
     <HomeDashboardScreen
       displayName={userData?.name || 'Parent'}
-      instituteName={userData?.instituteData?.name || 'Edu-Hub'}
+      instituteName={userData?.instituteData?.name || 'Shii-Edu'}
       notices={notices}
       onLogout={logout}
       onOpenMenu={openMenu}
-      onOpenNotifications={() => openScreen('Notifications')}
-      primaryActions={primaryActions}
+      onOpenNotifications={() => {
+        if (isFeatureEnabled(instituteData, 'notices')) openScreen('Notifications');
+      }}
+      primaryActions={visiblePrimaryActions}
       profileMeta={[
         userData?.linkedStudentName || 'Linked student',
         userData?.linkedStudentUserId ? `ID ${userData.linkedStudentUserId}` : 'Student ID pending',

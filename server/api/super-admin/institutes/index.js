@@ -10,6 +10,7 @@ const {
   setCorsHeaders,
 } = require('../../_lib/firebaseAdmin');
 const { buildDefaultAcademicModel } = require('../../_lib/academicModels');
+const { buildFeatureSettings } = require('../../_lib/featureEntitlements');
 const { createBrandingPayload } = require('../../_lib/institutionBranding');
 const {
   assertUserId,
@@ -56,6 +57,10 @@ module.exports = async (req, res) => {
     const institutionType = normalizeInstitutionType(body.institutionType);
     const lowerInstitutionType = institutionType.toLowerCase();
     const branding = createBrandingPayload({ institutionType });
+    const featureSettings = buildFeatureSettings({
+      actorUid: authContext.uid,
+      tier: 'complete',
+    });
 
     if (!instituteName || !adminName) {
       res.status(400).json({
@@ -111,6 +116,10 @@ module.exports = async (req, res) => {
       institutionType,
       type: lowerInstitutionType,
       branding,
+      configuration: {
+        features: featureSettings,
+      },
+      features: featureSettings,
       schemaVersion: 3,
       academicModel: buildDefaultAcademicModel(institutionType),
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -119,6 +128,7 @@ module.exports = async (req, res) => {
       settings: {
         theme: 'white-label',
         branding,
+        features: featureSettings,
         notificationsEnabled: true,
         institutionType,
       },

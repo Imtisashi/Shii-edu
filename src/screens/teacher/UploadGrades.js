@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, Alert, ScrollView } from 'react-native';
-import { RosterSkeleton } from '../../components/ui/LoadingState';
+import { RosterSkeleton, SmoothSpinner } from '../../components/ui/LoadingState';
 import { collection, query, where, getDocs, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { useInstituteTheme } from '../../hooks/useInstituteTheme';
 import { createSupabaseGrade, listSupabaseUsers } from '../../services/supabaseTenantDataService';
+import DynamicHeader from '../../components/DynamicHeader';
 
 export default function UploadGrades({ navigation }) {
   const { currentUser, userData } = useAuth();
@@ -78,14 +79,20 @@ export default function UploadGrades({ navigation }) {
   }, [currentUser, userData?.instituteId]);
 
   const handleUpload = async () => {
-    if (!selectedStudent || !subject || !marks || !totalMarks) {
+    if (!selectedStudent || !subject.trim() || !marks || !totalMarks) {
       return Alert.alert("Error", "Please complete all fields.");
     }
 
     const numericMarks = Number(marks);
     const numericTotalMarks = Number(totalMarks);
-    if (!Number.isFinite(numericMarks) || !Number.isFinite(numericTotalMarks) || numericTotalMarks <= 0) {
-      return Alert.alert("Error", "Please enter valid marks and total marks.");
+    if (
+      !Number.isFinite(numericMarks) ||
+      !Number.isFinite(numericTotalMarks) ||
+      numericMarks < 0 ||
+      numericTotalMarks <= 0 ||
+      numericMarks > numericTotalMarks
+    ) {
+      return Alert.alert("Error", "Marks must be between 0 and the total marks.");
     }
 
     setIsSubmitting(true);
@@ -147,94 +154,107 @@ export default function UploadGrades({ navigation }) {
   };
 
   if (loading) {
-    return <RosterSkeleton rowCount={6} showFilters />;
+    return (
+      <View style={styles.container}>
+        <DynamicHeader title="Upload Grades" showBack />
+        <RosterSkeleton rowCount={6} showFilters />
+      </View>
+    );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.heroPanel}>
-        <Text style={styles.heroEyebrow}>Assessment ledger</Text>
-        <Text style={styles.heroTitle}>Upload Grades</Text>
-        <Text style={styles.heroCopy}>Select a student, add marks, and publish the result to Firestore.</Text>
-      </View>
-      <Text style={styles.label}>1. Select Student:</Text>
-      <View style={styles.listContainer}>
-        <FlatList
-          data={students}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity 
-              style={[styles.studentChip, selectedStudent?.id === item.id && styles.activeChip]}
-              onPress={() => setSelectedStudent(item)}
-            >
-              <Text style={[styles.chipText, selectedStudent?.id === item.id && styles.activeText]}>
-                {item.name}
-              </Text>
-            </TouchableOpacity>
-          )}
-        />
-      </View>
-
-      <ScrollView style={styles.form}>
-        <Text style={styles.label}>2. Exam Details:</Text>
-        
-        <TextInput 
-          style={styles.input} 
-          placeholder={instType === 'college' ? "Subject (e.g. Art History)" : "Subject (e.g. Mathematics)"}
-          placeholderTextColor={colors.muted}
-          value={subject}
-          onChangeText={setSubject}
-        />
-        
-        <TextInput 
-          style={styles.input} 
-          placeholder="Exam Type (e.g. Unit Test 1)"
-          placeholderTextColor={colors.muted}
-          value={examType}
-          onChangeText={setExamType}
-        />
-
-        <View style={styles.row}>
-          <View style={{ flex: 1, marginRight: 10 }}>
-            <Text style={styles.miniLabel}>Marks Obtained</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="e.g. 85" 
-              placeholderTextColor={colors.muted}
-              keyboardType="numeric"
-              value={marks}
-              onChangeText={setMarks}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.miniLabel}>Total Marks</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="e.g. 100" 
-              placeholderTextColor={colors.muted}
-              keyboardType="numeric"
-              value={totalMarks}
-              onChangeText={setTotalMarks}
-            />
-          </View>
+      <DynamicHeader title="Upload Grades" showBack />
+      <View style={styles.body}>
+        <View style={styles.heroPanel}>
+          <Text style={styles.heroEyebrow}>Assessment ledger</Text>
+          <Text style={styles.heroTitle}>Upload Grades</Text>
+          <Text style={styles.heroCopy}>Select a student, add marks, and publish the result to the institute ledger.</Text>
+        </View>
+        <Text style={styles.label}>1. Select Student:</Text>
+        <View style={styles.listContainer}>
+          <FlatList
+            data={students}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={item => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                accessibilityLabel={`Select ${item.name}`}
+                accessibilityRole="button"
+                style={[styles.studentChip, selectedStudent?.id === item.id && styles.activeChip]}
+                onPress={() => setSelectedStudent(item)}
+              >
+                <Text style={[styles.chipText, selectedStudent?.id === item.id && styles.activeText]}>
+                  {item.name}
+                </Text>
+              </TouchableOpacity>
+            )}
+          />
         </View>
 
-        <TouchableOpacity 
-          style={[styles.submitBtn, isSubmitting && { opacity: 0.7 }]} 
-          onPress={handleUpload}
-          disabled={isSubmitting}
-        >
-          <Text style={styles.submitText}>{isSubmitting ? "Uploading..." : "Publish Grade"}</Text>
-        </TouchableOpacity>
-      </ScrollView>
+        <ScrollView style={styles.form} keyboardShouldPersistTaps="handled">
+          <Text style={styles.label}>2. Exam Details:</Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder={instType === 'college' ? "Subject (e.g. Art History)" : "Subject (e.g. Mathematics)"}
+            placeholderTextColor={colors.muted}
+            value={subject}
+            onChangeText={setSubject}
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Exam Type (e.g. Unit Test 1)"
+            placeholderTextColor={colors.muted}
+            value={examType}
+            onChangeText={setExamType}
+          />
+
+          <View style={styles.row}>
+            <View style={{ flex: 1, marginRight: 10 }}>
+              <Text style={styles.miniLabel}>Marks Obtained</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. 85"
+                placeholderTextColor={colors.muted}
+                keyboardType="numeric"
+                value={marks}
+                onChangeText={setMarks}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.miniLabel}>Total Marks</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. 100"
+                placeholderTextColor={colors.muted}
+                keyboardType="numeric"
+                value={totalMarks}
+                onChangeText={setTotalMarks}
+              />
+            </View>
+          </View>
+
+          <TouchableOpacity
+            accessibilityLabel="Publish grade"
+            accessibilityRole="button"
+            style={[styles.submitBtn, isSubmitting && styles.disabled]}
+            onPress={handleUpload}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? <SmoothSpinner color="#FFFFFF" /> : <Text style={styles.submitText}>Publish Grade</Text>}
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
     </View>
   );
 }
 
 const baseStyles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#02030A', overflow: 'hidden', padding: 20 },
+  container: { flex: 1, backgroundColor: '#02030A', overflow: 'hidden' },
+  body: { flex: 1, padding: 20 },
   loadingContainer: { flex: 1, alignItems: 'center', backgroundColor: '#02030A', justifyContent: 'center' },
   loadingText: { color: '#B9C6DD', fontWeight: '800', marginTop: 12 },
   heroPanel: { backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1, marginBottom: 20, padding: 18 },
@@ -252,5 +272,6 @@ const baseStyles = StyleSheet.create({
   input: { backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1, color: '#F8FAFC', padding: 15, marginBottom: 15, outlineStyle: 'none' },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   submitBtn: { backgroundColor: '#8E24AA', borderColor: '#334155', borderRadius: 8, borderWidth: 1, padding: 18, alignItems: 'center', marginTop: 10 },
+  disabled: { opacity: 0.72 },
   submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
 });

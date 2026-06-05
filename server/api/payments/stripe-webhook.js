@@ -188,7 +188,7 @@ module.exports = async function handler(req, res) {
         recipientUids: [invoice.studentUid],
         relatedId: invoiceId,
         relatedType: 'fee_invoice',
-        author: 'Edu-Hub Payments',
+        author: 'Shii-Edu Payments',
         data: {
           originalType: 'fee_payment_received',
           invoiceId,

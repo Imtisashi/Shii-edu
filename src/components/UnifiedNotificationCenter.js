@@ -236,11 +236,15 @@ export default function UnifiedNotificationCenter() {
   );
 
   if (loading && sortedNotifications.length === 0) {
-    return <RosterSkeleton rowCount={5} showFilters={false} />;
+    return (
+      <StudentScreenScaffold scroll={false} style={styles.scaffoldContent} title="Notifications">
+        <RosterSkeleton rowCount={5} showFilters={false} />
+      </StudentScreenScaffold>
+    );
   }
 
   return (
-    <StudentScreenScaffold accentVariant="blue" scroll={false} style={styles.scaffoldContent}>
+    <StudentScreenScaffold accentVariant="blue" scroll={false} style={styles.scaffoldContent} title="Notifications">
       <FlatList
         data={sortedNotifications}
         keyExtractor={(item, index) => item.id || `notification-${index}`}

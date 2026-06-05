@@ -10,6 +10,8 @@ const {
   setCorsHeaders,
 } = require('../../_lib/firebaseAdmin');
 const { sendExpoPushToUsers } = require('../../_lib/expoPush');
+const { assertFeatureEnabled } = require('../../_lib/featureEntitlements');
+const { assertRateLimit } = require('../../_lib/rateLimit');
 
 const RequestSchema = z.object({
   amount: z.coerce.number().positive().max(10000000),
@@ -37,6 +39,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const actor = await authenticateUserProfile(req, ['admin']);
+    assertRateLimit({ actor, req, scope: 'admin:record-payment', limit: 30, windowMs: 60 * 1000 });
     const instituteId = actor.profile?.instituteId;
     if (!instituteId) {
       const error = new Error('Your profile is not linked to an institute.');
@@ -45,6 +48,7 @@ module.exports = async function handler(req, res) {
     }
     const body = parseBody(await getBody(req));
     const { firestore } = getAdminServices();
+    await assertFeatureEnabled({ firestore, instituteId, featureKey: 'finance' });
     const studentRef = firestore.collection('users').doc(body.studentUid);
     const studentSnapshot = await studentRef.get();
     if (!studentSnapshot.exists) {

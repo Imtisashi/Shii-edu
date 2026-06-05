@@ -178,7 +178,7 @@ export default function SyllabusTutor() {
           {canUpload ? (
             <TouchableOpacity disabled={uploading} onPress={uploadSyllabus} style={[styles.uploadButton, { backgroundColor: colors.violetSoft, borderColor: colors.hairline }]}>
               {uploading ? <SmoothSpinner color={colors.violet} size={18} /> : <Ionicons color={colors.violet} name="cloud-upload-outline" size={18} />}
-              <Text style={[styles.uploadText, { color: colors.violet }]}>{uploading ? 'Uploading Document...' : 'Upload PDF'}</Text>
+              <Text style={[styles.uploadText, { color: colors.violet }]}>{uploading ? 'Securing syllabus' : 'Upload PDF'}</Text>
             </TouchableOpacity>
           ) : null}
         </View>

@@ -19,6 +19,8 @@ const {
   callSupabaseTenantBridge,
   stripInstituteIdForTenantActor,
 } = require('../../_lib/supabaseTenantBridge');
+const { assertFeatureEnabled } = require('../../_lib/featureEntitlements');
+const { assertRateLimit } = require('../../_lib/rateLimit');
 
 const normalizeText = (value) => String(value || '').trim().replace(/\s+/g, ' ');
 const normalizeRole = (value) => String(value || '').trim().toLowerCase();
@@ -41,6 +43,7 @@ module.exports = async (req, res) => {
 
   try {
     const authContext = await authenticateUserProfile(req, ['admin', 'superadmin']);
+    assertRateLimit({ actor: authContext, req, scope: 'admin:user-create', limit: 24, windowMs: 60 * 1000 });
     const { firestore } = getAdminServices();
     const body = await getBody(req);
 
@@ -88,6 +91,7 @@ module.exports = async (req, res) => {
       res.status(404).json({ success: false, error: 'Institute not found.', requestId });
       return;
     }
+    await assertFeatureEnabled({ firestore, instituteId, featureKey: 'people' });
 
     const instituteData = instituteSnap.data() || {};
     const rawInstitutionType = normalizeText(instituteData.institutionType || instituteData.type || 'SCHOOL').toUpperCase();

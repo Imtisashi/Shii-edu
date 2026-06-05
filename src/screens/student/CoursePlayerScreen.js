@@ -36,7 +36,7 @@ export default function CoursePlayerScreen({ route }) {
   }, [courseId, userData]);
 
   return (
-    <StudentScreenScaffold accentVariant="blue">
+    <StudentScreenScaffold accentVariant="blue" showBack title="Courses">
       <ScreenIntro
         accentColor={colors.deepBlue}
         eyebrow="Learning player"

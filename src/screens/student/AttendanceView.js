@@ -161,7 +161,7 @@ function EmptyState() {
   return (
     <View style={styles.emptyState}>
       <View style={[styles.emptyIcon, { backgroundColor: colors.emeraldSoft, borderColor: colors.hairline }]}>
-        <Ionicons name="calendar-check-outline" size={34} color={colors.emerald} />
+        <Ionicons name="calendar-outline" size={34} color={colors.emerald} />
       </View>
       <Text style={[styles.emptyTitle, { color: colors.text }]}>No attendance marked yet</Text>
       <Text style={[styles.emptyText, { color: colors.muted }]}>Records will appear as soon as faculty submits attendance.</Text>
@@ -331,15 +331,17 @@ function AttendanceViewContent() {
 
   if (loading) {
     return (
-      <AttendanceSkeleton
-        accent="emerald"
-        rowCount={4}
-      />
+      <StudentScreenScaffold scroll={false} style={styles.scaffoldContent} title="Attendance">
+        <AttendanceSkeleton
+          accent="emerald"
+          rowCount={4}
+        />
+      </StudentScreenScaffold>
     );
   }
 
   return (
-    <StudentScreenScaffold accentVariant="emerald" scroll={false} style={styles.scaffoldContent}>
+    <StudentScreenScaffold accentVariant="emerald" scroll={false} style={styles.scaffoldContent} title="Attendance">
       <FlatList
         data={safeAttendanceRecords}
         keyExtractor={(item, index) => String(item?.id || index)}

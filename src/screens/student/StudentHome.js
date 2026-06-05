@@ -2,6 +2,8 @@ import React, { useCallback, useMemo } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import HomeDashboardScreen from '../home/HomeDashboardScreen';
 import { useAuth } from '../../contexts/AuthContext';
+import { useInstitution } from '../../contexts/InstitutionContext';
+import { filterByFeatureAccess, isFeatureEnabled } from '../../constants/featureEntitlements';
 
 const isTargetedToStudent = (notification) => {
   const targets = notification?.targetRoles || [];
@@ -58,6 +60,7 @@ const buildMeta = (userData) => {
 export default function StudentHome() {
   const navigation = useNavigation();
   const { logout, notifications, userData } = useAuth();
+  const { instituteData } = useInstitution();
 
   const openStudentScreen = useCallback((screen, params) => {
     const parentNavigation = navigation.getParent?.();
@@ -109,6 +112,7 @@ export default function StudentHome() {
   const primaryActions = useMemo(() => [
     {
       color: '#F7C948',
+      featureKey: 'grades',
       icon: 'school',
       key: 'grades',
       onPress: () => openStudentScreen('Grades'),
@@ -118,6 +122,7 @@ export default function StudentHome() {
     },
     {
       color: '#16A34A',
+      featureKey: 'attendance',
       icon: 'bar-chart',
       key: 'attendance',
       onPress: () => openStudentScreen('Attendance'),
@@ -127,6 +132,7 @@ export default function StudentHome() {
     },
     {
       color: '#2563EB',
+      featureKey: 'courses',
       icon: 'play-circle',
       key: 'courses',
       onPress: () => openStudentScreen('Courses'),
@@ -136,6 +142,7 @@ export default function StudentHome() {
     },
     {
       color: '#B7791F',
+      featureKey: 'finance',
       icon: 'wallet',
       key: 'fees',
       onPress: () => openStudentScreen('Fee Payment'),
@@ -148,6 +155,7 @@ export default function StudentHome() {
   const secondaryActions = useMemo(() => [
     {
       color: '#A78BFA',
+      featureKey: 'routines',
       icon: 'calendar',
       key: 'routine',
       onPress: () => openStudentScreen('Routine'),
@@ -157,6 +165,7 @@ export default function StudentHome() {
     },
     {
       color: '#67E8F9',
+      featureKey: 'pyq',
       icon: 'document-text',
       key: 'pyqs',
       onPress: () => openStudentScreen('PYQs'),
@@ -166,6 +175,7 @@ export default function StudentHome() {
     },
     {
       color: '#F472B6',
+      featureKey: 'media',
       icon: 'images',
       key: 'gallery',
       onPress: () => openStudentScreen('Gallery'),
@@ -175,6 +185,7 @@ export default function StudentHome() {
     },
     {
       color: '#2DD4BF',
+      featureKey: 'messages',
       icon: 'chatbubbles',
       key: 'messages',
       onPress: () => openStudentScreen('CommunicationHub'),
@@ -184,6 +195,7 @@ export default function StudentHome() {
     },
     {
       color: '#4ADE80',
+      featureKey: 'transport',
       icon: 'bus',
       key: 'fleet',
       onPress: () => openStudentScreen('Live Fleet'),
@@ -193,6 +205,7 @@ export default function StudentHome() {
     },
     {
       color: '#818CF8',
+      featureKey: 'ai',
       icon: 'sparkles',
       key: 'syllabus-tutor',
       onPress: () => openStudentScreen('SyllabusTutor'),
@@ -201,6 +214,14 @@ export default function StudentHome() {
       title: 'Syllabus AI',
     },
   ], [openStudentScreen]);
+  const visiblePrimaryActions = useMemo(
+    () => filterByFeatureAccess(primaryActions, instituteData),
+    [instituteData, primaryActions]
+  );
+  const visibleSecondaryActions = useMemo(
+    () => filterByFeatureAccess(secondaryActions, instituteData),
+    [instituteData, secondaryActions]
+  );
 
   return (
     <HomeDashboardScreen
@@ -209,10 +230,12 @@ export default function StudentHome() {
       notices={notices}
       onLogout={logout}
       onOpenMenu={openMenu}
-      onOpenNotifications={openNotifications}
-      primaryActions={primaryActions}
+      onOpenNotifications={() => {
+        if (isFeatureEnabled(instituteData, 'notices')) openNotifications();
+      }}
+      primaryActions={visiblePrimaryActions}
       profileMeta={buildMeta(userData)}
-      secondaryActions={secondaryActions}
+      secondaryActions={visibleSecondaryActions}
       unreadCount={unreadCount}
     />
   );

@@ -83,7 +83,7 @@ function InstituteAppNavigator() {
     return (
       <AccessState
         title="Institute App Only"
-        message="Superadmin accounts must use the separate Edu-Hub Superadmin application."
+        message="Superadmin accounts must use the separate Shii-Edu Superadmin application."
         onSignOut={logout}
       />
     );

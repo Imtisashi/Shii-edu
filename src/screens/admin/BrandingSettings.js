@@ -310,7 +310,7 @@ export default function BrandingSettings() {
               ) : (
                 <Ionicons name="image-outline" size={18} color="#FFFFFF" />
               )}
-              <Text style={styles.primaryActionText}>{uploadingLogo ? 'Uploading...' : 'Choose Logo'}</Text>
+              <Text style={styles.primaryActionText}>{uploadingLogo ? 'Securing logo' : 'Choose Logo'}</Text>
             </TouchableOpacity>
             {logoUrl ? (
               <TouchableOpacity
@@ -361,7 +361,7 @@ export default function BrandingSettings() {
           ) : (
             <Ionicons name="sparkles" size={19} color="#FFFFFF" />
           )}
-          <Text style={styles.saveButtonText}>{saving ? 'Saving Brand...' : 'Apply Brand to Institute'}</Text>
+          <Text style={styles.saveButtonText}>{saving ? 'Applying brand' : 'Apply Brand to Institute'}</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>

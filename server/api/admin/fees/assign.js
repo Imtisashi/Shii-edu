@@ -16,6 +16,8 @@ const {
   isInternalTaskExecution,
   startBackgroundTask,
 } = require('../../_lib/backgroundTasks');
+const { assertFeatureEnabled } = require('../../_lib/featureEntitlements');
+const { assertRateLimit } = require('../../_lib/rateLimit');
 
 const TargetScopeSchema = z.enum(['all', 'class', 'department', 'section', 'semester']);
 const AssignFeeSchema = z.object({
@@ -74,6 +76,9 @@ module.exports = async function handler(req, res) {
 
   try {
     const actor = await authenticateUserProfile(req, ['admin', 'superadmin']);
+    if (!isInternalTaskExecution(req)) {
+      assertRateLimit({ actor, req, scope: 'admin:fee-assignment', limit: 12, windowMs: 60 * 1000 });
+    }
     const { firestore } = getAdminServices();
     const body = parseBody(await getBody(req));
     const instituteId = assertInstituteId(body.instituteId || actor.profile.instituteId);
@@ -89,6 +94,8 @@ module.exports = async function handler(req, res) {
       error.statusCode = 400;
       throw error;
     }
+
+    await assertFeatureEnabled({ firestore, instituteId, featureKey: 'finance' });
 
     if (!isInternalTaskExecution(req)) {
       const task = await enqueueBackgroundTask({

@@ -17,7 +17,7 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Shii-Edu uses the camera when you choose to capture institute media.",
         "NSFaceIDUsageDescription": "Allow Shii-Edu to use Face ID for secure institute sign-in.",
-        "NSLocationWhenInUseUsageDescription": "Edu-Hub uses location while a driver is actively broadcasting a campus vehicle route.",
+        "NSLocationWhenInUseUsageDescription": "Shii-Edu uses location while a driver is actively broadcasting a campus vehicle route.",
         "NSPhotoLibraryAddUsageDescription": "Shii-Edu saves media only when you explicitly request it.",
         "NSPhotoLibraryUsageDescription": "Shii-Edu uses your photo library when you choose images to upload."
       }
@@ -79,7 +79,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow Edu-Hub to share the live location of an active campus vehicle route."
+          "locationWhenInUsePermission": "Allow Shii-Edu to share the live location of an active campus vehicle route."
         }
       ],
       "expo-notifications",

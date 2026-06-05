@@ -5,7 +5,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { sharedStackScreenOptions } from './animatedScreenOptions';
 import EdgeDrawerButton from '../components/navigation/EdgeDrawerButton';
 import RoleDrawerContent from '../components/navigation/RoleDrawerContent';
+import { useInstitution } from '../contexts/InstitutionContext';
 import { useRootLayout } from '../contexts/RootLayoutContext';
+import { isFeatureEnabled } from '../constants/featureEntitlements';
 import ParentHome from '../screens/parent/ParentHome';
 import FeePayment from '../screens/student/FeePayment';
 import StudentNotifications from '../screens/student/StudentNotifications';
@@ -16,8 +18,16 @@ import AccountSettingsScreen from '../screens/shared/AccountSettingsScreen';
 
 const Drawer = createDrawerNavigator();
 
+const parentDrawerLinks = [
+  { featureKey: 'finance', icon: 'wallet-outline', label: 'Fee Payment', routeName: 'Fee Payment' },
+  { featureKey: 'transport', icon: 'bus-outline', label: 'Live Fleet', routeName: 'Live Fleet' },
+  { featureKey: 'messages', icon: 'chatbubbles-outline', label: 'Messages', routeName: 'CommunicationHub' },
+  { featureKey: 'notices', icon: 'notifications-outline', label: 'Notifications', routeName: 'Notifications' },
+];
+
 export default function ParentNavigator() {
   const { colors } = useRootLayout();
+  const { instituteData } = useInstitution();
 
   return (
     <Drawer.Navigator
@@ -27,6 +37,7 @@ export default function ParentNavigator() {
           dashboardRoute="ParentHome"
           profileRoute="ParentProfile"
           settingsRoute="ParentSettings"
+          workspaceLinks={parentDrawerLinks}
         />
       )}
       screenOptions={({ navigation }) => ({
@@ -62,35 +73,35 @@ export default function ParentNavigator() {
           drawerIcon: ({ focused, color }) => <Ionicons color={color} name={focused ? 'home' : 'home-outline'} size={24} />,
         }}
       />
-      <Drawer.Screen
+      {isFeatureEnabled(instituteData, 'finance') ? <Drawer.Screen
         component={FeePayment}
         name="Fee Payment"
         options={{
           drawerIcon: ({ focused, color }) => <Ionicons color={color} name={focused ? 'wallet' : 'wallet-outline'} size={24} />,
         }}
-      />
-      <Drawer.Screen
+      /> : null}
+      {isFeatureEnabled(instituteData, 'transport') ? <Drawer.Screen
         component={FleetTrackingScreen}
         name="Live Fleet"
         options={{
           drawerIcon: ({ focused, color }) => <Ionicons color={color} name={focused ? 'bus' : 'bus-outline'} size={24} />,
         }}
-      />
-      <Drawer.Screen
+      /> : null}
+      {isFeatureEnabled(instituteData, 'messages') ? <Drawer.Screen
         component={CommunicationHub}
         name="CommunicationHub"
         options={{
           drawerLabel: 'Messages',
           drawerIcon: ({ focused, color }) => <Ionicons color={color} name={focused ? 'chatbubbles' : 'chatbubbles-outline'} size={24} />,
         }}
-      />
-      <Drawer.Screen
+      /> : null}
+      {isFeatureEnabled(instituteData, 'notices') ? <Drawer.Screen
         component={StudentNotifications}
         name="Notifications"
         options={{
           drawerIcon: ({ focused, color }) => <Ionicons color={color} name={focused ? 'notifications' : 'notifications-outline'} size={24} />,
         }}
-      />
+      /> : null}
       <Drawer.Screen
         component={AccountProfileScreen}
         name="ParentProfile"

@@ -18,7 +18,16 @@ export default function UploadAssignment() {
   const [uploading, setUploading] = useState(false);
 
   const handleUpload = async () => {
-    if (!course || !question) {
+    if (!currentUser?.uid || !userData?.instituteId) {
+      if (Platform.OS === 'web') {
+        window.alert("Your profile is not linked to an institute.");
+      } else {
+        Alert.alert('Missing Institute', 'Your profile is not linked to an institute.');
+      }
+      return;
+    }
+
+    if (!course.trim() || !question.trim()) {
       if (Platform.OS === 'web') {
         window.alert("Fill all fields");
       } else {
@@ -87,7 +96,7 @@ export default function UploadAssignment() {
   return (
     <View style={styles.container}>
       <DynamicHeader title="Post Assignment" />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
           <Text style={styles.label}>Course / Subject Name</Text>
           <TextInput style={styles.input} placeholder="e.g. Physics 101" placeholderTextColor={colors.muted} value={course} onChangeText={setCourse} />
@@ -99,7 +108,13 @@ export default function UploadAssignment() {
           <TextInput style={[styles.input, styles.textArea]} placeholder="Write the assignment details..." placeholderTextColor={colors.muted} value={question} onChangeText={setQuestion} multiline numberOfLines={5} textAlignVertical="top" />
         </View>
 
-        <TouchableOpacity style={styles.submitBtn} onPress={handleUpload} disabled={uploading}>
+        <TouchableOpacity
+          accessibilityLabel="Post assignment"
+          accessibilityRole="button"
+          style={[styles.submitBtn, uploading && styles.submitBtnDisabled]}
+          onPress={handleUpload}
+          disabled={uploading}
+        >
           {uploading ? <SmoothSpinner color="#FFFFFF" /> : (
             <>
               <Ionicons name="cloud-upload" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
@@ -120,5 +135,6 @@ const baseStyles = StyleSheet.create({
   input: { backgroundColor: '#020617', borderWidth: 1, borderColor: '#334155', borderRadius: 8, padding: 12, fontSize: 16, color: '#F8FAFC', marginBottom: 16, outlineStyle: 'none' },
   textArea: { minHeight: 120 },
   submitBtn: { flexDirection: 'row', backgroundColor: '#8E24AA', borderColor: '#334155', borderRadius: 8, borderWidth: 1, paddingVertical: 16, justifyContent: 'center', alignItems: 'center'},
+  submitBtnDisabled: { opacity: 0.72 },
   submitBtnText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
 });

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { getInstitutionProfile, InstitutionType } from '../services/institutionalProfile';
+import { resolveFeatureEntitlements } from '../constants/featureEntitlements';
 import { db } from '../../firebaseConfig';
 
 const InstitutionContext = createContext(null);
@@ -169,6 +170,7 @@ export function InstitutionProvider({ children }) {
 
   const value = useMemo(() => {
     if (isSuperAdmin) {
+      const featureAccess = resolveFeatureEntitlements({});
       return {
         profile: {
           institutionType: 'PLATFORM',
@@ -176,7 +178,7 @@ export function InstitutionProvider({ children }) {
           isCollege: false,
           isPlatform: true,
           instituteId: null,
-          instituteName: 'Edu-Hub Platform',
+          instituteName: 'Shii-Edu Platform',
           academicRootLabel: 'Institutes',
           academicChildLabel: 'Institutes',
           attendanceLabel: 'Platform attendance disabled',
@@ -198,6 +200,7 @@ export function InstitutionProvider({ children }) {
         isCollege: false,
         isPlatform: true,
         instituteData: null,
+        featureAccess,
         status: 'platform',
         error: null,
         source: 'superadmin-role',
@@ -213,6 +216,7 @@ export function InstitutionProvider({ children }) {
     }
 
     const instituteData = firestoreInstituteData || userData?.instituteData || {};
+    const featureAccess = resolveFeatureEntitlements(instituteData);
     const profile = getInstitutionProfile({
       ...(userData || {}),
       instituteData,
@@ -230,6 +234,7 @@ export function InstitutionProvider({ children }) {
       isCollege: profile.isCollege,
       isPlatform: false,
       instituteData,
+      featureAccess,
       status,
       error,
       source: firestoreInstituteData ? 'firestore' : 'auth-profile',

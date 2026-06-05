@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
+import DynamicHeader from '../DynamicHeader';
 
 export function EnterprisePanel({ children, style }) {
   const { colors, radii } = useRootLayout();
@@ -44,10 +45,13 @@ export function ScreenIntro({ accentColor, eyebrow, subtitle, title, trailing })
 export default function StudentScreenScaffold({
   children,
   scroll = true,
+  showBack = false,
   style,
+  title,
 }) {
   const { colors, insets, isDesktop, maxContentWidth, spacing } = useRootLayout();
-  const topPadding = Math.max(insets.top, 12) + 18;
+  const showHeader = Boolean(title);
+  const topPadding = showHeader ? 18 : Math.max(insets.top, 12) + 18;
   const bottomPadding = Math.max(insets.bottom, 10) + 88;
   const contentStyle = [
     styles.content,
@@ -63,6 +67,7 @@ export default function StudentScreenScaffold({
   if (!scroll) {
     return (
       <View style={[styles.container, { backgroundColor: colors.page }]}>
+        {showHeader ? <DynamicHeader showBack={showBack} title={title} /> : null}
         <View style={contentStyle}>{children}</View>
       </View>
     );
@@ -70,6 +75,7 @@ export default function StudentScreenScaffold({
 
   return (
     <View style={[styles.container, { backgroundColor: colors.page }]}>
+      {showHeader ? <DynamicHeader showBack={showBack} title={title} /> : null}
       <ScrollView
         contentContainerStyle={contentStyle}
         keyboardShouldPersistTaps="handled"

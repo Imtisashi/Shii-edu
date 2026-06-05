@@ -9,6 +9,7 @@ import { useInstituteTheme } from '../../hooks/useInstituteTheme';
 import { authenticatedFetch } from '../../services/apiClient';
 import { createIdempotencyKey } from '../../utils/idempotencyKey';
 import { showNativeMessage } from '../../utils/userFeedback';
+import DynamicHeader from '../../components/DynamicHeader';
 
 const showAlert = (title, message) => {
   if (Platform.OS === 'web') window.alert(`${title}\n\n${message}`);
@@ -171,8 +172,9 @@ export default function FeeManagement() {
 
   // --- RENDER ---
   return (
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.page }]}>
-      
+    <View style={[styles.screen, { backgroundColor: colors.page }]}>
+      <DynamicHeader title="Financial Ledger" />
+
       <View style={styles.heroSection}>
         <Text style={styles.headerTitle}>Financial Ledger</Text>
         <Text style={styles.headerSub}>Manage & allocate campus fees</Text>
@@ -333,7 +335,8 @@ export default function FeeManagement() {
 }
 
 const baseStyles = StyleSheet.create({
-  heroSection: { backgroundColor: '#0F172A', borderBottomColor: '#334155', borderBottomLeftRadius: 30, borderBottomRightRadius: 30, borderBottomWidth: 1, paddingTop: 40, paddingBottom: 20, paddingHorizontal: 25, zIndex: 10 },
+  screen: { flex: 1, overflow: 'hidden' },
+  heroSection: { backgroundColor: '#0F172A', borderBottomColor: '#334155', borderBottomLeftRadius: 8, borderBottomRightRadius: 8, borderBottomWidth: 1, paddingTop: 20, paddingBottom: 20, paddingHorizontal: 25, zIndex: 10 },
   headerTitle: { color: '#F8FAFC', fontSize: 26, fontWeight: '900' },
   headerSub: { color: '#94A3B8', fontSize: 13, marginTop: 4 },
   statsRow: { flexDirection: 'row', backgroundColor: '#020617', borderColor: '#334155', borderRadius: 8, borderWidth: 1, marginTop: 20, padding: 20, justifyContent: 'space-between' },

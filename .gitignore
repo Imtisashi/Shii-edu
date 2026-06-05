@@ -58,6 +58,7 @@ skills-lock.json
 .aider*
 .claude/
 .codex/
+codex.md
 .continue/
 .cursor/
 .windsurf/
@@ -79,3 +80,8 @@ IMPLEMENTATION_SUMMARY.md
 /android
 
 .vercel
+
+# AI Context & Prompt Files
+.codex-context.md
+.ai-instructions/
+prompt-history.txt

@@ -1,7 +1,10 @@
 import {
   ArrowRight,
+  BadgeCheck,
+  BookOpen,
   Bus,
   CalendarCheck2,
+  ClipboardCheck,
   FileCheck2,
   FileLock2,
   GraduationCap,
@@ -11,11 +14,15 @@ import {
   Mail,
   MessageSquareText,
   Palette,
+  ReceiptText,
   ShieldCheck,
+  Sparkles,
   UploadCloud,
   Users,
+  Workflow,
 } from 'lucide-react';
 import CinematicLandingStage from './components/CinematicLandingStage';
+import LandingRoleExplorer from './components/LandingRoleExplorer';
 import { routeMetadata, SITE } from './lib/site';
 
 export const runtime = 'edge';
@@ -78,6 +85,58 @@ const roleGroups = [
   },
 ];
 
+const featureGroups = [
+  {
+    icon: ClipboardCheck,
+    title: 'Academics',
+    items: ['Attendance', 'Routines', 'Assignments', 'Grades', 'Reports'],
+  },
+  {
+    icon: MessageSquareText,
+    title: 'Communication',
+    items: ['Broadcasts', 'Notifications', 'Messages', 'Office hours'],
+  },
+  {
+    icon: ReceiptText,
+    title: 'Operations',
+    items: ['Fee ledger', 'Manual receipts', 'User imports', 'Tier controls'],
+  },
+  {
+    icon: BookOpen,
+    title: 'Learning Library',
+    items: ['Courses', 'Gallery', 'PYQ PDFs', 'Syllabus files'],
+  },
+  {
+    icon: Bus,
+    title: 'Transport',
+    items: ['Driver console', 'Live fleet', 'Route status', 'Vehicle context'],
+  },
+  {
+    icon: Sparkles,
+    title: 'Reviewed AI',
+    items: ['Syllabus tutor', 'CSV mapping', 'Smart compose', 'Substitute scheduling'],
+  },
+];
+
+const differenceRows = [
+  {
+    title: 'Institute boundaries are structural.',
+    body: 'Routes, uploads, payments, messages, and Supabase mirror data carry the institute ID instead of relying on loose UI filters.',
+  },
+  {
+    title: 'Subscription tiers are controlled by Superadmin.',
+    body: 'A campus can run Starter, Growth, or Complete, then override individual modules when a contract needs a special exception.',
+  },
+  {
+    title: 'The brand follows the campus.',
+    body: 'Admin theme choices travel to teachers, students, parents, and drivers with the same institute ID.',
+  },
+  {
+    title: 'Roles do not inherit clutter.',
+    body: 'Teacher, parent, student, and driver navigation only shows the tools that match their work and tier.',
+  },
+];
+
 const trustRows = [
   ['Institute data boundary', 'Row-level policies keep each campus workspace scoped to its members.', 'Active'],
   ['Payment metadata', 'No raw card, CVV, UPI credential, or banking secret is stored.', 'Minimal'],
@@ -116,15 +175,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="landing-page">
-      <div className="landing-announcement">
-        <span>Institute-owned workspaces</span>
-        <span aria-hidden="true">/</span>
-        <span>Tenant-scoped operations</span>
-        <span aria-hidden="true">/</span>
-        <span>Reviewed {SITE.updatedAt}</span>
-      </div>
-
+    <div className="landing-page landing-v2">
       <header className="landing-nav" aria-label="Primary">
         <a className="landing-brand" href="/" aria-label="Shii-Edu home">
           <img src="/assets/images/icon.png" alt="" width="40" height="40" />
@@ -136,7 +187,9 @@ export default function HomePage() {
 
         <nav className="landing-links" aria-label="Landing sections">
           <a href="#workspace">Workspace</a>
+          <a href="#features">Features</a>
           <a href="#roles">Roles</a>
+          <a href="#different">Different</a>
           <a href="#theme">Theme</a>
           <a href="#trust">Trust</a>
           <a href="#legal">Legal</a>
@@ -205,6 +258,46 @@ export default function HomePage() {
           </div>
         </section>
 
+        <section id="features" className="landing-band features-band" aria-labelledby="features-title">
+          <div className="landing-section-head">
+            <BadgeCheck size={22} aria-hidden="true" />
+            <div>
+              <h2 id="features-title">The full platform map, not a thin school app.</h2>
+              <p>
+                Shii-Edu covers academics, communication, finance, media, transport, and AI-assisted review. Superadmin
+                can turn these modules into institute tiers without changing code for every campus.
+              </p>
+            </div>
+          </div>
+          <div className="feature-map" aria-label="Shii-Edu feature groups">
+            {featureGroups.map(({ icon: Icon, items, title }) => (
+              <article className="feature-cluster" key={title}>
+                <div className="feature-cluster-head">
+                  <Icon size={19} aria-hidden="true" />
+                  <h3>{title}</h3>
+                </div>
+                <div className="feature-pills">
+                  {items.map((item) => <span key={item}>{item}</span>)}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="explorer" className="landing-band explorer-band" aria-labelledby="explorer-title">
+          <div className="landing-section-head">
+            <Workflow size={22} aria-hidden="true" />
+            <div>
+              <h2 id="explorer-title">Pick a role and the surface changes shape.</h2>
+              <p>
+                The app is built around working roles, not one oversized menu. The landing page mirrors that behavior so
+                mobile visitors can understand the product by touching it.
+              </p>
+            </div>
+          </div>
+          <LandingRoleExplorer />
+        </section>
+
         <section id="roles" className="landing-band roles-band" aria-labelledby="roles-title">
           <div className="landing-section-head">
             <Users size={22} aria-hidden="true" />
@@ -224,6 +317,30 @@ export default function HomePage() {
                   <h3>{title}</h3>
                   <p>{body}</p>
                 </span>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="different" className="landing-band difference-band" aria-labelledby="different-title">
+          <div className="landing-section-head">
+            <ShieldCheck size={22} aria-hidden="true" />
+            <div>
+              <h2 id="different-title">What separates Shii-Edu from generic education apps.</h2>
+              <p>
+                The product is opinionated about tenant boundaries, role-specific work, and subscription control. Those
+                details matter when a real institute operates the system every day.
+              </p>
+            </div>
+          </div>
+          <div className="difference-grid">
+            {differenceRows.map(({ body, title }) => (
+              <article className="difference-row" key={title}>
+                <span aria-hidden="true" />
+                <div>
+                  <h3>{title}</h3>
+                  <p>{body}</p>
+                </div>
               </article>
             ))}
           </div>

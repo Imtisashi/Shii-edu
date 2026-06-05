@@ -16,9 +16,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
-import { deleteInstituteAsSuperAdmin } from '../../services/firebaseAdminService';
+import { deleteInstituteAsSuperAdmin, updateInstituteFeatureSettings } from '../../services/firebaseAdminService';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 import LoadingState, { SmoothSpinner } from '../../components/ui/LoadingState';
+import {
+  FEATURE_DEFINITIONS,
+  FEATURE_TIERS,
+  getTierFeatureMap,
+  resolveFeatureEntitlements,
+} from '../../constants/featureEntitlements';
 
 export default function ManageInstitutes() {
   const navigation = useNavigation();
@@ -31,10 +37,39 @@ export default function ManageInstitutes() {
   const [editName, setEditName] = useState('');
   const [saving, setSaving] = useState(false);
   const [deletingInstituteId, setDeletingInstituteId] = useState('');
+  const [showFeaturesModal, setShowFeaturesModal] = useState(false);
+  const [featureInstitute, setFeatureInstitute] = useState(null);
+  const [featureTier, setFeatureTier] = useState('complete');
+  const [featureOverrides, setFeatureOverrides] = useState({});
+  const [savingFeatures, setSavingFeatures] = useState(false);
 
   const sortedInstitutes = useMemo(
     () => [...institutes].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
     [institutes]
+  );
+  const tierOptions = useMemo(
+    () => Object.entries(FEATURE_TIERS).map(([key, value]) => ({ key, ...value })),
+    []
+  );
+  const groupedFeatures = useMemo(
+    () => FEATURE_DEFINITIONS.reduce((groups, feature) => {
+      const category = feature.category || 'Other';
+      groups[category] = groups[category] || [];
+      groups[category].push(feature);
+      return groups;
+    }, {}),
+    []
+  );
+  const effectiveFeatureAccess = useMemo(
+    () => resolveFeatureEntitlements({
+      settings: {
+        features: {
+          tier: featureTier,
+          overrides: featureOverrides,
+        },
+      },
+    }),
+    [featureOverrides, featureTier]
   );
 
   const fetchInstitutes = async ({ showLoader = true } = {}) => {
@@ -75,6 +110,75 @@ export default function ManageInstitutes() {
     setShowEditModal(false);
     setEditInstituteId('');
     setEditName('');
+  };
+
+  const handleEditFeatures = (institute) => {
+    const access = resolveFeatureEntitlements(institute);
+    setFeatureInstitute(institute);
+    setFeatureTier(access.tier);
+    setFeatureOverrides(access.overrides || {});
+    setShowFeaturesModal(true);
+  };
+
+  const closeFeaturesModal = () => {
+    setShowFeaturesModal(false);
+    setFeatureInstitute(null);
+    setFeatureTier('complete');
+    setFeatureOverrides({});
+  };
+
+  const selectTier = (tier) => {
+    const tierFeatures = getTierFeatureMap(tier);
+    const nextOverrides = { ...featureOverrides };
+    Object.keys(nextOverrides).forEach((key) => {
+      const tierValue = tierFeatures[key] !== false;
+      if (nextOverrides[key] === tierValue) delete nextOverrides[key];
+    });
+    setFeatureTier(tier);
+    setFeatureOverrides(nextOverrides);
+  };
+
+  const toggleFeature = (featureKey) => {
+    const tierFeatures = getTierFeatureMap(featureTier);
+    const tierValue = tierFeatures[featureKey] !== false;
+    const currentValue = effectiveFeatureAccess.enabledFeatures[featureKey] !== false;
+    const nextValue = !currentValue;
+    setFeatureOverrides((current) => {
+      const next = { ...current };
+      if (nextValue === tierValue) {
+        delete next[featureKey];
+      } else {
+        next[featureKey] = nextValue;
+      }
+      return next;
+    });
+  };
+
+  const handleSaveFeatures = async () => {
+    if (!featureInstitute) return;
+
+    setSavingFeatures(true);
+    try {
+      const instituteId = featureInstitute.instituteId || featureInstitute.id;
+      const result = await updateInstituteFeatureSettings(instituteId, {
+        overrides: featureOverrides,
+        tier: featureTier,
+      });
+
+      if (!result.success) {
+        Alert.alert('Error', result.error || 'Failed to update feature access.');
+        return;
+      }
+
+      Alert.alert('Success', 'Institute feature access updated.');
+      closeFeaturesModal();
+      fetchInstitutes({ showLoader: false });
+    } catch (error) {
+      console.error('Error updating institute features:', error);
+      Alert.alert('Error', 'Failed to update feature access.');
+    } finally {
+      setSavingFeatures(false);
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -153,6 +257,9 @@ export default function ManageInstitutes() {
   const renderInstitute = ({ item }) => {
     const institutionType = String(item.institutionType || item.type || 'SCHOOL').toUpperCase();
     const isCollege = institutionType === 'COLLEGE';
+    const featureAccess = resolveFeatureEntitlements(item);
+    const enabledCount = Object.values(featureAccess.enabledFeatures).filter(Boolean).length;
+    const totalFeatureCount = FEATURE_DEFINITIONS.length;
 
     return (
       <View style={[styles.instituteCard, layout.isMobile && styles.instituteCardMobile, layout.listColumns > 1 && styles.instituteCardDesktop]}>
@@ -173,9 +280,18 @@ export default function ManageInstitutes() {
           <Text style={styles.instituteMeta}>
             Created {item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString() : 'recently'}
           </Text>
+          <View style={styles.featureSummary}>
+            <Ionicons name="options-outline" size={13} color="#93C5FD" />
+            <Text style={styles.featureSummaryText} numberOfLines={1}>
+              {featureAccess.tierLabel} tier - {enabledCount}/{totalFeatureCount} features
+            </Text>
+          </View>
         </View>
 
         <View style={[styles.actionButtons, layout.isMobile && styles.actionButtonsMobile]}>
+          <TouchableOpacity style={[styles.featuresButton, layout.isMobile && styles.smallActionButtonMobile]} onPress={() => handleEditFeatures(item)}>
+            <Ionicons name="layers-outline" size={20} color="#A7F3D0" />
+          </TouchableOpacity>
           <TouchableOpacity style={[styles.editButton, layout.isMobile && styles.smallActionButtonMobile]} onPress={() => handleEditInstitute(item)}>
             <Ionicons name="create-outline" size={20} color="#60A5FA" />
           </TouchableOpacity>
@@ -276,6 +392,78 @@ export default function ManageInstitutes() {
         </View>
       </Modal>
 
+      <Modal transparent visible={showFeaturesModal} onRequestClose={closeFeaturesModal} animationType="slide">
+        <View style={styles.modalContainer}>
+          <ScrollView contentContainerStyle={styles.featureModalScrollContent} keyboardShouldPersistTaps="handled">
+            <View style={styles.featureModalContent}>
+              <View style={styles.modalHeader}>
+                <View style={styles.modalIcon}>
+                  <Ionicons name="layers" size={26} color="#2563EB" />
+                </View>
+                <Text style={[styles.modalTitle, styles.featureModalTitle]}>Feature Access</Text>
+                <Text style={[styles.modalSubtitle, styles.featureModalSubtitle]}>
+                  {featureInstitute?.name || 'Institute'} - tier preset with per-feature overrides.
+                </Text>
+              </View>
+
+              <View style={styles.tierGrid}>
+                {tierOptions.map((tier) => {
+                  const selected = featureTier === tier.key;
+                  return (
+                    <TouchableOpacity
+                      key={tier.key}
+                      onPress={() => selectTier(tier.key)}
+                      style={[styles.tierCard, selected && styles.tierCardSelected]}
+                    >
+                      <View style={styles.tierCardHeader}>
+                        <Text style={[styles.tierTitle, selected && styles.tierTitleSelected]}>{tier.label}</Text>
+                        {selected ? <Ionicons name="checkmark-circle" size={18} color="#2563EB" /> : null}
+                      </View>
+                      <Text style={styles.tierDescription}>{tier.description}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <View style={styles.featureGroups}>
+                {Object.entries(groupedFeatures).map(([category, features]) => (
+                  <View key={category} style={styles.featureGroup}>
+                    <Text style={styles.featureGroupTitle}>{category}</Text>
+                    {features.map((feature) => {
+                      const enabled = effectiveFeatureAccess.enabledFeatures[feature.key] !== false;
+                      const isOverride = featureOverrides[feature.key] !== undefined;
+                      return (
+                        <TouchableOpacity
+                          key={feature.key}
+                          onPress={() => toggleFeature(feature.key)}
+                          style={[styles.featureToggle, enabled ? styles.featureToggleEnabled : styles.featureToggleDisabled]}
+                        >
+                          <View style={styles.featureToggleCopy}>
+                            <Text style={styles.featureToggleTitle}>{feature.label}</Text>
+                            <Text style={styles.featureToggleDescription}>{feature.description}</Text>
+                            {isOverride ? <Text style={styles.overrideLabel}>Override</Text> : null}
+                          </View>
+                          <View style={[styles.toggleRail, enabled && styles.toggleRailEnabled]}>
+                            <View style={[styles.toggleThumb, enabled && styles.toggleThumbEnabled]} />
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                ))}
+              </View>
+
+              <TouchableOpacity style={[styles.modalBtn, savingFeatures && styles.disabledBtn]} onPress={handleSaveFeatures} disabled={savingFeatures}>
+                {savingFeatures ? <SmoothSpinner size={18} stroke={3} color="#FFFFFF" trackColor="#CBD5E1" /> : <Text style={styles.modalBtnText}>Save Feature Access</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={closeFeaturesModal} disabled={savingFeatures}>
+                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
     </View>
   );
 }
@@ -342,6 +530,18 @@ const styles = StyleSheet.create({
   instituteInfo: { flex: 1, minWidth: 0 },
   instituteName: { fontSize: 17, fontWeight: '900', color: '#F8FAFC' },
   instituteId: { fontSize: 12, color: '#8EA4C8', marginTop: 3, fontWeight: '700' },
+  featureSummary: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 7,
+  },
+  featureSummaryText: {
+    color: '#BCD7FF',
+    flexShrink: 1,
+    fontSize: 12,
+    fontWeight: '800',
+  },
   modePill: {
     alignSelf: 'flex-start',
     marginTop: 7,
@@ -361,6 +561,17 @@ const styles = StyleSheet.create({
   instituteMeta: { fontSize: 12, color: '#64748B', marginTop: 5 },
   actionButtons: { flexDirection: 'row', marginLeft: 10 },
   actionButtonsMobile: { marginLeft: 8 },
+  featuresButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#064E3B',
+    borderWidth: 1,
+    borderColor: '#047857',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
   editButton: {
     width: 40,
     height: 40,
@@ -396,6 +607,12 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 14, color: '#8EA4C8', textAlign: 'center', marginTop: 8, lineHeight: 21 },
   modalContainer: { flex: 1, backgroundColor: '#020617' },
   modalScrollContent: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  featureModalScrollContent: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
   modalContent: {
     width: '100%',
     maxWidth: 420,
@@ -404,6 +621,15 @@ const styles = StyleSheet.create({
     padding: 22,
     borderWidth: 1,
     borderColor: '#334155',
+  },
+  featureModalContent: {
+    width: '100%',
+    maxWidth: 820,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
   },
   modalHeader: { alignItems: 'center', marginBottom: 18 },
   modalIcon: {
@@ -419,6 +645,129 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: 22, fontWeight: '900', color: '#F8FAFC' },
   modalSubtitle: { color: '#8EA4C8', fontSize: 13, marginTop: 5, textAlign: 'center' },
+  featureModalTitle: { color: '#0F172A' },
+  featureModalSubtitle: { color: '#475569' },
+  tierGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 18,
+  },
+  tierCard: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexBasis: 220,
+    flexGrow: 1,
+    minHeight: 108,
+    padding: 14,
+  },
+  tierCardSelected: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#2563EB',
+  },
+  tierCardHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  tierTitle: {
+    color: '#0F172A',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  tierTitleSelected: {
+    color: '#1D4ED8',
+  },
+  tierDescription: {
+    color: '#475569',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 19,
+    marginTop: 8,
+  },
+  featureGroups: {
+    gap: 14,
+  },
+  featureGroup: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 12,
+  },
+  featureGroupTitle: {
+    color: '#0F172A',
+    fontSize: 13,
+    fontWeight: '900',
+    marginBottom: 8,
+  },
+  featureToggle: {
+    alignItems: 'center',
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+    marginTop: 8,
+    minHeight: 74,
+    padding: 12,
+  },
+  featureToggleEnabled: {
+    backgroundColor: '#F8FAFC',
+  },
+  featureToggleDisabled: {
+    backgroundColor: '#F1F5F9',
+  },
+  featureToggleCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  featureToggleTitle: {
+    color: '#0F172A',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  featureToggleDescription: {
+    color: '#475569',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 18,
+    marginTop: 3,
+  },
+  overrideLabel: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#DBEAFE',
+    borderRadius: 8,
+    color: '#1D4ED8',
+    fontSize: 11,
+    fontWeight: '900',
+    marginTop: 7,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  toggleRail: {
+    backgroundColor: '#CBD5E1',
+    borderRadius: 999,
+    height: 28,
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    width: 52,
+  },
+  toggleRailEnabled: {
+    backgroundColor: '#2563EB',
+  },
+  toggleThumb: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    height: 22,
+    width: 22,
+  },
+  toggleThumbEnabled: {
+    alignSelf: 'flex-end',
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',

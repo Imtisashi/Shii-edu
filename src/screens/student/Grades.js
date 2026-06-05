@@ -189,10 +189,16 @@ export default function Grades() {
     };
   }, [grades]);
 
-  if (loading) return <LoadingState />;
+  if (loading) {
+    return (
+      <StudentScreenScaffold scroll={false} style={styles.scaffoldContent} title="Grades">
+        <LoadingState />
+      </StudentScreenScaffold>
+    );
+  }
 
   return (
-    <StudentScreenScaffold accentVariant="amber" scroll={false} style={styles.scaffoldContent}>
+    <StudentScreenScaffold accentVariant="amber" scroll={false} style={styles.scaffoldContent} title="Grades">
       <ScreenIntro
         accentColor={colors.amber}
         eyebrow="Academic record"

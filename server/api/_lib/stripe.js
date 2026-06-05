@@ -25,7 +25,7 @@ const getStripeClient = () => {
   if (!stripeClient) {
     stripeClient = new Stripe(config.secretKey, {
       appInfo: {
-        name: 'Edu-Hub alpha',
+        name: 'Shii-Edu',
         version: '1.0.0',
       },
     });

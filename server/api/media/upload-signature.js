@@ -3,12 +3,15 @@ const { z } = require('zod');
 const {
   authenticateUserProfile,
   createRequestId,
+  getAdminServices,
   getBody,
   handleOptions,
   sendError,
   setCorsHeaders,
 } = require('../_lib/firebaseAdmin');
 const { getSupabaseAdmin, getSupabaseAdminConfig } = require('../_lib/supabaseAdmin');
+const { assertFeatureEnabled } = require('../_lib/featureEntitlements');
+const { assertRateLimit } = require('../_lib/rateLimit');
 
 const SAFE_FOLDERS = new Set([
   'assignments',
@@ -38,6 +41,16 @@ const FOLDER_ROLES = {
   'profile-pictures': new Set(['admin', 'driver', 'parent', 'professor', 'student', 'superadmin', 'teacher']),
   pyqs: new Set(['admin', 'superadmin', 'teacher', 'professor']),
   syllabi: new Set(['admin', 'superadmin', 'teacher', 'professor']),
+};
+
+const FOLDER_FEATURES = {
+  assignments: 'assignments',
+  'course-media': 'courses',
+  gallery: 'media',
+  'institute-branding': 'branding',
+  'profile-pictures': null,
+  pyqs: 'pyq',
+  syllabi: 'ai',
 };
 
 const MAX_BYTES_BY_FOLDER = {
@@ -192,11 +205,13 @@ module.exports = async function handler(req, res) {
 
   try {
     const actor = await authenticateUserProfile(req);
+    assertRateLimit({ actor, req, scope: 'media:upload-signature', limit: 36, windowMs: 60 * 1000 });
     const body = parseRequest(await getBody(req));
     const role = normalizeRole(actor.role);
     const folderKey = resolveFolderKey(body.folder);
     const bucket = FOLDER_BUCKETS[folderKey];
     const instituteId = resolveInstituteId({ actor: { ...actor, role }, body, folderKey });
+    const { firestore } = getAdminServices();
     const path = buildStoragePath({
       fileName: body.fileName,
       folderKey,
@@ -211,6 +226,7 @@ module.exports = async function handler(req, res) {
       resourceType: body.resourceType,
     });
     assertFileSizeIsAllowed(folderKey, body.fileSize);
+    await assertFeatureEnabled({ firestore, instituteId, featureKey: FOLDER_FEATURES[folderKey] });
 
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase.storage

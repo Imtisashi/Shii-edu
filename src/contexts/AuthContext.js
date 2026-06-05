@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useState, useEffect, useRef } from 'react';
 import { getIdTokenResult, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../../firebaseConfig';
 import {
   assertLoginInstituteId,
@@ -21,6 +21,7 @@ import {
   authenticateInstituteSession,
   getBiometricCapability,
 } from '../services/biometricAuthService';
+import { listSupabaseNotifications } from '../services/supabaseTenantDataService';
 
 const AuthContext = createContext();
 const INSTITUTE_APP_MODE = 'institute';
@@ -34,14 +35,6 @@ const normalizeRole = (role) => {
   if (compactRole === 'instituteadmin') return 'admin';
   if (compactRole === 'professor') return 'teacher';
   return compactRole;
-};
-
-const createdAtToMillis = (createdAt) => {
-  if (!createdAt) return 0;
-  if (typeof createdAt.toMillis === 'function') return createdAt.toMillis();
-  if (createdAt.seconds) return createdAt.seconds * 1000;
-  const parsed = new Date(createdAt).getTime();
-  return Number.isNaN(parsed) ? 0 : parsed;
 };
 
 const normalizeInstituteId = (instituteId) => normalizeLoginIdentifier(instituteId);
@@ -195,7 +188,7 @@ export function AuthProvider({ children, appMode = 'combined' }) {
     }
 
     if (normalizedRole === 'superadmin') {
-      throw createAuthError('Superadmin accounts must use the Edu-Hub Superadmin application.', 'auth/institute-role-required');
+      throw createAuthError('Superadmin accounts must use the Shii-Edu Superadmin application.', 'auth/institute-role-required');
     }
 
     const instituteSnapshot = await getDoc(doc(db, 'institutes', profileInstituteId));
@@ -263,7 +256,7 @@ export function AuthProvider({ children, appMode = 'combined' }) {
           }
 
           if (normalizedRole === 'superadmin') {
-            await invalidateInstituteSession('Superadmin accounts must use the Edu-Hub Superadmin application.');
+            await invalidateInstituteSession('Superadmin accounts must use the Shii-Edu Superadmin application.');
             return;
           }
 
@@ -683,7 +676,7 @@ export function AuthProvider({ children, appMode = 'combined' }) {
     isInstituteMode,
   ]);
 
-  // Set up real-time notifications listener when user data changes
+  // Set up tenant-scoped notification loading when user data changes
   useEffect(() => {
     const cleanupNotifications = () => {
       if (notificationsUnsubscribeRef.current) {
@@ -702,59 +695,42 @@ export function AuthProvider({ children, appMode = 'combined' }) {
     setNotificationsLoading(true);
     setNotificationsError(null);
 
-    const notificationsQuery = query(
-      collection(db, "notifications"),
-      where("instituteId", "==", userData.instituteId)
-    );
-
-    const notificationRole = ['student', 'teacher', 'admin', 'parent', 'driver'].includes(userData.role)
-      ? userData.role
-      : 'student';
-
     cleanupNotifications();
 
-    // Set up real-time listener
-    const unsubscribe = onSnapshot(
-      notificationsQuery,
-      (snapshot) => {
-        const newNotifications = snapshot.docs
-          .map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }))
-          .filter((notification) => {
-            if (userData.role === 'superadmin') return true;
-            const targets = notification.targetRoles || [];
-            const recipientUids = Array.isArray(notification.recipientUids) ? notification.recipientUids : [];
-            const parentStudentMatch = userData.role === 'parent' &&
-              userData.linkedStudentUid &&
-              recipientUids.includes(userData.linkedStudentUid);
-            const recipientMatch = recipientUids.length === 0 || recipientUids.includes(currentUser.uid) || parentStudentMatch;
-            return recipientMatch && (targets.includes(notificationRole) || targets.includes('all'));
-          })
-          .sort((a, b) => createdAtToMillis(b.createdAt) - createdAtToMillis(a.createdAt))
-          .slice(0, 50);
-        setNotifications(newNotifications);
+    let cancelled = false;
+    const loadNotifications = async () => {
+      try {
+        const result = await listSupabaseNotifications(currentUser, 50);
+        if (cancelled) return;
+        const nextNotifications = Array.isArray(result?.notifications)
+          ? result.notifications
+          : [];
+        setNotifications(nextNotifications);
         setNotificationsLoading(false);
         setNotificationsError(null);
-      },
-      (error) => {
-        console.warn('Notifications are unavailable for this session; showing an empty inbox.', error?.code || error?.message || '');
+      } catch (_error) {
+        if (cancelled) return;
         setNotifications([]);
         setNotificationsError(null);
         setNotificationsLoading(false);
       }
-    );
+    };
 
-    notificationsUnsubscribeRef.current = unsubscribe;
+    loadNotifications();
+    const intervalId = setInterval(loadNotifications, 45000);
+    notificationsUnsubscribeRef.current = () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
 
     return () => {
-      unsubscribe();
-      if (notificationsUnsubscribeRef.current === unsubscribe) {
+      cancelled = true;
+      clearInterval(intervalId);
+      if (notificationsUnsubscribeRef.current) {
         notificationsUnsubscribeRef.current = null;
       }
     };
-  }, [currentUser?.uid, userData?.instituteId, userData?.linkedStudentUid, userData?.role]);
+  }, [currentUser, userData]);
 
   useEffect(() => {
     registerDevicePushToken({

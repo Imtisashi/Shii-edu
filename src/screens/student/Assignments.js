@@ -7,6 +7,7 @@ import { RosterSkeleton } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
 import { listSupabaseAssignments } from '../../services/supabaseTenantDataService';
+import DynamicHeader from '../../components/DynamicHeader';
 
 const createdAtToMillis = (createdAt) => {
   if (!createdAt) return 0;
@@ -170,12 +171,13 @@ export default function Assignments() {
     maxWidth: isDesktop ? maxContentWidth : undefined,
     paddingBottom: Math.max(insets.bottom, 10) + 104,
     paddingHorizontal: spacing.pageX,
-    paddingTop: Math.max(insets.top, 12) + 26,
+    paddingTop: 18,
     width: '100%',
-  }), [insets.bottom, insets.top, isDesktop, maxContentWidth, spacing.pageX]);
+  }), [insets.bottom, isDesktop, maxContentWidth, spacing.pageX]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.page }]}>
+      <DynamicHeader title="Tasks" />
       {loading ? (
         <RosterSkeleton rowCount={5} showFilters={false} />
       ) : (

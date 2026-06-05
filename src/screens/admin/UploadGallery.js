@@ -15,6 +15,7 @@ import { showNativeError } from '../../utils/userFeedback';
 import { Ionicons } from '@expo/vector-icons';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 import { useInstituteTheme } from '../../hooks/useInstituteTheme';
+import DynamicHeader from '../../components/DynamicHeader';
 
 const showAlert = (title, message) => {
   if (Platform.OS === 'web') window.alert(`${title}\n\n${message}`);
@@ -182,6 +183,7 @@ export default function UploadGallery() {
 
   return (
     <View style={styles.container}>
+      <DynamicHeader title="Campus Gallery" showBack />
       <FlatList
         key={String(columns)}
         data={images}
@@ -208,7 +210,7 @@ export default function UploadGallery() {
               {uploading ? (
                 <>
                   <SmoothSpinner color="#fff" size="small" />
-                  <Text style={styles.uploadBtnText}>Uploading...</Text>
+                  <Text style={styles.uploadBtnText}>Securing photo</Text>
                 </>
               ) : (
                 <>
@@ -250,7 +252,7 @@ export default function UploadGallery() {
 const baseStyles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#02030A', overflow: 'hidden' },
   content: { paddingTop: 16, paddingBottom: 96 },
-  contentDesktop: { width: '100%', alignSelf: 'center', paddingTop: 24 },
+  contentDesktop: { width: '100%', alignSelf: 'center', paddingTop: 18 },
   headerCard: {
     backgroundColor: '#0F172A',
     borderColor: '#334155',

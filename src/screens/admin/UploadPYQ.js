@@ -25,6 +25,7 @@ import {
   listSupabasePyqs,
 } from '../../services/supabaseTenantDataService';
 import { showNativeError } from '../../utils/userFeedback';
+import DynamicHeader from '../../components/DynamicHeader';
 
 const showAlert = (title, message) => {
   if (Platform.OS === 'web') {
@@ -235,6 +236,25 @@ export default function UploadPYQ() {
     ]);
   };
 
+  const openPaper = async (fileUrl) => {
+    if (!fileUrl) {
+      showAlert('Missing File', 'This paper does not have a readable file URL.');
+      return;
+    }
+
+    try {
+      const canOpen = await Linking.canOpenURL(fileUrl);
+      if (!canOpen) {
+        showAlert('Cannot Open File', 'Your device cannot open this PDF link.');
+        return;
+      }
+      await Linking.openURL(fileUrl);
+    } catch (error) {
+      console.error('PYQ open failed:', error);
+      showAlert('Cannot Open File', 'The PDF link could not be opened right now.');
+    }
+  };
+
   const renderPaper = ({ item }) => (
     <View style={[styles.paperCard, layout.isMobile && styles.paperCardMobile]}>
       <View style={styles.paperIcon}>
@@ -248,7 +268,7 @@ export default function UploadPYQ() {
         <Text style={styles.paperUploader} numberOfLines={1}>Uploaded by {item.uploadedBy || 'Faculty'}</Text>
       </View>
       <View style={styles.paperActions}>
-        <TouchableOpacity style={styles.iconButton} onPress={() => item.fileUrl && Linking.openURL(item.fileUrl)} accessibilityLabel="Open PYQ PDF">
+        <TouchableOpacity style={styles.iconButton} onPress={() => openPaper(item.fileUrl)} accessibilityLabel="Open PYQ PDF">
           <Ionicons name="open-outline" size={19} color="#2563EB" />
         </TouchableOpacity>
         <TouchableOpacity style={[styles.iconButton, styles.deleteButton]} onPress={() => deletePaper(item.id, item)} accessibilityLabel="Delete PYQ PDF">
@@ -260,6 +280,7 @@ export default function UploadPYQ() {
 
   return (
     <View style={styles.container}>
+      <DynamicHeader title="PYQ PDFs" showBack />
       <FlatList
         data={visiblePapers}
         keyExtractor={(item) => item.id}
@@ -321,7 +342,7 @@ export default function UploadPYQ() {
                 {uploading ? (
                   <>
                     <SmoothSpinner size="small" color="#FFFFFF" />
-                    <Text style={styles.uploadButtonText}>Uploading Document...</Text>
+                    <Text style={styles.uploadButtonText}>Securing PDF</Text>
                   </>
                 ) : (
                   <>

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Edu-Hub Superadmin",
+    "name": "Shii-Edu Superadmin",
     "slug": "edu-hub-superadmin",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,9 +12,9 @@
       "bundleIdentifier": "com.eduhub.superadmin",
       "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "Edu-Hub Superadmin uses the camera when you choose to capture institute media.",
-        "NSPhotoLibraryAddUsageDescription": "Edu-Hub Superadmin saves media only when you explicitly request it.",
-        "NSPhotoLibraryUsageDescription": "Edu-Hub Superadmin uses your photo library when you choose images to upload."
+        "NSCameraUsageDescription": "Shii-Edu Superadmin uses the camera when you choose to capture institute media.",
+        "NSPhotoLibraryAddUsageDescription": "Shii-Edu Superadmin saves media only when you explicitly request it.",
+        "NSPhotoLibraryUsageDescription": "Shii-Edu Superadmin uses your photo library when you choose images to upload."
       }
     },
     "android": {
@@ -55,9 +55,9 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "Allow Edu-Hub Superadmin to use the camera when you choose to capture institute media.",
+          "cameraPermission": "Allow Shii-Edu Superadmin to use the camera when you choose to capture institute media.",
           "microphonePermission": false,
-          "photosPermission": "Allow Edu-Hub Superadmin to access photos you choose to upload."
+          "photosPermission": "Allow Shii-Edu Superadmin to access photos you choose to upload."
         }
       ]
     ]

@@ -1,27 +1,17 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   addDoc,
   collection,
-  query,
-  where,
-  onSnapshot,
-  doc,
-  updateDoc,
-  arrayUnion,
-  writeBatch,
   serverTimestamp,
-  deleteDoc
 } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../../firebaseConfig';
-
-const createdAtToMillis = (createdAt) => {
-  if (!createdAt) return 0;
-  if (typeof createdAt.toMillis === 'function') return createdAt.toMillis();
-  if (createdAt.seconds) return createdAt.seconds * 1000;
-  const parsed = new Date(createdAt).getTime();
-  return Number.isNaN(parsed) ? 0 : parsed;
-};
+import {
+  deleteSupabaseNotification,
+  listSupabaseNotifications,
+  markAllSupabaseNotificationsRead,
+  markSupabaseNotificationRead,
+} from './supabaseTenantDataService';
 
 /**
  * Notification types
@@ -49,94 +39,41 @@ export const useUnifiedNotifications = ({ limit: limitCount = 50, onNotification
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const unsubscribeRef = useRef(null);
 
   // Fetch notifications based on user role
-  const fetchNotifications = useCallback(() => {
+  const fetchNotifications = useCallback(async () => {
     if (!currentUser?.uid || !userData?.instituteId) {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
+      setNotifications([]);
       setLoading(false);
       return;
-    }
-
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-      unsubscribeRef.current = null;
     }
 
     setLoading(true);
     setError(null);
 
-    const notificationsQuery = query(
-      collection(db, "notifications"),
-      where("instituteId", "==", userData.instituteId)
-    );
-
-    const notificationRole = ['student', 'teacher', 'admin', 'parent', 'driver'].includes(userData.role)
-      ? userData.role
-      : 'student';
-
-    // Set up real-time listener
-    const unsubscribe = onSnapshot(
-      notificationsQuery,
-      (snapshot) => {
-        const newNotifications = snapshot.docs
-          .map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }))
-          .filter((notification) => {
-            if (userData.role === 'superadmin') return true;
-            const targets = notification.targetRoles || [];
-            const recipientUids = Array.isArray(notification.recipientUids) ? notification.recipientUids : [];
-            const parentStudentMatch = userData.role === 'parent' &&
-              userData.linkedStudentUid &&
-              recipientUids.includes(userData.linkedStudentUid);
-            const recipientMatch = recipientUids.length === 0 || recipientUids.includes(currentUser.uid) || parentStudentMatch;
-            return recipientMatch && (targets.includes(notificationRole) || targets.includes('all'));
-          })
-          .sort((a, b) => createdAtToMillis(b.createdAt) - createdAtToMillis(a.createdAt))
-          .slice(0, limitCount || undefined);
-
-        setNotifications(newNotifications);
-        setLoading(false);
-        setError(null);
-
-        // Call onNotification callback if provided and we have new notifications
-        if (onNotification && newNotifications.length > 0) {
-          onNotification(newNotifications[0]); // Pass the most recent notification
-        }
-      },
-      (err) => {
-        console.warn('Notifications are unavailable for this session; showing an empty inbox.', err?.code || err?.message || '');
-        setNotifications([]);
-        setError(null);
-        setLoading(false);
+    try {
+      const result = await listSupabaseNotifications(currentUser, limitCount);
+      const newNotifications = Array.isArray(result?.notifications) ? result.notifications : [];
+      setNotifications(newNotifications);
+      setError(null);
+      if (onNotification && newNotifications.length > 0) {
+        onNotification(newNotifications[0]);
       }
-    );
-
-    unsubscribeRef.current = unsubscribe;
-
-    return () => {
-      unsubscribe();
-      if (unsubscribeRef.current === unsubscribe) {
-        unsubscribeRef.current = null;
-      }
-    };
-  }, [currentUser, userData, limitCount, onNotification]);
+    } catch (err) {
+      setNotifications([]);
+      setError(null);
+      if (onError) onError(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUser, userData, limitCount, onNotification, onError]);
 
   // Mark notification as read
   const markAsRead = useCallback(async (notificationId) => {
     if (!currentUser?.uid) return;
 
     try {
-      const notificationRef = doc(db, "notifications", notificationId);
-      await updateDoc(notificationRef, {
-        readBy: arrayUnion(currentUser.uid)
-      });
+      await markSupabaseNotificationRead(currentUser, notificationId);
 
       // Update local state
       setNotifications(prev =>
@@ -144,10 +81,9 @@ export const useUnifiedNotifications = ({ limit: limitCount = 50, onNotification
           notif.id === notificationId
             ? { ...notif, readBy: [...new Set([...(notif.readBy || []), currentUser.uid])] }
             : notif
-        )
+          )
       );
     } catch (err) {
-      console.error('Error marking notification as read:', err);
       if (onError) onError(err);
     }
   }, [currentUser, onError]);
@@ -157,20 +93,7 @@ export const useUnifiedNotifications = ({ limit: limitCount = 50, onNotification
     if (!currentUser?.uid || !userData?.role) return;
 
     try {
-      const userNotifications = notifications.filter(notif =>
-        notif.targetRoles?.includes(userData.role) ||
-        notif.targetRoles?.includes('all')
-      );
-
-      const batch = writeBatch(db);
-      userNotifications.forEach(notif => {
-        const notifRef = doc(db, "notifications", notif.id);
-        batch.update(notifRef, {
-          readBy: arrayUnion(currentUser.uid)
-        });
-      });
-
-      await batch.commit();
+      await markAllSupabaseNotificationsRead(currentUser);
 
       // Update local state
       setNotifications(prev =>
@@ -180,10 +103,9 @@ export const useUnifiedNotifications = ({ limit: limitCount = 50, onNotification
         }))
       );
     } catch (err) {
-      console.error('Error marking all notifications as read:', err);
       if (onError) onError(err);
     }
-  }, [currentUser, notifications, userData, onError]);
+  }, [currentUser, userData, onError]);
 
   // Delete notification (admin/superadmin only)
   const deleteNotification = useCallback(async (notificationId) => {
@@ -195,35 +117,21 @@ export const useUnifiedNotifications = ({ limit: limitCount = 50, onNotification
         throw new Error('Unauthorized to delete notifications');
       }
 
-      await deleteDoc(doc(db, "notifications", notificationId));
+      await deleteSupabaseNotification(currentUser, notificationId);
 
       // Update local state
       setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
     } catch (err) {
-      console.error('Error deleting notification:', err);
       if (onError) onError(err);
     }
-  }, [userData, onError]);
+  }, [currentUser, userData, onError]);
 
   // Clear all notifications (for user)
   const clearNotifications = useCallback(async () => {
     if (!currentUser?.uid || !userData?.role) return;
 
     try {
-      const userNotifications = notifications.filter(notif =>
-        notif.targetRoles?.includes(userData.role) ||
-        notif.targetRoles?.includes('all')
-      );
-
-      const batch = writeBatch(db);
-      userNotifications.forEach(notif => {
-        const notifRef = doc(db, "notifications", notif.id);
-        batch.update(notifRef, {
-          readBy: arrayUnion(currentUser.uid)
-        });
-      });
-
-      await batch.commit();
+      await markAllSupabaseNotificationsRead(currentUser);
 
       // Update local state
       setNotifications(prev =>
@@ -233,15 +141,22 @@ export const useUnifiedNotifications = ({ limit: limitCount = 50, onNotification
         }))
       );
     } catch (err) {
-      console.error('Error clearing notifications:', err);
       if (onError) onError(err);
     }
-  }, [currentUser, notifications, userData, onError]);
+  }, [currentUser, userData, onError]);
 
   // Effect to set up/unsubscribe listener
   useEffect(() => {
-    const unsubscribe = fetchNotifications();
-    return unsubscribe;
+    let active = true;
+    const load = async () => {
+      if (active) await fetchNotifications();
+    };
+    load();
+    const intervalId = setInterval(load, 45000);
+    return () => {
+      active = false;
+      clearInterval(intervalId);
+    };
   }, [fetchNotifications]);
 
   return {
@@ -293,6 +208,7 @@ export const createUnifiedNotification = async (notificationData) => {
       message: message.trim(),
       type: type,
       targetRoles: targetRoles || ['student'], // Default to student
+      recipientUids: Array.isArray(notificationData.recipientUids) ? notificationData.recipientUids : [],
       instituteId,
       relatedId: relatedId || null,
       relatedType: relatedType || null,

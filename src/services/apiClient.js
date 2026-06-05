@@ -71,23 +71,28 @@ export const authenticatedFetch = async (path, currentUser, options = {}) => {
     throw new Error('You must be signed in to perform this action.');
   }
 
+  const {
+    body: rawBody,
+    headers: customHeaders = {},
+    retryCount = 1,
+    timeoutMs = 30000,
+    ...fetchOptions
+  } = options;
   const token = await currentUser.getIdToken();
-  const body = options.body && typeof options.body !== 'string'
-    ? JSON.stringify(options.body)
-    : options.body;
+  const body = rawBody !== undefined && rawBody !== null && typeof rawBody !== 'string'
+    ? JSON.stringify(rawBody)
+    : rawBody;
   const headers = {
     'Content-Type': 'application/json',
-    ...(options.headers || {}),
+    ...customHeaders,
     Authorization: `Bearer ${token}`,
   };
-  const timeoutMs = options.timeoutMs || 30000;
-  const retryCount = options.retryCount ?? 1;
   const url = `${getApiBaseUrl()}${path}`;
 
   for (let attempt = 0; attempt <= retryCount; attempt += 1) {
     try {
       const response = await fetchWithTimeout(url, {
-        ...options,
+        ...fetchOptions,
         headers,
         body,
       }, timeoutMs);
@@ -122,7 +127,7 @@ export const authenticatedFetch = async (path, currentUser, options = {}) => {
           path,
           url,
         });
-        throw new Error(`Could not reach the Edu-Hub API at ${url}. Please try again.`);
+        throw new Error(`Could not reach the Shii-Edu API at ${url}. Please try again.`);
       }
 
       throw error;

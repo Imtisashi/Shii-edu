@@ -11,6 +11,8 @@ const {
 } = require('../_lib/firebaseAdmin');
 const { assertUserId, toIdentifierKey } = require('../_lib/loginIdentifiers');
 const { sendExpoPushToUsers } = require('../_lib/expoPush');
+const { assertFeatureEnabled } = require('../_lib/featureEntitlements');
+const { assertRateLimit } = require('../_lib/rateLimit');
 
 const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -30,7 +32,20 @@ const SendMessageSchema = z.object({
   conversationId: z.string().trim().min(1).max(300),
   message: z.string().trim().min(1).max(2000),
 }).strict();
+const ListConversationsSchema = z.object({
+  action: z.literal('listConversations'),
+}).strict();
+const ListMessagesSchema = z.object({
+  action: z.literal('listMessages'),
+  conversationId: z.string().trim().min(1).max(300),
+}).strict();
+const GetOfficeHoursSchema = z.object({
+  action: z.literal('getOfficeHours'),
+}).strict();
 const RequestSchema = z.discriminatedUnion('action', [
+  GetOfficeHoursSchema,
+  ListConversationsSchema,
+  ListMessagesSchema,
   SetOfficeHoursSchema,
   StartConversationSchema,
   SendMessageSchema,
@@ -116,6 +131,86 @@ const participantSummary = (user) => ({
   role: user.role || 'user',
   loginId: user.loginId || user.uniqueId || null,
 });
+
+const serializeTimestamp = (value) => {
+  if (!value) return null;
+  if (typeof value.toDate === 'function') return value.toDate().toISOString();
+  if (value._seconds) return { seconds: value._seconds, nanoseconds: value._nanoseconds || 0 };
+  return value;
+};
+
+const serializeConversation = (id, data = {}) => ({
+  ...data,
+  createdAt: serializeTimestamp(data.createdAt),
+  id,
+  lastMessageAt: serializeTimestamp(data.lastMessageAt),
+  updatedAt: serializeTimestamp(data.updatedAt),
+});
+
+const serializeMessage = (id, data = {}) => ({
+  ...data,
+  createdAt: serializeTimestamp(data.createdAt),
+  id,
+});
+
+const assertConversationAccess = async ({ actor, firestore, conversationId }) => {
+  const conversationRef = firestore.collection('conversations').doc(conversationId);
+  const conversationSnap = await conversationRef.get();
+  if (!conversationSnap.exists) {
+    const error = new Error('Conversation not found.');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const conversation = conversationSnap.data() || {};
+  const participants = Array.isArray(conversation.participants) ? conversation.participants : [];
+  if (conversation.instituteId !== actor.profile.instituteId || !participants.includes(actor.uid)) {
+    const error = new Error('You do not have access to this conversation.');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return { conversation, conversationRef };
+};
+
+const listConversations = async ({ actor, firestore }) => {
+  const snapshot = await firestore
+    .collection('conversations')
+    .where('instituteId', '==', actor.profile.instituteId)
+    .where('participants', 'array-contains', actor.uid)
+    .limit(100)
+    .get();
+
+  const conversations = snapshot.docs
+    .map((document) => serializeConversation(document.id, document.data()))
+    .sort((left, right) => {
+      const leftTime = new Date(left.lastMessageAt || left.updatedAt || left.createdAt || 0).getTime() || 0;
+      const rightTime = new Date(right.lastMessageAt || right.updatedAt || right.createdAt || 0).getTime() || 0;
+      return rightTime - leftTime;
+    });
+
+  return { conversations };
+};
+
+const listMessages = async ({ actor, firestore, body }) => {
+  await assertConversationAccess({ actor, firestore, conversationId: body.conversationId });
+  const snapshot = await firestore
+    .collection('messages')
+    .where('instituteId', '==', actor.profile.instituteId)
+    .where('conversationId', '==', body.conversationId)
+    .limit(300)
+    .get();
+
+  const messages = snapshot.docs
+    .map((document) => serializeMessage(document.id, document.data()))
+    .sort((left, right) => {
+      const leftTime = new Date(left.createdAt || 0).getTime() || 0;
+      const rightTime = new Date(right.createdAt || 0).getTime() || 0;
+      return leftTime - rightTime;
+    });
+
+  return { messages };
+};
 
 const startConversation = async ({ actor, firestore, body }) => {
   const instituteId = actor.profile.instituteId;
@@ -208,7 +303,7 @@ const sendMessage = async ({ actor, firestore, body }) => {
   });
   batch.set(notificationRef, {
     instituteId: actor.profile.instituteId,
-    title: `Message from ${actor.profile.name || 'Edu-Hub user'}`,
+    title: `Message from ${actor.profile.name || 'Shii-Edu user'}`,
     message: body.message.slice(0, 180),
     type: 'info',
     targetRoles: [recipient.role],
@@ -234,7 +329,7 @@ const sendMessage = async ({ actor, firestore, body }) => {
     firestore,
     instituteId: actor.profile.instituteId,
     recipientUids: [recipientUid],
-    title: `Message from ${actor.profile.name || 'Edu-Hub user'}`,
+    title: `Message from ${actor.profile.name || 'Shii-Edu user'}`,
     body: body.message.slice(0, 180),
     data: {
       type: 'regulated_message',
@@ -281,6 +376,27 @@ const setOfficeHours = async ({ actor, firestore, body }) => {
   };
 };
 
+const getOfficeHours = async ({ actor, firestore }) => {
+  if (!['teacher', 'professor', 'admin'].includes(actor.role)) {
+    const error = new Error('Only faculty and administrators can view office hours.');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const snapshot = await firestore.collection('officeHourPolicies').doc(actor.uid).get();
+  if (!snapshot.exists) return { officeHours: null };
+  const policy = snapshot.data() || {};
+  return {
+    officeHours: {
+      days: Array.isArray(policy.days) ? policy.days : ['mon', 'tue', 'wed', 'thu', 'fri'],
+      endTime: policy.endTime || '17:00',
+      startTime: policy.startTime || '09:00',
+      timeZone: policy.timeZone || 'Asia/Kolkata',
+      updatedAt: serializeTimestamp(policy.updatedAt),
+    },
+  };
+};
+
 module.exports = async function handler(req, res) {
   const requestId = createRequestId();
   setCorsHeaders(req, res);
@@ -294,15 +410,20 @@ module.exports = async function handler(req, res) {
 
   try {
     const actor = await authenticateUserProfile(req, ['admin', 'teacher', 'professor', 'student', 'parent']);
+    assertRateLimit({ actor, req, scope: 'messages', limit: 60, windowMs: 60 * 1000 });
     if (!actor.profile.instituteId) {
       const error = new Error('Your profile is not linked to an institute.');
       error.statusCode = 403;
       throw error;
     }
     const { firestore } = getAdminServices();
+    await assertFeatureEnabled({ firestore, instituteId: actor.profile.instituteId, featureKey: 'messages' });
     const body = parseBody(await getBody(req));
     let result;
 
+    if (body.action === 'getOfficeHours') result = await getOfficeHours({ actor, firestore });
+    if (body.action === 'listConversations') result = await listConversations({ actor, firestore });
+    if (body.action === 'listMessages') result = await listMessages({ actor, firestore, body });
     if (body.action === 'setOfficeHours') result = await setOfficeHours({ actor, firestore, body });
     if (body.action === 'startConversation') result = await startConversation({ actor, firestore, body });
     if (body.action === 'sendMessage') result = await sendMessage({ actor, firestore, body });

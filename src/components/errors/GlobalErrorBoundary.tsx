@@ -142,7 +142,7 @@ export default class GlobalErrorBoundary extends React.Component<
     if (this.state.hasError) {
       return (
         <GlobalErrorFallback
-          appName={this.props.appName || 'Edu-Hub'}
+          appName={this.props.appName || 'Shii-Edu'}
           error={this.state.error}
           incidentId={this.state.incidentId}
           onRetry={this.reset}

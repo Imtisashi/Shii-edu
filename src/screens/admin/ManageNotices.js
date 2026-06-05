@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { createUnifiedNotification } from '../../services/unifiedNotificationService';
 import { useInstituteTheme } from '../../hooks/useInstituteTheme';
+import DynamicHeader from '../../components/DynamicHeader';
 
 const createdAtToMillis = (createdAt) => {
   if (!createdAt) return 0;
@@ -88,6 +89,7 @@ export default function ManageNotices() {
         message: message.trim(),
         type: 'announcement',
         targetRoles: ['student', 'teacher', 'admin'],
+        recipientUids: [],
         instituteId: userData.instituteId,
         author: {
           uid: userData.uid,
@@ -133,45 +135,48 @@ export default function ManageNotices() {
   // --- RENDER: LIST VIEW ---
   if (viewMode === 'list') {
     return (
-      <View style={styles.container}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.headerTitle}>Campus Broadcasts</Text>
-            <Text style={styles.headerSub}>Manage official announcements</Text>
+      <View style={styles.screen}>
+        <DynamicHeader title="Broadcasts" />
+        <View style={styles.content}>
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.headerTitle}>Campus Broadcasts</Text>
+              <Text style={styles.headerSub}>Manage official announcements</Text>
+            </View>
+            <TouchableOpacity style={styles.addBtnSmall} onPress={() => setViewMode('add')}>
+              <Ionicons name="megaphone" size={20} color="#fff" />
+              <Text style={styles.addBtnSmallText}>New Notice</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.addBtnSmall} onPress={() => setViewMode('add')}>
-            <Ionicons name="megaphone" size={20} color="#fff" />
-            <Text style={styles.addBtnSmallText}>New Notice</Text>
-          </TouchableOpacity>
-        </View>
 
-        {loadingList ? (
-          <RosterSkeleton rowCount={5} showFilters={false} />
-        ) : (
-          <FlatList
-            data={notices}
-            keyExtractor={item => item.id}
-            contentContainerStyle={{ paddingBottom: 20 }}
-            renderItem={({ item }) => (
-              <View style={styles.noticeCard}>
-                <View style={styles.noticeInfo}>
-                  <Text style={styles.noticeTitle}>{item.title}</Text>
-                  <Text style={styles.noticeMessage}>{item.message}</Text>
-                  <Text style={styles.noticeMeta}>Posted by {typeof item.author === 'string' ? item.author : item.author?.name || 'Admin'}</Text>
+          {loadingList ? (
+            <RosterSkeleton rowCount={5} showFilters={false} />
+          ) : (
+            <FlatList
+              data={notices}
+              keyExtractor={item => item.id}
+              contentContainerStyle={{ paddingBottom: 20 }}
+              renderItem={({ item }) => (
+                <View style={styles.noticeCard}>
+                  <View style={styles.noticeInfo}>
+                    <Text style={styles.noticeTitle}>{item.title}</Text>
+                    <Text style={styles.noticeMessage}>{item.message}</Text>
+                    <Text style={styles.noticeMeta}>Posted by {typeof item.author === 'string' ? item.author : item.author?.name || 'Admin'}</Text>
+                  </View>
+                  <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}>
+                    <Ionicons name="trash-outline" size={20} color="#E53E3E" />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}>
-                  <Ionicons name="trash-outline" size={20} color="#E53E3E" />
-                </TouchableOpacity>
-              </View>
-            )}
-            ListEmptyComponent={
-              <View style={styles.emptyState}>
-              <Ionicons name="notifications-off-outline" size={50} color={colors.muted} />
-                <Text style={styles.emptyText}>No active announcements.</Text>
-              </View>
-            }
-          />
-        )}
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                <Ionicons name="notifications-off-outline" size={50} color={colors.muted} />
+                  <Text style={styles.emptyText}>No active announcements.</Text>
+                </View>
+              }
+            />
+          )}
+        </View>
       </View>
     );
   }
@@ -179,7 +184,8 @@ export default function ManageNotices() {
   // --- RENDER: ADD FORM VIEW ---
   return (
     <KeyboardAvoidingView style={styles.keyboardRoot} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+      <DynamicHeader title="New Broadcast" />
+      <ScrollView style={styles.formScroll} contentContainerStyle={styles.formContent} keyboardShouldPersistTaps="handled">
         
         <TouchableOpacity style={styles.backBtn} onPress={() => setViewMode('list')}>
           <Ionicons name="arrow-back" size={24} color={colors.textSoft} />
@@ -222,7 +228,10 @@ export default function ManageNotices() {
 
 const baseStyles = StyleSheet.create({
   keyboardRoot: { flex: 1, backgroundColor: '#02030A' },
-  container: { flex: 1, backgroundColor: '#02030A', padding: 20 },
+  screen: { flex: 1, backgroundColor: '#02030A', overflow: 'hidden' },
+  content: { flex: 1, padding: 20 },
+  formScroll: { flex: 1, backgroundColor: '#02030A' },
+  formContent: { padding: 20, paddingBottom: 60 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   headerTitle: { fontSize: 24, fontWeight: '900', color: '#F8FAFC' },
   headerSub: { fontSize: 14, color: '#B9C6DD', fontWeight: '700', marginTop: 4 },
