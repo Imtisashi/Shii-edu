@@ -160,7 +160,12 @@ const getBody = async (req) => {
   }
 };
 
-const normalizeRole = (role) => String(role || '').trim().toLowerCase();
+const normalizeRole = (role) => {
+  const compactRole = String(role || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+  if (compactRole === 'instituteadmin') return 'admin';
+  if (compactRole === 'professor') return 'teacher';
+  return compactRole;
+};
 
 const authenticateUserProfile = async (req, allowedRoles = []) => {
   const internalActor = req?.[Symbol.for('edu-shii.internalActor')];

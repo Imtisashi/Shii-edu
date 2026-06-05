@@ -27,6 +27,7 @@ const routeHandlers = new Map([
   ['legal/terms', () => require('../../../server/api/legal/terms')],
   ['media/upload-signature', () => require('../../../server/api/media/upload-signature')],
   ['messages', () => require('../../../server/api/messages')],
+  ['notifications/web-push-subscriptions', () => require('../../../server/api/notifications/web-push-subscriptions')],
   ['payments/create-intent', () => require('../../../server/api/payments/create-intent')],
   ['payments/stripe-webhook', () => require('../../../server/api/payments/stripe-webhook')],
   ['super-admin/institutes', () => require('../../../server/api/super-admin/institutes')],

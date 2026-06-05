@@ -40,6 +40,7 @@ import {
   type PasswordResetTicket,
 } from '../../services/passwordResetService';
 import { showPwaNotification } from '../../services/pwaNotificationService';
+import { requestAndPrepareWebPush } from '../../services/webPushSubscriptionService';
 import { showNativeError, showNativeMessage } from '../../utils/userFeedback';
 
 type InstituteLoginInput = {
@@ -292,12 +293,14 @@ export default function InstituteLoginScreen() {
 
     setResetSubmitting(true);
     try {
+      const webPushResult = await requestAndPrepareWebPush().catch(() => ({ subscription: null }));
       const ticket = await submitPasswordResetRequest({
         contact: resetContact,
         instituteId: cleanedInstituteId,
         note: resetNote,
         role: activeRole,
         userId: cleanedUserId,
+        webPushSubscription: webPushResult.subscription || null,
       });
       writeSavedResetTicket(activeRole, cleanedInstituteId, cleanedUserId, ticket);
       setResetTicket(ticket);

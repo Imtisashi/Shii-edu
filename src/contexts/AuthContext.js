@@ -11,6 +11,7 @@ import {
   toInstituteAuthEmail,
 } from '../utils/instituteLoginIdentifiers';
 import { registerDevicePushToken } from '../services/pushNotificationService';
+import { registerCurrentUserWebPush } from '../services/webPushSubscriptionService';
 import { ensureInstituteClaims } from '../services/instituteClaimsService';
 import {
   clearCachedInstituteIdentity,
@@ -766,6 +767,15 @@ export function AuthProvider({ children, appMode = 'combined' }) {
       profile: userData,
     }).catch((error) => {
       console.warn('Push token registration failed:', error);
+    });
+  }, [currentUser, userData]);
+
+  useEffect(() => {
+    registerCurrentUserWebPush({
+      currentUser,
+      profile: userData,
+    }).catch((error) => {
+      console.warn('Web push subscription registration failed:', error);
     });
   }, [currentUser, userData]);
 

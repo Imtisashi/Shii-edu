@@ -19,6 +19,11 @@ const {
 } = require('../_lib/loginIdentifiers');
 const { assertRateLimit } = require('../_lib/rateLimit');
 const { sendExpoPushToUsers } = require('../_lib/expoPush');
+const {
+  normalizeWebPushSubscription,
+  sendWebPushToSubscriptions,
+  sendWebPushToUsers,
+} = require('../_lib/webPush');
 
 const RESET_COLLECTION = 'passwordResetRequests';
 const REQUEST_TOKEN_BYTES = 24;
@@ -26,12 +31,21 @@ const REQUEST_EXPIRY_MS = 1000 * 60 * 60 * 24 * 3;
 const VALID_STATUSES = new Set(['approved', 'pending', 'rejected']);
 
 const RoleSchema = z.enum(['driver', 'institute', 'parent']);
+const WebPushSubscriptionSchema = z.object({
+  endpoint: z.string().trim().url().max(2048),
+  expirationTime: z.number().nullable().optional(),
+  keys: z.object({
+    auth: z.string().trim().min(8).max(512),
+    p256dh: z.string().trim().min(20).max(2048),
+  }),
+});
 const RequestSchema = z.object({
   action: z.literal('request'),
   contact: z.string().trim().max(160).optional().nullable(),
   instituteId: z.string().trim().min(1).max(128),
   note: z.string().trim().max(500).optional().nullable(),
   role: RoleSchema.default('institute'),
+  webPushSubscription: WebPushSubscriptionSchema.optional().nullable(),
   userId: z.string().trim().min(1).max(64),
 });
 const StatusSchema = z.object({
@@ -218,6 +232,19 @@ const createNotification = async ({
   }).catch((error) => {
     console.warn('Password reset Expo push notification failed:', error?.message || error);
   });
+
+  await sendWebPushToUsers({
+    body,
+    data,
+    firestore,
+    instituteId,
+    recipientUids,
+    tag: `shii-edu-${type}-${data.requestId || 'notification'}`,
+    title,
+    url: data.url || '/',
+  }).catch((error) => {
+    console.warn('Password reset web push notification failed:', error?.message || error);
+  });
 };
 
 const ensureAdminCanAccessRequest = (actor, requestData) => {
@@ -265,6 +292,7 @@ const handleCreateRequest = async (req, res, body) => {
   const requestRef = firestore.collection(RESET_COLLECTION).doc();
   const admins = await findInstituteAdmins({ firestore, instituteId });
   const adminUids = admins.map((profileData) => profileData.id || profileData.uid).filter(Boolean);
+  const webPushSubscription = normalizeWebPushSubscription(payload.webPushSubscription);
 
   await requestRef.set({
     adminUids,
@@ -287,6 +315,7 @@ const handleCreateRequest = async (req, res, body) => {
     userName: profile.name || profile.displayName || userId,
     userRole: normalizeRole(profile.role),
     userUid: profile.id || profile.uid || null,
+    webPushSubscription,
   });
 
   await createNotification({
@@ -295,6 +324,7 @@ const handleCreateRequest = async (req, res, body) => {
       requestId: requestRef.id,
       role: payload.role,
       userId,
+      url: '/',
     },
     firestore,
     instituteId,
@@ -311,6 +341,7 @@ const handleCreateRequest = async (req, res, body) => {
     requestId: requestRef.id,
     status: 'pending',
     token: requestToken,
+    webPushReady: Boolean(webPushSubscription),
   });
 };
 
@@ -399,6 +430,7 @@ const handleApprove = async (req, res, body) => {
       data: {
         requestId: payload.requestId,
         role: requestData.role,
+        url: `/auth/${requestData.role === 'driver' ? 'driver' : requestData.role === 'parent' ? 'parents' : 'institute'}`,
       },
       firestore,
       instituteId: requestData.instituteId,
@@ -408,6 +440,24 @@ const handleApprove = async (req, res, body) => {
       type: 'success',
     }).catch((error) => {
       console.warn('Requester password reset notification failed:', error?.message || error);
+    });
+  }
+
+  const requesterSubscription = normalizeWebPushSubscription(requestData.webPushSubscription);
+  if (requesterSubscription) {
+    await sendWebPushToSubscriptions({
+      body: 'Your password reset was approved. Open Shii-Edu to continue.',
+      data: {
+        requestId: payload.requestId,
+        role: requestData.role,
+      },
+      firestore,
+      subscriptions: [requesterSubscription],
+      tag: `password-reset-approved-${payload.requestId}`,
+      title: 'Password reset approved',
+      url: `/auth/${requestData.role === 'driver' ? 'driver' : requestData.role === 'parent' ? 'parents' : 'institute'}`,
+    }).catch((error) => {
+      console.warn('Requester approval web push failed:', error?.message || error);
     });
   }
 
@@ -446,6 +496,43 @@ const handleReject = async (req, res, body) => {
     status: 'rejected',
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
+
+  if (requestData.userUid) {
+    await createNotification({
+      body: rejectedReason,
+      data: {
+        requestId: payload.requestId,
+        role: requestData.role,
+        url: `/auth/${requestData.role === 'driver' ? 'driver' : requestData.role === 'parent' ? 'parents' : 'institute'}`,
+      },
+      firestore,
+      instituteId: requestData.instituteId,
+      recipientUids: [requestData.userUid],
+      roleTargets: [requestData.userRole || requestData.role || 'student'],
+      title: 'Password reset rejected',
+      type: 'warning',
+    }).catch((error) => {
+      console.warn('Requester rejection notification failed:', error?.message || error);
+    });
+  }
+
+  const requesterSubscription = normalizeWebPushSubscription(requestData.webPushSubscription);
+  if (requesterSubscription) {
+    await sendWebPushToSubscriptions({
+      body: rejectedReason,
+      data: {
+        requestId: payload.requestId,
+        role: requestData.role,
+      },
+      firestore,
+      subscriptions: [requesterSubscription],
+      tag: `password-reset-rejected-${payload.requestId}`,
+      title: 'Password reset rejected',
+      url: `/auth/${requestData.role === 'driver' ? 'driver' : requestData.role === 'parent' ? 'parents' : 'institute'}`,
+    }).catch((error) => {
+      console.warn('Requester rejection web push failed:', error?.message || error);
+    });
+  }
 
   res.status(200).json({ success: true, requestId: payload.requestId, status: 'rejected' });
 };

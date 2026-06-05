@@ -68,12 +68,14 @@ export const submitPasswordResetRequest = async ({
   note = '',
   role,
   userId,
+  webPushSubscription = null,
 }: {
   contact?: string;
   instituteId: string;
   note?: string;
   role: PasswordResetRole;
   userId: string;
+  webPushSubscription?: unknown;
 }): Promise<PasswordResetTicket> => {
   const data = await publicPasswordResetFetch({
     action: 'request',
@@ -82,6 +84,7 @@ export const submitPasswordResetRequest = async ({
     note,
     role,
     userId,
+    webPushSubscription,
   });
 
   return {

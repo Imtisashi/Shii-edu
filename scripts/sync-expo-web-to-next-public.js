@@ -153,7 +153,7 @@ Object.entries(roleManifests).forEach(([fileName, data]) => {
   fs.writeFileSync(path.join(publicDir, fileName), `${JSON.stringify(data, null, 2)}\n`);
 });
 fs.writeFileSync(path.join(publicDir, 'sw.js'), [
-  "const CACHE_NAME = 'shii-edu-pwa-shell-v4';",
+  "const CACHE_NAME = 'shii-edu-pwa-shell-v5';",
   "const SHELL_URLS = [",
   "  '/',",
   "  '/roles',",

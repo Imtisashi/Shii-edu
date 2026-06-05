@@ -11,10 +11,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import {
   getPwaNotificationPermission,
-  requestPwaNotificationPermission,
   showPwaNotification,
   type PwaNotificationPermission,
 } from '../../services/pwaNotificationService';
+import { requestAndPrepareWebPush } from '../../services/webPushSubscriptionService';
 import { showNativeMessage } from '../../utils/userFeedback';
 
 type PwaNotificationPromptProps = {
@@ -79,10 +79,16 @@ export default function PwaNotificationPrompt({
     if (disabled) return;
     setBusy(true);
     try {
-      const nextPermission = await requestPwaNotificationPermission();
+      const pushResult = await requestAndPrepareWebPush();
+      const nextPermission = getPwaNotificationPermission();
       setPermission(nextPermission);
       if (nextPermission === 'granted') {
-        showNativeMessage('OS Alerts Enabled', `Shii-Edu can now send ${roleLabel} alerts on this device.`);
+        showNativeMessage(
+          'OS Alerts Enabled',
+          pushResult.subscription
+            ? `Shii-Edu can now send ${roleLabel} alerts on this device.`
+            : 'OS alerts are allowed. Remote approval alerts will activate after the latest Shii-Edu update reaches this device.'
+        );
         await showPwaNotification({
           body: 'Password reset approvals and role alerts can appear here when the PWA is active.',
           tag: 'shii-edu-os-alerts-enabled',

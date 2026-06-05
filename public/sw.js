@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shii-edu-pwa-shell-v4';
+const CACHE_NAME = 'shii-edu-pwa-shell-v5';
 const SHELL_URLS = [
   '/',
   '/roles',

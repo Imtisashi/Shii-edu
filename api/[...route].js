@@ -13,6 +13,7 @@ const routes = new Map([
   ['cloudinary/signature', require('../server/api/cloudinary/signature')],
   ['cron/proactive-warnings', require('../server/api/cron/proactive-warnings')],
   ['messages', require('../server/api/messages')],
+  ['notifications/web-push-subscriptions', require('../server/api/notifications/web-push-subscriptions')],
   ['media/upload-signature', require('../server/api/media/upload-signature')],
   ['payments/create-intent', require('../server/api/payments/create-intent')],
   ['payments/stripe-webhook', require('../server/api/payments/stripe-webhook')],

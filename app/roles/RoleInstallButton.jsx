@@ -10,6 +10,36 @@ function installInstructions() {
   return 'Use Chrome or Edge browser controls to install this role app.';
 }
 
+const urlBase64ToUint8Array = (base64String) => {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = `${base64String}${padding}`.replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let index = 0; index < rawData.length; index += 1) {
+    outputArray[index] = rawData.charCodeAt(index);
+  }
+
+  return outputArray;
+};
+
+const prepareRemotePushSubscription = async (registration) => {
+  if (!registration?.pushManager) return null;
+  const configResponse = await fetch('/api/notifications/web-push-subscriptions', {
+    headers: { Accept: 'application/json' },
+  });
+  const config = await configResponse.json().catch(() => ({}));
+  if (!configResponse.ok || !config.configured || !config.publicKey) return null;
+
+  const existing = await registration.pushManager.getSubscription();
+  if (existing) return existing;
+
+  return registration.pushManager.subscribe({
+    applicationServerKey: urlBase64ToUint8Array(config.publicKey),
+    userVisibleOnly: true,
+  });
+};
+
 export default function RoleInstallButton({ accent, label, manifestHref }) {
   const [notificationPermission, setNotificationPermission] = useState('unsupported');
   const [prompt, setPrompt] = useState(null);
@@ -75,13 +105,18 @@ export default function RoleInstallButton({ accent, label, manifestHref }) {
 
     const registration = await navigator.serviceWorker.register('/sw.js').catch(() => null);
     const readyRegistration = registration || await navigator.serviceWorker.ready.catch(() => null);
+    const remoteSubscription = await prepareRemotePushSubscription(readyRegistration).catch(() => null);
     await readyRegistration?.showNotification('Shii-Edu alerts are ready', {
       body: `${label} can show password reset, route, and institute alerts on this device.`,
       data: { url: manifestHref.includes('driver') ? '/auth/driver' : manifestHref.includes('parents') ? '/auth/parents' : '/auth/institute' },
       icon: '/icon.png',
       tag: `role-alerts-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
     }).catch(() => null);
-    setNotice(`${label} OS alerts are enabled on this device.`);
+    setNotice(
+      remoteSubscription
+        ? `${label} OS alerts and remote push are enabled on this device.`
+        : `${label} OS alerts are enabled on this device. Remote approval alerts will activate after the latest Shii-Edu update reaches this device.`
+    );
   };
 
   const notificationIcon = notificationPermission === 'granted'
