@@ -33,8 +33,12 @@ export const getInstitutionProfile = (userData = {}) => {
   const instituteData = userData.instituteData || {};
   const institutionType = normalizeInstitutionType(instituteData);
   const isCollege = institutionType === InstitutionType.COLLEGE;
-  const primaryValue = isCollege ? userData.dept : userData.class;
-  const secondaryValue = isCollege ? userData.sem : userData.section;
+  const primaryValue = isCollege
+    ? (userData.dept || userData.department || userData.assignedDept || userData.assignedDepartment)
+    : (userData.class || userData.standard || userData.assignedClass);
+  const secondaryValue = isCollege
+    ? (userData.sem || userData.semester || userData.assignedSem || userData.assignedSemester)
+    : (userData.section || userData.assignedSection);
 
   return {
     institutionType,

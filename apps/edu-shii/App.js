@@ -25,6 +25,14 @@ import InstituteAuthNavigator from './src/navigation/InstituteAuthNavigator';
 const linking = Object.freeze({
   enabled: true,
   prefixes: [],
+  config: {
+    screens: {
+      RoleSelection: 'roles',
+      InstituteAuth: 'auth/institute',
+      ParentsAuth: 'auth/parents',
+      DriverAuth: 'auth/driver',
+    },
+  },
 });
 
 const documentTitle = {

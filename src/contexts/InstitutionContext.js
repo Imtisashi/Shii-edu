@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { getInstitutionProfile, InstitutionType } from '../services/institutionalProfile';
-import { resolveFeatureEntitlements } from '../constants/featureEntitlements';
+import { FEATURE_DEFINITIONS, resolveFeatureEntitlements } from '../constants/featureEntitlements';
 import { db } from '../../firebaseConfig';
 
 const InstitutionContext = createContext(null);
@@ -27,12 +27,90 @@ const normalizeSection = (section) => {
   };
 };
 
-const buildSchoolWorkflow = (instituteData = {}) => {
+const normalizeStandard = (standard) => {
+  if (typeof standard === 'string' || typeof standard === 'number') {
+    return {
+      id: String(standard),
+      label: `Class ${standard}`,
+      order: Number(standard) || 0,
+      sections: [],
+    };
+  }
+
+  const id = String(standard?.id || standard?.standardId || standard?.class || standard?.grade || standard?.label || standard?.name || '');
+  return {
+    ...standard,
+    id,
+    label: String(standard?.label || standard?.standardLabel || standard?.name || standard?.class || standard?.grade || id || 'Class'),
+    order: Number(standard?.order) || 0,
+    sections: arrayFromConfig(standard?.sections || standard?.sectionList).map(normalizeSection),
+  };
+};
+
+const getWorkflowFeatures = (featureAccess) => FEATURE_DEFINITIONS.map((feature) => ({
+  ...feature,
+  enabled: featureAccess?.enabledFeatures?.[feature.key] !== false,
+}));
+
+const groupClassSections = (classSections = [], standards = []) => {
+  const standardsById = new Map();
+  const standardsByLabel = new Map();
+  standards.forEach((standard) => {
+    if (!standard.id) return;
+    const normalized = {
+      ...standard,
+      sections: [...(standard.sections || [])],
+    };
+    standardsById.set(standard.id, normalized);
+    standardsByLabel.set(String(standard.label || '').trim().toLowerCase(), normalized);
+  });
+
+  arrayFromConfig(classSections).forEach((section) => {
+    const standardId = String(section?.standardId || section?.classId || section?.standard || section?.class || section?.grade || '');
+    const standardLabel = String(section?.standardLabel || section?.standard || section?.class || section?.grade || standardId || 'Class');
+    const blockId = standardId || standardLabel;
+    if (!blockId) return;
+
+    const labelKey = standardLabel.trim().toLowerCase();
+    const current = standardsById.get(blockId) || standardsByLabel.get(labelKey) || {
+      id: blockId,
+      label: standardLabel.startsWith('Class') ? standardLabel : `Class ${standardLabel}`,
+      order: Number(section?.order) || 0,
+      sections: [],
+    };
+
+    current.sections.push(normalizeSection({
+      id: section?.id || section?.sectionId || section?.sectionName || section?.section,
+      label: section?.label || section?.sectionName || section?.section,
+      classTeacherUid: section?.classTeacherUid || section?.teacherUid || null,
+    }));
+    standardsById.set(blockId, current);
+    standardsByLabel.set(labelKey, current);
+  });
+
+  const uniqueBlocks = new Map();
+  Array.from(standardsById.values()).forEach((block) => {
+    const key = String(block.id || block.label || '').trim().toLowerCase();
+    if (!key || uniqueBlocks.has(key)) return;
+    uniqueBlocks.set(key, block);
+  });
+
+  return Array.from(uniqueBlocks.values())
+    .map((standard) => ({
+      ...standard,
+      sections: (standard.sections || []).filter((section) => section.id || section.label),
+    }))
+    .sort((left, right) => (Number(left.order) || 0) - (Number(right.order) || 0) || left.label.localeCompare(right.label));
+};
+
+const buildSchoolWorkflow = (instituteData = {}, featureAccess = null) => {
   const academicModel = instituteData.academicModel || {};
   const academicYears = arrayFromConfig(academicModel.academicYears || instituteData.academicYears || instituteData.years)
     .map((year) => (typeof year === 'string' ? { id: year, label: year } : year));
-  const gradeSource = academicModel.classSections || instituteData.classSections || instituteData.gradeSections || instituteData.classes || [];
-  const gradeBlocks = arrayFromConfig(gradeSource).map((grade) => {
+  const standards = arrayFromConfig(academicModel.standards || instituteData.standards || instituteData.classes)
+    .map(normalizeStandard);
+  const classSectionSource = academicModel.classSections || instituteData.classSections || instituteData.gradeSections || [];
+  const legacyGradeBlocks = arrayFromConfig(instituteData.gradeBlocks || academicModel.gradeBlocks).map((grade) => {
     if (typeof grade === 'string' || typeof grade === 'number') {
       return {
         id: String(grade),
@@ -47,6 +125,7 @@ const buildSchoolWorkflow = (instituteData = {}) => {
       sections: arrayFromConfig(grade.sections || grade.sectionList).map(normalizeSection),
     };
   });
+  const gradeBlocks = groupClassSections(classSectionSource, [...standards, ...legacyGradeBlocks]);
 
   return {
     mode: InstitutionType.SCHOOL,
@@ -54,7 +133,14 @@ const buildSchoolWorkflow = (instituteData = {}) => {
     system: academicModel.system || 'academic-year',
     academicYears,
     gradeBlocks,
-    standards: arrayFromConfig(academicModel.standards || instituteData.standards),
+    standards,
+    classSections: arrayFromConfig(classSectionSource).map((section) => ({
+      ...section,
+      id: String(section?.id || section?.sectionId || ''),
+      label: String(section?.label || section?.sectionName || section?.section || ''),
+      standardId: String(section?.standardId || section?.standard || section?.class || ''),
+      standardLabel: String(section?.standardLabel || section?.standard || section?.class || ''),
+    })),
     classTeacherAssignments: academicModel.classTeacherAssignments || instituteData.classTeacherAssignments || {},
     attendancePolicy: {
       requiredDaily: true,
@@ -67,10 +153,12 @@ const buildSchoolWorkflow = (instituteData = {}) => {
       matrices: arrayFromConfig(instituteData.evaluationMatrices || instituteData.gradingMatrices),
     },
     parentDashboardsEnabled: true,
+    featureAccess,
+    features: getWorkflowFeatures(featureAccess),
   };
 };
 
-const buildCollegeWorkflow = (instituteData = {}) => {
+const buildCollegeWorkflow = (instituteData = {}, featureAccess = null) => {
   const academicModel = instituteData.academicModel || {};
   const departments = arrayFromConfig(academicModel.departments || instituteData.departments || instituteData.depts)
     .map((department) => (typeof department === 'string'
@@ -109,6 +197,8 @@ const buildCollegeWorkflow = (instituteData = {}) => {
       allowSubjectAttendance: true,
       parentVisible: false,
     },
+    featureAccess,
+    features: getWorkflowFeatures(featureAccess),
   };
 };
 
@@ -222,8 +312,8 @@ export function InstitutionProvider({ children }) {
       instituteData,
     });
     const workflow = profile.institutionType === InstitutionType.COLLEGE
-      ? buildCollegeWorkflow(instituteData)
-      : buildSchoolWorkflow(instituteData);
+      ? buildCollegeWorkflow(instituteData, featureAccess)
+      : buildSchoolWorkflow(instituteData, featureAccess);
 
     return {
       profile,

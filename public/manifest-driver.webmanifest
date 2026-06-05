@@ -1,0 +1,25 @@
+{
+  "background_color": "#FFFFFF",
+  "description": "Shii-Edu Driver workspace for route assignments and live fleet status.",
+  "display": "standalone",
+  "icons": [
+    {
+      "purpose": "any maskable",
+      "sizes": "192x192",
+      "src": "/assets/images/icon.png",
+      "type": "image/png"
+    },
+    {
+      "purpose": "any maskable",
+      "sizes": "512x512",
+      "src": "/assets/images/icon.png",
+      "type": "image/png"
+    }
+  ],
+  "id": "/auth/driver",
+  "name": "Shii-Edu Driver",
+  "scope": "/",
+  "short_name": "Driver",
+  "start_url": "/auth/driver",
+  "theme_color": "#B45309"
+}

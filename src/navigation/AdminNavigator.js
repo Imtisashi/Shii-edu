@@ -22,12 +22,15 @@ import UploadGallery from '../screens/admin/UploadGallery';
 import UploadPYQ from '../screens/admin/UploadPYQ';
 import AddUser from '../screens/admin/AddUser';
 import BrandingSettings from '../screens/admin/BrandingSettings';
+import PasswordResetRequests from '../screens/admin/PasswordResetRequests';
 import CourseManager from '../screens/teacher/CourseManager';
 import ReportsCenter from '../screens/shared/ReportsCenter';
 import CommunicationHub from '../screens/shared/CommunicationHub';
 import FleetTrackingScreen from '../screens/shared/FleetTrackingScreen';
 import SyllabusTutor from '../screens/shared/SyllabusTutor';
 import AICommandCenter from '../screens/admin/AICommandCenter';
+import TeacherPayrollMonitor from '../screens/admin/TeacherPayrollMonitor';
+import TransportControlCenter from '../screens/admin/TransportControlCenter';
 import AccountProfileScreen from '../screens/shared/AccountProfileScreen';
 import AccountSettingsScreen from '../screens/shared/AccountSettingsScreen';
 
@@ -37,9 +40,11 @@ const Drawer = createDrawerNavigator();
 
 const adminDrawerLinks = [
   { featureKey: 'people', icon: 'people-outline', label: 'Users', routeName: 'AdminDashboard', params: { screen: 'MainTabs', params: { screen: 'Users' } } },
-  { featureKey: 'finance', icon: 'wallet-outline', label: 'Ledger', routeName: 'AdminDashboard', params: { screen: 'MainTabs', params: { screen: 'Ledger' } } },
+  { featureKey: 'finance', icon: 'wallet-outline', label: 'Student fees', routeName: 'AdminDashboard', params: { screen: 'MainTabs', params: { screen: 'Ledger' } } },
+  { featureKey: 'finance', icon: 'cash-outline', label: 'Teacher payroll', routeName: 'AdminDashboard', params: { screen: 'TeacherPayroll' } },
   { featureKey: 'notices', icon: 'megaphone-outline', label: 'Broadcasts', routeName: 'AdminDashboard', params: { screen: 'MainTabs', params: { screen: 'Broadcasts' } } },
   { featureKey: 'people', icon: 'briefcase-outline', label: 'Faculty', routeName: 'AdminDashboard', params: { screen: 'ManageTeachers' } },
+  { featureKey: 'people', icon: 'key-outline', label: 'Password resets', routeName: 'AdminDashboard', params: { screen: 'PasswordResetRequests' } },
   { featureKey: 'routines', icon: 'calendar-outline', label: 'Master schedule', routeName: 'AdminDashboard', params: { screen: 'ManageRoutines' } },
   { featureKey: 'routines', icon: 'calendar-number-outline', label: 'Calendar', routeName: 'AdminDashboard', params: { screen: 'ManageHolidays' } },
   { featureKey: 'people', icon: 'person-add-outline', label: 'Add users', routeName: 'AdminDashboard', params: { screen: 'AddUser' } },
@@ -49,6 +54,7 @@ const adminDrawerLinks = [
   { featureKey: 'pyq', icon: 'document-attach-outline', label: 'PYQ PDFs', routeName: 'AdminDashboard', params: { screen: 'UploadPYQ' } },
   { featureKey: 'reports', icon: 'print-outline', label: 'Reports', routeName: 'AdminDashboard', params: { screen: 'ReportsCenter' } },
   { featureKey: 'messages', icon: 'chatbubbles-outline', label: 'Messages', routeName: 'AdminDashboard', params: { screen: 'CommunicationHub' } },
+  { featureKey: 'transport', icon: 'navigate-outline', label: 'Route control', routeName: 'AdminDashboard', params: { screen: 'TransportControl' } },
   { featureKey: 'transport', icon: 'bus-outline', label: 'Live fleet', routeName: 'AdminDashboard', params: { screen: 'FleetTracking' } },
   { featureKey: 'ai', icon: 'sparkles-outline', label: 'AI command', routeName: 'AdminDashboard', params: { screen: 'AICommandCenter' } },
 ];
@@ -110,6 +116,7 @@ function AdminStackNavigator() {
       
       {/* 2. Hidden Pop-up Screens */}
       {isFeatureEnabled(instituteData, 'people') ? <Stack.Screen name="ManageTeachers" component={ManageTeachers} options={{ title: 'Faculty Roster' }} /> : null}
+      {isFeatureEnabled(instituteData, 'people') ? <Stack.Screen name="PasswordResetRequests" component={PasswordResetRequests} options={{ title: 'Password Resets' }} /> : null}
       {isFeatureEnabled(instituteData, 'routines') ? <Stack.Screen name="ManageRoutines" component={ManageRoutines} options={{ title: 'Master Schedule' }} /> : null}
       {isFeatureEnabled(instituteData, 'routines') ? <Stack.Screen name="ManageHolidays" component={ManageHolidays} options={{ title: 'Campus Calendar' }} /> : null}
       {isFeatureEnabled(instituteData, 'media') ? <Stack.Screen name="UploadGallery" component={UploadGallery} options={{ title: 'Event Gallery' }} /> : null}
@@ -119,6 +126,8 @@ function AdminStackNavigator() {
       {isFeatureEnabled(instituteData, 'courses') ? <Stack.Screen name="Courses" component={CourseManager} options={{ title: 'Course Uploader' }} /> : null}
       {isFeatureEnabled(instituteData, 'reports') ? <Stack.Screen name="ReportsCenter" component={ReportsCenter} options={{ title: 'Reports Center' }} /> : null}
       {isFeatureEnabled(instituteData, 'messages') ? <Stack.Screen name="CommunicationHub" component={CommunicationHub} options={{ title: 'Communication Hub' }} /> : null}
+      {isFeatureEnabled(instituteData, 'finance') ? <Stack.Screen name="TeacherPayroll" component={TeacherPayrollMonitor} options={{ title: 'Teacher Payroll' }} /> : null}
+      {isFeatureEnabled(instituteData, 'transport') ? <Stack.Screen name="TransportControl" component={TransportControlCenter} options={{ title: 'Transport Control' }} /> : null}
       {isFeatureEnabled(instituteData, 'transport') ? <Stack.Screen name="FleetTracking" component={FleetTrackingScreen} options={{ title: 'Live Fleet' }} /> : null}
       {isFeatureEnabled(instituteData, 'ai') ? <Stack.Screen name="SyllabusTutor" component={SyllabusTutor} options={{ title: 'Syllabus Tutor' }} /> : null}
       {isFeatureEnabled(instituteData, 'ai') ? <Stack.Screen name="AICommandCenter" component={AICommandCenter} options={{ title: 'AI Command Center' }} /> : null}

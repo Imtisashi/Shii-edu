@@ -9,6 +9,7 @@ const routes = new Map([
   ['ai/substitute-schedule', require('../server/api/ai/substitute-schedule')],
   ['ai/syllabus-ingest', require('../server/api/ai/syllabus-ingest')],
   ['auth/institute-claims', require('../server/api/auth/institute-claims')],
+  ['auth/password-reset', require('../server/api/auth/password-reset')],
   ['cloudinary/signature', require('../server/api/cloudinary/signature')],
   ['cron/proactive-warnings', require('../server/api/cron/proactive-warnings')],
   ['messages', require('../server/api/messages')],

@@ -40,6 +40,7 @@
     "@supabase/supabase-js": "^2.107.0",
     "@vercel/functions": "^3.6.1",
     "base64-arraybuffer": "^1.0.2",
+    "bootstrap": "^5.3.8",
     "expo": "56.0.8",
     "expo-clipboard": "~56.0.3",
     "expo-constants": "56.0.16",
@@ -99,6 +100,7 @@
     "ajv-keywords": "5.1.0",
     "eslint": "9.39.4",
     "eslint-config-expo": "56.0.4",
+    "playwright": "^1.60.0",
     "typescript": "6.0.3"
   },
   "overrides": {

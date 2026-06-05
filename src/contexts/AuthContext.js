@@ -28,6 +28,7 @@ const INSTITUTE_APP_MODE = 'institute';
 
 export const INVALID_INSTITUTE_ID_ERROR = 'Invalid Institute ID for these credentials.';
 export const INVALID_USER_ID_ERROR = 'Invalid User ID for these credentials.';
+export const WRONG_PASSWORD_ERROR = 'Wrong password. Something is wrong.';
 
 const normalizeRole = (role) => {
   const compactRole = String(role || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
@@ -44,6 +45,20 @@ const createAuthError = (message, code = 'auth/institute-verification-failed') =
   const error = new Error(message);
   error.code = code;
   return error;
+};
+
+const roleMatchesExpectedPortal = (expectedRole, normalizedRole) => {
+  if (!expectedRole) return true;
+  if (expectedRole === 'parent') return normalizedRole === 'parent';
+  if (expectedRole === 'driver') return normalizedRole === 'driver';
+  if (expectedRole === 'institute') return !['driver', 'parent'].includes(normalizedRole);
+  return true;
+};
+
+const roleMismatchMessage = (expectedRole) => {
+  if (expectedRole === 'parent') return 'Use a registered parent account for the Parents tab.';
+  if (expectedRole === 'driver') return 'Use a registered driver account for the Driver tab.';
+  return 'Use an institute account for the Institute tab.';
 };
 
 const getInstituteIdentityDetails = (profile = {}) => {
@@ -162,7 +177,7 @@ export function AuthProvider({ children, appMode = 'combined' }) {
     instituteData,
   }), []);
 
-  const verifyInstituteProfile = useCallback(async (user, expectedInstituteId, expectedUserId) => {
+  const verifyInstituteProfile = useCallback(async (user, expectedInstituteId, expectedUserId, expectedRole = null) => {
     const normalizedExpectedId = assertLoginInstituteId(expectedInstituteId);
     const normalizedExpectedUserId = assertLoginUserId(expectedUserId);
     if (!normalizedExpectedId) {
@@ -189,6 +204,10 @@ export function AuthProvider({ children, appMode = 'combined' }) {
 
     if (normalizedRole === 'superadmin') {
       throw createAuthError('Superadmin accounts must use the Shii-Edu Superadmin application.', 'auth/institute-role-required');
+    }
+
+    if (!roleMatchesExpectedPortal(expectedRole, normalizedRole)) {
+      throw createAuthError(roleMismatchMessage(expectedRole), 'auth/institute-role-mismatch');
     }
 
     const instituteSnapshot = await getDoc(doc(db, 'institutes', profileInstituteId));
@@ -228,7 +247,7 @@ export function AuthProvider({ children, appMode = 'combined' }) {
     }
   }, [cleanupNotificationSubscription, cleanupProfileSubscription]);
 
-  const subscribeToInstituteProfile = useCallback((user, expectedInstituteId, expectedUserId) => {
+  const subscribeToInstituteProfile = useCallback((user, expectedInstituteId, expectedUserId, expectedRole = null) => {
     cleanupProfileSubscription();
 
     unsubscribeDocRef.current = onSnapshot(
@@ -257,6 +276,11 @@ export function AuthProvider({ children, appMode = 'combined' }) {
 
           if (normalizedRole === 'superadmin') {
             await invalidateInstituteSession('Superadmin accounts must use the Shii-Edu Superadmin application.');
+            return;
+          }
+
+          if (!roleMatchesExpectedPortal(expectedRole, normalizedRole)) {
+            await invalidateInstituteSession(roleMismatchMessage(expectedRole));
             return;
           }
 
@@ -291,6 +315,7 @@ export function AuthProvider({ children, appMode = 'combined' }) {
     userId,
     password,
     enableBiometrics = false,
+    expectedRole = null,
   }) => {
     if (!isInstituteMode) {
       throw createAuthError('Institute login is only available in the Shii-Edu application.');
@@ -313,6 +338,7 @@ export function AuthProvider({ children, appMode = 'combined' }) {
 
     pendingInstituteLoginRef.current = {
       biometricEnabled: Boolean(enableBiometrics),
+      expectedRole,
       instituteId: normalizedInstituteId,
       userId: normalizedUserId,
     };
@@ -349,7 +375,8 @@ export function AuthProvider({ children, appMode = 'combined' }) {
       const verifiedProfile = await verifyInstituteProfile(
         credential.user,
         normalizedInstituteId,
-        normalizedUserId
+        normalizedUserId,
+        expectedRole
       );
       const cachedIdentity = await storeInstituteSession(
         credential.user.uid,
@@ -369,7 +396,7 @@ export function AuthProvider({ children, appMode = 'combined' }) {
       const message = errorCode.startsWith('auth/invalid-credential') ||
         errorCode === 'auth/user-not-found' ||
         errorCode === 'auth/wrong-password'
-        ? 'Invalid Institute ID, User ID, or password.'
+        ? WRONG_PASSWORD_ERROR
         : error?.message || 'Unable to sign in.';
 
       pendingInstituteLoginRef.current = null;
@@ -388,6 +415,7 @@ export function AuthProvider({ children, appMode = 'combined' }) {
   const completeInstituteSession = useCallback(async (user, expectedLogin) => {
     const expectedInstituteId = normalizeInstituteId(expectedLogin?.instituteId);
     const expectedUserId = normalizeUserId(expectedLogin?.userId);
+    const expectedRole = expectedLogin?.expectedRole || null;
 
     if (!expectedInstituteId || !expectedUserId) {
       throw createAuthError(
@@ -396,7 +424,7 @@ export function AuthProvider({ children, appMode = 'combined' }) {
       );
     }
 
-    const verifiedProfile = await verifyInstituteProfile(user, expectedInstituteId, expectedUserId);
+    const verifiedProfile = await verifyInstituteProfile(user, expectedInstituteId, expectedUserId, expectedRole);
     await ensureInstituteClaims(user).catch((error) => {
       console.warn('Institute claim synchronization failed:', error);
     });
@@ -417,7 +445,7 @@ export function AuthProvider({ children, appMode = 'combined' }) {
     setLoading(false);
     setLoadingProfile(null);
     setAuthStage('ready');
-    subscribeToInstituteProfile(user, expectedInstituteId, expectedUserId);
+    subscribeToInstituteProfile(user, expectedInstituteId, expectedUserId, expectedRole);
     return verifiedProfile;
   }, [subscribeToInstituteProfile, verifyInstituteProfile]);
 

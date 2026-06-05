@@ -13,11 +13,21 @@ import RootLayout from './src/components/RootLayout';
 import GlobalErrorBoundary from './src/components/errors/GlobalErrorBoundary';
 import { installWebPerformanceTuning } from './src/utils/webPerformanceTuning';
 import { installWebScrollFix } from './src/utils/webScrollFix';
+import { installWebFeedbackBridge } from './src/utils/userFeedback';
 import { installFirestoreOfflinePersistence } from './src/services/offlinePersistence';
 
 const linking = {
   enabled: true,
   prefixes: [],
+  config: {
+    screens: {
+      RoleSelection: 'roles',
+      Login: 'login',
+      InstituteAuth: 'auth/institute',
+      ParentsAuth: 'auth/parents',
+      DriverAuth: 'auth/driver',
+    },
+  },
 };
 
 const documentTitle = {
@@ -31,6 +41,7 @@ export default function App() {
   const [iconsReady, setIconsReady] = React.useState(false);
 
   React.useEffect(() => {
+    installWebFeedbackBridge();
     installWebPerformanceTuning();
     installWebScrollFix();
     installFirestoreOfflinePersistence();

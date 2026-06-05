@@ -1,3 +1,4 @@
+import 'bootstrap/dist/css/bootstrap.min.css';
 import './globals.css';
 import { SITE } from './lib/site';
 
@@ -9,6 +10,16 @@ export const viewport = {
     { media: '(prefers-color-scheme: dark)', color: '#09090b' },
   ],
   width: 'device-width',
+};
+
+export const metadata = {
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: SITE.name,
+  },
+  applicationName: SITE.name,
+  manifest: '/manifest.webmanifest',
 };
 
 export default function RootLayout({ children }) {

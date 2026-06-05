@@ -1,0 +1,25 @@
+{
+  "background_color": "#FFFFFF",
+  "description": "Shii-Edu Institute workspace for admins, teachers, and students.",
+  "display": "standalone",
+  "icons": [
+    {
+      "purpose": "any maskable",
+      "sizes": "192x192",
+      "src": "/assets/images/icon.png",
+      "type": "image/png"
+    },
+    {
+      "purpose": "any maskable",
+      "sizes": "512x512",
+      "src": "/assets/images/icon.png",
+      "type": "image/png"
+    }
+  ],
+  "id": "/auth/institute",
+  "name": "Shii-Edu Institute",
+  "scope": "/",
+  "short_name": "Institute",
+  "start_url": "/auth/institute",
+  "theme_color": "#635BFF"
+}

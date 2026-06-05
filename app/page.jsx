@@ -195,9 +195,9 @@ export default function HomePage() {
           <a href="#legal">Legal</a>
         </nav>
 
-        <a className="landing-login" href="/login">
+        <a className="landing-login" href="/roles">
           <LockKeyhole size={16} aria-hidden="true" />
-          Institute login
+          Choose role
         </a>
       </header>
 
@@ -214,8 +214,8 @@ export default function HomePage() {
               reports, transport, and role-aware administration under one branded workspace.
             </p>
             <div className="landing-actions">
-              <a className="landing-primary-action" href="/login">
-                Open institute login
+              <a className="landing-primary-action" href="/roles">
+                Choose your role
                 <ArrowRight size={17} aria-hidden="true" />
               </a>
               <a className="landing-secondary-action" href="#workspace">

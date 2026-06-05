@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DynamicHeader from '../../components/DynamicHeader';
+import FleetMap from '../../components/fleet/FleetMap';
 import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
@@ -32,6 +33,10 @@ export default function DriverFleetScreen() {
       showMessage('Vehicle Assignment Required', 'Ask your institute administrator to assign a Vehicle ID to this driver account.');
       return;
     }
+    if (userData?.routeStatus && userData.routeStatus !== 'active') {
+      showMessage('Route Not Active', 'Ask your institute administrator to activate this route before starting live tracking.');
+      return;
+    }
     setStarting(true);
     try {
       sessionRef.current = await startDriverLocationBroadcast({
@@ -60,11 +65,38 @@ export default function DriverFleetScreen() {
     }
   };
 
+  const mapLocations = useMemo(() => {
+    if (!lastLocation) return [];
+    return [{
+      ...lastLocation,
+      driverName: userData?.name || lastLocation.driverName || 'Driver',
+      routeName: userData?.routeName || lastLocation.routeName || null,
+      status: broadcasting ? 'active' : 'offline',
+      vehicleId: userData?.vehicleId || lastLocation.vehicleId || 'Vehicle',
+    }];
+  }, [broadcasting, lastLocation, userData?.name, userData?.routeName, userData?.vehicleId]);
+
+  const latestPosition = lastLocation
+    ? `${lastLocation.latitude.toFixed(5)}, ${lastLocation.longitude.toFixed(5)}`
+    : 'Waiting for GPS';
+  const accuracyText = lastLocation?.accuracy
+    ? `Accuracy ${Math.round(lastLocation.accuracy)} m`
+    : 'Accuracy pending';
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.page }]}>
       <DynamicHeader title="Driver Console" />
 
-      <View style={[styles.content, { maxWidth: maxContentWidth, paddingHorizontal: spacing.pageX }]}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          {
+            maxWidth: maxContentWidth,
+            paddingHorizontal: spacing.pageX,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={[styles.hero, { backgroundColor: colors.cardStrong, borderColor: colors.hairline, borderRadius: radii.card }]}>
           <View style={[styles.heroIcon, { backgroundColor: broadcasting ? colors.emeraldSoft : colors.deepBlueSoft, borderColor: colors.hairline }]}>
             <Ionicons color={broadcasting ? colors.emerald : colors.accent} name="bus" size={34} />
@@ -74,6 +106,18 @@ export default function DriverFleetScreen() {
           </Text>
           <Text style={[styles.vehicleId, { color: colors.text }]}>{userData?.vehicleId || 'Vehicle ID pending'}</Text>
           <Text style={[styles.routeName, { color: colors.textSoft }]}>{userData?.routeName || 'Route name pending'}</Text>
+          <Text style={[styles.routeDestination, { color: colors.muted }]}>
+            {userData?.routeDestination || 'Destination pending'}
+          </Text>
+        </View>
+
+        <View style={[styles.mapCard, { backgroundColor: colors.card, borderColor: colors.hairline, borderRadius: radii.card }]}>
+          <FleetMap
+            accent={broadcasting ? colors.emerald : colors.accent}
+            locations={mapLocations}
+            mutedColor={colors.muted}
+            textColor={colors.text}
+          />
         </View>
 
         <View style={[styles.statusCard, { backgroundColor: colors.card, borderColor: colors.hairline, borderRadius: radii.card }]}>
@@ -87,9 +131,11 @@ export default function DriverFleetScreen() {
           </View>
           <View style={styles.statusRow}>
             <Text style={[styles.statusLabel, { color: colors.textSoft }]}>Latest position</Text>
-            <Text style={[styles.statusValue, { color: colors.text }]}>
-              {lastLocation ? `${lastLocation.latitude.toFixed(5)}, ${lastLocation.longitude.toFixed(5)}` : 'Waiting for GPS'}
-            </Text>
+            <Text style={[styles.statusValue, { color: colors.text }]}>{latestPosition}</Text>
+          </View>
+          <View style={styles.statusRow}>
+            <Text style={[styles.statusLabel, { color: colors.textSoft }]}>Signal</Text>
+            <Text style={[styles.statusValue, { color: colors.text }]}>{accuracyText}</Text>
           </View>
         </View>
 
@@ -107,26 +153,28 @@ export default function DriverFleetScreen() {
         </TouchableOpacity>
 
         <Text style={[styles.safetyText, { color: colors.textSoft }]}>
-          Keep the app open while driving. Location is shared only with authenticated users from your institute.
+          Keep this screen open during the route. Location is shared only with authenticated users from your institute.
         </Text>
 
         <TouchableOpacity onPress={logout} style={[styles.signOutButton, { backgroundColor: colors.card, borderColor: colors.hairline }]}>
           <Ionicons color="#EF4444" name="log-out-outline" size={18} />
           <Text style={styles.signOutText}>Secure Sign Out</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { alignSelf: 'center', flex: 1, paddingBottom: 24, paddingTop: 18, width: '100%' },
+  content: { alignSelf: 'center', paddingBottom: 34, paddingTop: 18, width: '100%' },
   disabled: { opacity: 0.6 },
   eyebrow: { fontSize: 11, fontWeight: '900', marginTop: 16, textTransform: 'uppercase' },
   hero: { alignItems: 'center', borderWidth: 1, padding: 24 },
   heroIcon: { alignItems: 'center', borderRadius: 8, borderWidth: 1, height: 74, justifyContent: 'center', width: 74 },
+  mapCard: { borderWidth: 1, height: 320, marginTop: 14, overflow: 'hidden' },
   primaryButton: { alignItems: 'center', borderRadius: 8, borderWidth: 1, flexDirection: 'row', justifyContent: 'center', minHeight: 56, paddingHorizontal: 18 },
   primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900', marginLeft: 8 },
+  routeDestination: { fontSize: 12, fontWeight: '800', marginTop: 5, textAlign: 'center' },
   routeName: { fontSize: 13, fontWeight: '700', marginTop: 5 },
   safetyText: { fontSize: 12, fontWeight: '700', lineHeight: 18, marginHorizontal: 16, marginTop: 12, textAlign: 'center' },
   screen: { flex: 1, overflow: 'hidden' },

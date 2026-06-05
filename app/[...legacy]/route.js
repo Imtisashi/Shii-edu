@@ -9,10 +9,15 @@ const excludedFirstSegments = new Set([
   'api',
   'assets',
   'favicon.ico',
+  'manifest-driver.webmanifest',
+  'manifest-institute.webmanifest',
+  'manifest-parents.webmanifest',
+  'manifest.webmanifest',
   'metadata.json',
   'privacy',
   'robots.txt',
   'sitemap.xml',
+  'sw.js',
   'terms',
 ]);
 
