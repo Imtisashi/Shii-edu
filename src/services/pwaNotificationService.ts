@@ -11,7 +11,7 @@ export type PwaNotificationPayload = {
   url?: string;
 };
 
-const DEFAULT_ICON = '/assets/images/icon.png';
+const DEFAULT_ICON = '/icon.png';
 
 const isWebNotificationSupported = () => (
   Platform.OS === 'web' &&

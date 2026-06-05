@@ -78,7 +78,7 @@ export default function RoleInstallButton({ accent, label, manifestHref }) {
     await readyRegistration?.showNotification('Shii-Edu alerts are ready', {
       body: `${label} can show password reset, route, and institute alerts on this device.`,
       data: { url: manifestHref.includes('driver') ? '/auth/driver' : manifestHref.includes('parents') ? '/auth/parents' : '/auth/institute' },
-      icon: '/assets/images/icon.png',
+      icon: '/icon.png',
       tag: `role-alerts-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
     }).catch(() => null);
     setNotice(`${label} OS alerts are enabled on this device.`);

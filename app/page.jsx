@@ -178,7 +178,7 @@ export default function HomePage() {
     <div className="landing-page landing-v2">
       <header className="landing-nav" aria-label="Primary">
         <a className="landing-brand" href="/" aria-label="Shii-Edu home">
-          <img src="/assets/images/icon.png" alt="" width="40" height="40" />
+          <img src="/icon.png" alt="" width="40" height="40" />
           <span>
             <strong><ShiiEduWordmark className="nav-wordmark" /></strong>
             <span>Institute workspace</span>

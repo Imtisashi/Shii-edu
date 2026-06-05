@@ -34,7 +34,7 @@ export default function CinematicLandingStage() {
           loop
           muted
           playsInline
-          poster="/assets/images/icon.png"
+          poster="/icon.png"
           src="/assets/videos/cosmic-campus.mp4"
         />
       </div>

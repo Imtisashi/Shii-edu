@@ -34,14 +34,14 @@ export function routeMetadata({ description, path, title, type = 'website' }) {
     },
     description,
     icons: {
-      apple: '/assets/images/icon.png',
+      apple: '/icon.png',
       icon: [
         {
           type: 'image/png',
-          url: '/assets/images/favicon.png',
+          url: '/icon.png',
         },
       ],
-      shortcut: '/favicon.ico',
+      shortcut: '/icon.png',
     },
     metadataBase: new URL(SITE.origin),
     openGraph: {
@@ -50,7 +50,7 @@ export function routeMetadata({ description, path, title, type = 'website' }) {
         {
           alt: `${SITE.name} app icon`,
           height: 512,
-          url: '/assets/images/icon.png',
+          url: '/icon.png',
           width: 512,
         },
       ],
@@ -67,7 +67,7 @@ export function routeMetadata({ description, path, title, type = 'website' }) {
     twitter: {
       card: 'summary',
       description,
-      images: ['/assets/images/icon.png'],
+      images: ['/icon.png'],
       title: fullTitle,
     },
   };

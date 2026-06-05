@@ -28,7 +28,7 @@ export default function TermsPage() {
   return (
     <main id="main" className="legal-page">
       <nav className="brand-lockup legal-nav" aria-label="Legal navigation">
-        <img className="brand-mark" src="/assets/images/icon.png" alt="" width="40" height="40" />
+        <img className="brand-mark" src="/icon.png" alt="" width="40" height="40" />
         <a className="nav-link" href="/">
           Back to operations
         </a>

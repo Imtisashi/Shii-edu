@@ -11,7 +11,7 @@ const SHELL_URLS = [
   '/manifest-institute.webmanifest',
   '/manifest-parents.webmanifest',
   '/manifest-driver.webmanifest',
-  '/assets/images/icon.png'
+  '/icon.png'
 ];
 
 self.addEventListener('install', function (event) {
@@ -73,7 +73,7 @@ const normalizeNotificationPayload = function (payload) {
         url: data.url || data.path || '/',
         ...(data.data || {})
       },
-      icon: data.icon || '/assets/images/icon.png',
+      icon: data.icon || '/icon.png',
       tag: data.tag || 'shii-edu-notification'
     }
   };

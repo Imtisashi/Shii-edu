@@ -65,7 +65,7 @@ export default function RoleChoicePage() {
           <div className="col-12 col-xl-5">
             <div className="role-choice-hero h-100">
               <a className="role-choice-brand" href="/" aria-label="Shii-Edu home">
-                <img src="/assets/images/icon.png" alt="" width="44" height="44" />
+                <img src="/icon.png" alt="" width="44" height="44" />
                 <span>
                   <ShiiEduWordmark />
                   <span>Role selection</span>
