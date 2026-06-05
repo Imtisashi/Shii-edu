@@ -55,6 +55,7 @@ campus-backend/.env
 # local AI / agent tooling
 .agents/
 skills-lock.json
+Skill.md
 .aider*
 .claude/
 .codex/

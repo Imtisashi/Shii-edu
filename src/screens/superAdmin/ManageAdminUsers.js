@@ -3,7 +3,6 @@ import {
   Alert,
   FlatList,
   Modal,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -123,13 +122,6 @@ export default function ManageAdminUsers() {
 
   const handleDeleteAdmin = async (adminId) => {
     const message = 'Are you sure you want to delete this administrator profile? The Firebase Auth account may still need to be removed separately.';
-
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      if (window.confirm(message)) {
-        deleteAdminProfile(adminId);
-      }
-      return;
-    }
 
     Alert.alert('Delete Administrator', message, [
       { text: 'Cancel', style: 'cancel' },

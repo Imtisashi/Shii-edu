@@ -200,13 +200,6 @@ export default function SuperAdminHome() {
   const handleDeleteInstitute = (institute) => {
     const message = `Delete ${institute.name || 'this institute'} and all linked users, attendance, payments, notices, routines, assignments, grades, gallery items, and papers? This cannot be undone.`;
 
-    if (Platform.OS === 'web') {
-      if (window.confirm(message)) {
-        performDeleteInstitute(institute);
-      }
-      return;
-    }
-
     Alert.alert(
       'Delete Institute',
       message,

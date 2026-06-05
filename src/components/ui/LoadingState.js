@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -15,10 +15,10 @@ const SHIMMER_TIMING = {
 };
 
 const SKELETON_COLORS = {
-  background: '#F8FAFC',
+  background: '#FFFFFF',
   border: '#D7E0EC',
-  block: '#E2E8F0',
-  shimmer: '#F8FAFC',
+  block: '#E7EAF1',
+  shimmer: '#FFFFFF',
   surface: '#FFFFFF',
 };
 
@@ -130,7 +130,14 @@ export function RosterSkeleton({
     <View
       accessibilityLabel="Preparing roster"
       accessibilityRole="progressbar"
-      style={[styles.rosterRoot, { backgroundColor: SKELETON_COLORS.background }, style]}
+      style={[
+        styles.rosterRoot,
+        {
+          backgroundColor: SKELETON_COLORS.background,
+          minHeight: Platform.OS === 'web' ? '100dvh' : '100%',
+        },
+        style,
+      ]}
     >
       <View
         style={[
@@ -220,7 +227,14 @@ export function DashboardSkeleton({
     <View
       accessibilityLabel="Preparing workspace"
       accessibilityRole="progressbar"
-      style={[styles.dashboardRoot, { backgroundColor: SKELETON_COLORS.background }, style]}
+      style={[
+        styles.dashboardRoot,
+        {
+          backgroundColor: SKELETON_COLORS.background,
+          minHeight: Platform.OS === 'web' ? '100dvh' : '100%',
+        },
+        style,
+      ]}
     >
       <View
         style={[

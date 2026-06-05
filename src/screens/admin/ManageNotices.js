@@ -120,16 +120,10 @@ export default function ManageNotices() {
 
   // --- 3. DELETE NOTICE ---
   const handleDelete = (noticeId) => {
-    if (Platform.OS === 'web') {
-      if (window.confirm("Delete this broadcast permanently?")) {
-        deleteDoc(doc(db, "notifications", noticeId));
-      }
-    } else {
-      Alert.alert("Confirm Delete", "Delete this broadcast permanently?", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: () => deleteDoc(doc(db, "notifications", noticeId)) }
-      ]);
-    }
+    Alert.alert("Confirm Delete", "Delete this broadcast permanently?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: () => deleteDoc(doc(db, "notifications", noticeId)) }
+    ]);
   };
 
   // --- RENDER: LIST VIEW ---

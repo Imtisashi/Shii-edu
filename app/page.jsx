@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import CinematicLandingStage from './components/CinematicLandingStage';
 import LandingRoleExplorer from './components/LandingRoleExplorer';
+import PixelCampusArtifact from './components/PixelCampusArtifact';
 import { routeMetadata, SITE } from './lib/site';
 
 export const runtime = 'edge';
@@ -222,6 +223,7 @@ export default function HomePage() {
                 Explore workspace
               </a>
             </div>
+            <PixelCampusArtifact />
             <div className="landing-onboarding">
               <span>Is your institute not registered? Contact us to onboard.</span>
               <a className="landing-contact-action" href={onboardingMailto}>

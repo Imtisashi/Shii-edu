@@ -107,13 +107,6 @@ export default function ManageHolidays() {
       }
     };
 
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      if (window.confirm('Are you sure you want to remove this holiday?')) {
-        removeHoliday();
-      }
-      return;
-    }
-
     Alert.alert('Remove Holiday', 'Are you sure you want to remove this holiday?', [
       { text: 'Cancel', style: 'cancel' },
       { 

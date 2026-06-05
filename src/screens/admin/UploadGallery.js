@@ -171,14 +171,10 @@ export default function UploadGallery() {
       await deleteDoc(doc(db, "gallery", imageId));
     };
 
-    if (Platform.OS === 'web') {
-      if (window.confirm("Delete this photo permanently?")) removeImage();
-    } else {
-      Alert.alert("Confirm Delete", "Delete this photo permanently?", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: removeImage }
-      ]);
-    }
+    Alert.alert("Confirm Delete", "Delete this photo permanently?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: removeImage }
+    ]);
   };
 
   return (

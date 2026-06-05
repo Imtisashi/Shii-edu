@@ -225,11 +225,6 @@ export default function UploadPYQ() {
       await deleteDoc(doc(db, 'pyqs', paperId));
     };
 
-    if (Platform.OS === 'web') {
-      if (window.confirm('Delete this PYQ PDF permanently?')) removePaper();
-      return;
-    }
-
     Alert.alert('Delete PYQ', 'Delete this PYQ PDF permanently?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: removePaper },
