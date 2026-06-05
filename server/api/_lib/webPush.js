@@ -1,10 +1,18 @@
 const { createHash } = require('crypto');
-const webPush = require('web-push');
 
 const WEB_PUSH_COLLECTION = 'webPushSubscriptions';
 const DEFAULT_CONTACT = 'mailto:sashimiofficials@gmail.com';
 
 let configured = false;
+let webPushClient = null;
+
+const getWebPushClient = () => {
+  if (!webPushClient) {
+    webPushClient = require('web-push');
+  }
+
+  return webPushClient;
+};
 
 const getVapidConfig = () => {
   const publicKey = process.env.WEB_PUSH_VAPID_PUBLIC_KEY ||
@@ -26,7 +34,7 @@ const ensureConfigured = () => {
   if (!config.configured) return false;
 
   if (!configured) {
-    webPush.setVapidDetails(config.subject, config.publicKey, config.privateKey);
+    getWebPushClient().setVapidDetails(config.subject, config.publicKey, config.privateKey);
     configured = true;
   }
 
@@ -88,7 +96,7 @@ const sendWebPushToSubscriptions = async ({
     if (!subscription) return;
 
     try {
-      await webPush.sendNotification(subscription, payload, {
+      await getWebPushClient().sendNotification(subscription, payload, {
         TTL: 60 * 60 * 24,
       });
       sent += 1;
