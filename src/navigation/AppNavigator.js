@@ -30,7 +30,7 @@ export default function AppNavigator() {
       <View style={styles.profileIssueContainer}>
         <View style={styles.profileIssueCard}>
           <View style={styles.profileIssueIcon}>
-            <Ionicons name="shield-outline" size={30} color="#2563EB" />
+            <Ionicons name="shield-outline" size={30} color="#635BFF" />
           </View>
           <Text style={styles.profileIssueTitle}>Account Profile Required</Text>
           <Text style={styles.profileIssueText}>
@@ -56,11 +56,11 @@ export default function AppNavigator() {
       <View style={styles.profileIssueContainer}>
         <View style={styles.profileIssueCard}>
           <View style={styles.profileIssueIcon}>
-            <Ionicons name="shield-outline" size={30} color="#2563EB" />
+            <Ionicons name="shield-outline" size={30} color="#635BFF" />
           </View>
           <Text style={styles.profileIssueTitle}>Institute App Only</Text>
           <Text style={styles.profileIssueText}>
-            Superadmin accounts must use the separate Edu-Hub Superadmin application.
+            Superadmin accounts must use the separate Shii-Edu Superadmin application.
           </Text>
           <TouchableOpacity style={styles.profileIssueButton} onPress={logout}>
             <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
@@ -95,7 +95,7 @@ export default function AppNavigator() {
     <View style={styles.profileIssueContainer}>
       <View style={styles.profileIssueCard}>
         <View style={styles.profileIssueIcon}>
-          <Ionicons name="shield-outline" size={30} color="#2563EB" />
+          <Ionicons name="shield-outline" size={30} color="#635BFF" />
         </View>
         <Text style={styles.profileIssueTitle}>Unsupported Institute Role</Text>
         <Text style={styles.profileIssueText}>
@@ -115,45 +115,45 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#02030A',
+    backgroundColor: '#FFFFFF',
     padding: 20,
   },
   profileIssueCard: {
     width: '100%',
     maxWidth: 460,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
     padding: 24,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#D9D8E8',
   },
   profileIssueIcon: {
     width: 64,
     height: 64,
     borderRadius: 8,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#F7F6FF',
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: '#D9D7FF',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
   profileIssueTitle: {
-    color: '#F8FAFC',
+    color: '#010110',
     fontSize: 22,
     fontWeight: '900',
     textAlign: 'center',
   },
   profileIssueText: {
-    color: '#B9C6DD',
+    color: '#4B4B5F',
     fontSize: 15,
     lineHeight: 22,
     textAlign: 'center',
     marginTop: 10,
   },
   profileIssueHint: {
-    color: '#8EA4C8',
+    color: '#737383',
     fontSize: 13,
     lineHeight: 19,
     textAlign: 'center',
@@ -161,8 +161,8 @@ const styles = StyleSheet.create({
   },
   profileIssueButton: {
     marginTop: 18,
-    backgroundColor: '#2563EB',
-    borderRadius: 8,
+    backgroundColor: '#010110',
+    borderRadius: 999,
     paddingHorizontal: 18,
     paddingVertical: 13,
     flexDirection: 'row',

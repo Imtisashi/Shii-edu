@@ -174,7 +174,7 @@ export default function InstituteLoginScreen() {
   const hasReturningInstitute = Boolean(cachedInstituteIdentity?.instituteName);
 
   return (
-    <EnterpriseAuthBackground>
+    <EnterpriseAuthBackground backgroundColor="#FFFFFF">
       <KeyboardAvoidingView
         style={styles.keyboardRoot}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -217,7 +217,7 @@ export default function InstituteLoginScreen() {
                 <BrandLogo size={58} style={undefined} />
               )}
               </View>
-              <BrandWordmark color="#0F172A" size={layout.isMobile ? 'sm' : 'md'} style={styles.formWordmark} />
+              <BrandWordmark color="#010110" size={layout.isMobile ? 'sm' : 'md'} style={styles.formWordmark} />
               <Text style={[styles.title, layout.isMobile && styles.titleMobile]}>
                 {hasReturningInstitute ? returningInstituteName : 'Secure institute login'}
               </Text>
@@ -238,9 +238,9 @@ export default function InstituteLoginScreen() {
                   style={[styles.biometricButton, biometricSubmitting && styles.loginBtnDisabled]}
                 >
                   {biometricSubmitting ? (
-                    <SmoothSpinner color="#2563EB" size={22} trackColor="#BFDBFE" style={undefined} />
+                    <SmoothSpinner color="#635BFF" size={22} trackColor="#E7E5FF" style={undefined} />
                   ) : (
-                    <Ionicons name="finger-print-outline" size={24} color="#2563EB" />
+                    <Ionicons name="finger-print-outline" size={24} color="#635BFF" />
                   )}
                   <View style={styles.biometricButtonCopy}>
                     <Text style={styles.biometricButtonTitle}>
@@ -250,7 +250,7 @@ export default function InstituteLoginScreen() {
                       {cachedInstituteIdentity?.instituteName || 'Your institute'}
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#64748B" />
+                  <Ionicons name="chevron-forward" size={18} color="#737383" />
                 </TouchableOpacity>
               ) : null}
 
@@ -264,7 +264,7 @@ export default function InstituteLoginScreen() {
 
               <Text style={styles.label}>Institute ID</Text>
               <View style={styles.inputContainer}>
-                <Ionicons name="business-outline" size={20} color="#64748B" style={styles.icon} />
+                <Ionicons name="business-outline" size={20} color="#737383" style={styles.icon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Institute ID"
@@ -272,14 +272,14 @@ export default function InstituteLoginScreen() {
                   onChangeText={handleInstituteIdChange}
                   autoCapitalize="none"
                   autoCorrect={false}
-                  placeholderTextColor="#64748B"
+                  placeholderTextColor="#737383"
                   returnKeyType="next"
                 />
               </View>
 
               <Text style={styles.label}>User ID</Text>
               <View style={styles.inputContainer}>
-                <Ionicons name="id-card-outline" size={20} color="#64748B" style={styles.icon} />
+                <Ionicons name="id-card-outline" size={20} color="#737383" style={styles.icon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Student, teacher, or admin ID"
@@ -287,21 +287,21 @@ export default function InstituteLoginScreen() {
                   onChangeText={handleUserIdChange}
                   autoCapitalize="none"
                   autoCorrect={false}
-                  placeholderTextColor="#64748B"
+                  placeholderTextColor="#737383"
                   returnKeyType="next"
                 />
               </View>
 
               <Text style={styles.label}>Password</Text>
               <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={20} color="#64748B" style={styles.icon} />
+                <Ionicons name="lock-closed-outline" size={20} color="#737383" style={styles.icon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Password"
                   value={password}
                   onChangeText={handlePasswordChange}
                   secureTextEntry={!showPassword}
-                  placeholderTextColor="#64748B"
+                  placeholderTextColor="#737383"
                   returnKeyType="go"
                   onSubmitEditing={handleLogin}
                 />
@@ -310,7 +310,7 @@ export default function InstituteLoginScreen() {
                   style={styles.eyeIcon}
                   accessibilityLabel="Toggle password visibility"
                 >
-                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#64748B" />
+                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#737383" />
                 </TouchableOpacity>
               </View>
 
@@ -337,7 +337,7 @@ export default function InstituteLoginScreen() {
                   </TouchableOpacity>
                 ) : (
                   <View style={styles.secureCacheRow}>
-                    <Ionicons name="key-outline" size={16} color="#2563EB" />
+                    <Ionicons name="key-outline" size={16} color="#635BFF" />
                     <Text style={styles.secureCacheText}>Institute ID and User ID are cached securely after sign-in</Text>
                   </View>
                 )}
@@ -350,7 +350,7 @@ export default function InstituteLoginScreen() {
                 activeOpacity={0.84}
               >
                 {submitting ? (
-                  <SmoothSpinner color="#FFFFFF" size={22} trackColor="#CBD5E1" style={undefined} />
+                  <SmoothSpinner color="#FFFFFF" size={22} trackColor="#D9D8E8" style={undefined} />
                 ) : (
                   <>
                     <Ionicons name="shield-checkmark" size={19} color="#FFFFFF" />
@@ -361,7 +361,7 @@ export default function InstituteLoginScreen() {
             </View>
 
             <View style={styles.footer}>
-              <Ionicons name="lock-closed-outline" size={15} color="#2563EB" />
+              <Ionicons name="lock-closed-outline" size={15} color="#635BFF" />
               <Text style={styles.footerText}>Every session opens only your institute workspace</Text>
             </View>
             {authStage === 'biometric-required' ? (
@@ -377,8 +377,8 @@ export default function InstituteLoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  keyboardRoot: { backgroundColor: '#F8FAFC', flex: 1 },
-  scrollView: { backgroundColor: '#F8FAFC', flex: 1 },
+  keyboardRoot: { backgroundColor: '#FFFFFF', flex: 1 },
+  scrollView: { backgroundColor: '#FFFFFF', flex: 1 },
   container: {
     alignItems: 'center',
     flexGrow: 1,
@@ -396,8 +396,8 @@ const styles = StyleSheet.create({
   },
   biometricButton: {
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    borderColor: '#BFDBFE',
+    backgroundColor: '#F7F6FF',
+    borderColor: '#D9D7FF',
     borderRadius: 8,
     borderWidth: 1,
     flexDirection: 'row',
@@ -412,13 +412,13 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   biometricButtonSubtitle: {
-    color: '#64748B',
+    color: '#737383',
     fontSize: 12,
     fontWeight: '700',
     marginTop: 3,
   },
   biometricButtonTitle: {
-    color: '#0F172A',
+    color: '#010110',
     fontSize: 14,
     fontWeight: '800',
   },
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     maxWidth: 450,
     backgroundColor: '#FFFFFF',
     borderRadius: 8,
-    borderColor: '#D7E0EC',
+    borderColor: '#D9D8E8',
     borderWidth: 1,
     padding: 26,
   },
@@ -436,24 +436,24 @@ const styles = StyleSheet.create({
   cardCompact: { padding: 16, borderRadius: 8 },
   header: { alignItems: 'center', marginBottom: 30 },
   headerMobile: { marginBottom: 18 },
-  logoCage: { backgroundColor: '#F8FAFC', padding: 10, borderRadius: 8, marginBottom: 15, borderWidth: 1, borderColor: '#D7E0EC' },
+  logoCage: { backgroundColor: '#FFFFFF', padding: 10, borderRadius: 8, marginBottom: 15, borderWidth: 1, borderColor: '#D9D8E8' },
   logoCageMobile: { padding: 8, borderRadius: 8, marginBottom: 12 },
-  title: { fontSize: 26, fontWeight: '900', color: '#0F172A', marginBottom: 5 },
+  title: { fontSize: 26, fontWeight: '900', color: '#010110', marginBottom: 5 },
   titleMobile: { fontSize: 24 },
-  subtitle: { fontSize: 14, color: '#475569', textAlign: 'center' },
+  subtitle: { fontSize: 14, color: '#4B4B5F', textAlign: 'center' },
   form: { marginBottom: 14 },
   formWordmark: { marginBottom: 4 },
   formLogoImage: { borderRadius: 8, height: 58, width: 58 },
-  label: { fontSize: 12, fontWeight: '800', color: '#334155', marginBottom: 8 },
-  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8, marginBottom: 13 },
+  label: { fontSize: 12, fontWeight: '800', color: '#353548', marginBottom: 8 },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D9D8E8', borderRadius: 8, marginBottom: 13 },
   icon: { paddingHorizontal: 15 },
-  input: { flex: 1, minWidth: 0, paddingVertical: 14, fontSize: 16, color: '#0F172A' },
+  input: { flex: 1, minWidth: 0, paddingVertical: 14, fontSize: 16, color: '#010110' },
   eyeIcon: { paddingHorizontal: 12, paddingVertical: 12 },
   errorBox: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA', borderRadius: 8, padding: 12, marginBottom: 16 },
   errorText: { flex: 1, color: '#991B1B', fontSize: 13, lineHeight: 19, fontWeight: '700', marginLeft: 8 },
   optionsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
   orLine: {
-    backgroundColor: '#D7E0EC',
+    backgroundColor: '#D9D8E8',
     flex: 1,
     height: 1,
   },
@@ -463,31 +463,31 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   orText: {
-    color: '#64748B',
+    color: '#737383',
     fontSize: 11,
     fontWeight: '700',
     marginHorizontal: 10,
   },
   rememberRow: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
-  checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: '#94A3B8', justifyContent: 'center', alignItems: 'center', marginRight: 8 },
-  checkboxActive: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
-  rememberText: { flexShrink: 1, fontSize: 13, color: '#334155', fontWeight: '700' },
+  checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: '#A7A4CF', justifyContent: 'center', alignItems: 'center', marginRight: 8 },
+  checkboxActive: { backgroundColor: '#635BFF', borderColor: '#635BFF' },
+  rememberText: { flexShrink: 1, fontSize: 13, color: '#353548', fontWeight: '700' },
   secureCacheRow: {
     alignItems: 'center',
     flexDirection: 'row',
     flexShrink: 1,
   },
   secureCacheText: {
-    color: '#475569',
+    color: '#4B4B5F',
     flexShrink: 1,
     fontSize: 12,
     fontWeight: '700',
     marginLeft: 7,
   },
-  loginBtn: { minHeight: 52, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', backgroundColor: '#0F172A', paddingVertical: 14, borderRadius: 8 },
+  loginBtn: { minHeight: 52, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', backgroundColor: '#010110', paddingVertical: 14, borderRadius: 999 },
   loginBtnDisabled: { opacity: 0.66 },
   loginBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800', marginLeft: 8 },
-  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#E2E8F0' },
-  footerText: { flexShrink: 1, fontSize: 12, color: '#334155', marginLeft: 6, fontWeight: '700', textAlign: 'center' },
-  supportText: { color: '#64748B', fontSize: 11, lineHeight: 16, marginTop: 10, textAlign: 'center' },
+  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#E7E6F1' },
+  footerText: { flexShrink: 1, fontSize: 12, color: '#353548', marginLeft: 6, fontWeight: '700', textAlign: 'center' },
+  supportText: { color: '#737383', fontSize: 11, lineHeight: 16, marginTop: 10, textAlign: 'center' },
 });

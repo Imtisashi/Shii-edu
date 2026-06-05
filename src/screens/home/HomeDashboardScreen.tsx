@@ -248,6 +248,15 @@ export default function HomeDashboardScreen({
   const desktopFrameStyle = isDesktop
     ? { maxWidth: Math.min(maxContentWidth, viewport.width - spacing.pageX * 2), width: '100%' as const }
     : { width: '100%' as const };
+  const webScreenStyle = Platform.OS === 'web'
+    ? { height: viewport.height, minHeight: viewport.height }
+    : undefined;
+  const webScrollStyle = Platform.OS === 'web'
+    ? { height: viewport.height, maxHeight: viewport.height, minHeight: 0 }
+    : undefined;
+  const webScrollContentStyle = Platform.OS === 'web'
+    ? { minHeight: viewport.height + 1 }
+    : undefined;
 
   const renderNotice = ({ item, index }: { item: HomeDashboardNotice; index: number }) => (
     <Pressable
@@ -278,7 +287,7 @@ export default function HomeDashboardScreen({
   );
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.page }]}>
+    <View style={[styles.screen, { backgroundColor: colors.page }, webScreenStyle]}>
       <StatusBar barStyle={brand.mode === 'light' ? 'dark-content' : 'light-content'} backgroundColor={colors.page} />
 
       <View
@@ -315,12 +324,13 @@ export default function HomeDashboardScreen({
             paddingHorizontal: spacing.pageX,
             paddingTop: headerHeight + 14,
           },
+          webScrollContentStyle,
         ]}
         keyboardShouldPersistTaps="handled"
         nestedScrollEnabled
         scrollEventThrottle={16}
         showsVerticalScrollIndicator
-        style={styles.scrollView}
+        style={[styles.scrollView, webScrollStyle]}
       >
         <View style={[styles.contentFrame, desktopFrameStyle]}>
           <View
@@ -778,12 +788,14 @@ const styles = StyleSheet.create({
   },
   screen: {
     flex: 1,
+    minHeight: 0,
   },
   scrollContent: {
     minHeight: '100%',
   },
   scrollView: {
     flex: 1,
+    minHeight: 0,
   },
   secondaryAction: {
     alignItems: 'center',

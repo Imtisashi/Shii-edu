@@ -10,10 +10,12 @@ import {
   LockKeyhole,
   Mail,
   MessageSquareText,
+  Palette,
   ShieldCheck,
   UploadCloud,
   Users,
 } from 'lucide-react';
+import CinematicLandingStage from './components/CinematicLandingStage';
 import { routeMetadata, SITE } from './lib/site';
 
 export const runtime = 'edge';
@@ -34,22 +36,22 @@ const workstreams = [
   {
     icon: CalendarCheck2,
     title: 'Academic rhythm',
-    body: 'Attendance, routines, grades, assignments, notices, and reports stay close to the people who run them each day.',
+    body: 'Attendance, routines, grades, assignments, notices, and reports stay connected to daily classroom work.',
   },
   {
     icon: MessageSquareText,
     title: 'Communication',
-    body: 'Broadcasts, reminders, messages, and realtime updates carry institute context without exposing unrelated campus data.',
+    body: 'Broadcasts, reminders, messages, and realtime updates carry the correct institute context.',
   },
   {
     icon: UploadCloud,
     title: 'Files and media',
-    body: 'Gallery items, question papers, syllabi, profile images, and course files use scoped upload paths before storage.',
+    body: 'Gallery items, question papers, syllabi, profile images, and course files use scoped upload paths.',
   },
   {
     icon: Bus,
     title: 'Transport view',
-    body: 'Drivers and operators get route visibility, location updates, and status controls without unnecessary admin surface area.',
+    body: 'Drivers and operators get route visibility, live status, and controls without extra admin screens.',
   },
 ];
 
@@ -62,17 +64,17 @@ const roleGroups = [
   {
     icon: Landmark,
     title: 'Institute admin',
-    body: 'Manage people, fees, notices, branding, schedules, and import controls for one campus identity.',
+    body: 'Manage people, fees, notices, branding, schedules, imports, and operational controls.',
   },
   {
     icon: GraduationCap,
     title: 'Teachers',
-    body: 'Handle attendance, assignments, grades, course media, and routine review from focused teaching views.',
+    body: 'Take attendance, upload work, review routines, publish grades, and respond from focused views.',
   },
   {
     icon: Users,
     title: 'Students and parents',
-    body: 'Read notices, routines, fees, reports, course progress, and transport updates in their own role view.',
+    body: 'Read notices, routines, fees, reports, course progress, and transport updates in role-aware screens.',
   },
 ];
 
@@ -80,11 +82,11 @@ const trustRows = [
   ['Institute data boundary', 'Row-level policies keep each campus workspace scoped to its members.', 'Active'],
   ['Payment metadata', 'No raw card, CVV, UPI credential, or banking secret is stored.', 'Minimal'],
   ['Signed media uploads', 'Files are routed through institute and purpose-specific storage paths.', 'Scoped'],
-  ['Legal pages', 'Privacy, terms, robots, sitemap, metadata, and JSON-LD are server-rendered.', 'Ready'],
+  ['Public legal surface', 'Privacy, terms, robots, sitemap, metadata, and JSON-LD are server-rendered.', 'Ready'],
 ];
 
 const legalRows = [
-  ['Privacy Policy', 'DPDP aligned, COPPA-aware, processor/controller boundaries', '/privacy'],
+  ['Privacy Policy', 'DPDP aligned, COPPA-aware, processor and controller boundaries', '/privacy'],
   ['Terms of Service', 'Role access, uploads, AI, transport, indemnity, liability limits', '/terms'],
 ];
 
@@ -115,6 +117,14 @@ export default function HomePage() {
 
   return (
     <div className="landing-page">
+      <div className="landing-announcement">
+        <span>Institute-owned workspaces</span>
+        <span aria-hidden="true">/</span>
+        <span>Tenant-scoped operations</span>
+        <span aria-hidden="true">/</span>
+        <span>Reviewed {SITE.updatedAt}</span>
+      </div>
+
       <header className="landing-nav" aria-label="Primary">
         <a className="landing-brand" href="/" aria-label="Shii-Edu home">
           <img src="/assets/images/icon.png" alt="" width="40" height="40" />
@@ -127,6 +137,7 @@ export default function HomePage() {
         <nav className="landing-links" aria-label="Landing sections">
           <a href="#workspace">Workspace</a>
           <a href="#roles">Roles</a>
+          <a href="#theme">Theme</a>
           <a href="#trust">Trust</a>
           <a href="#legal">Legal</a>
         </nav>
@@ -139,28 +150,15 @@ export default function HomePage() {
 
       <main id="main">
         <section className="landing-hero" aria-labelledby="landing-title">
-          <video
-            className="landing-hero-media"
-            src="/assets/videos/cosmic-campus.mp4"
-            poster="/assets/images/icon.png"
-            autoPlay
-            muted
-            loop
-            playsInline
-            aria-hidden="true"
-          />
-          <div className="landing-hero-scrim" aria-hidden="true" />
-          <div className="landing-hero-content">
+          <div className="landing-hero-copy">
             <div className="landing-kicker">
               <span className="status-dot" aria-hidden="true" />
-              <span>Institute-led education operations</span>
-              <span aria-hidden="true">/</span>
-              <span>Last reviewed {SITE.updatedAt}</span>
+              <span>Secure entry for real campus work</span>
             </div>
             <h1 id="landing-title"><ShiiEduWordmark className="hero-wordmark" /></h1>
-            <p>
-              A campus-owned workspace for attendance, routines, notices, fees, uploads, messages, reports, transport,
-              and role-aware administration.
+            <p className="landing-hero-line">
+              A precise operations platform for institutes that need attendance, routines, notices, fees, uploads,
+              reports, transport, and role-aware administration under one branded workspace.
             </p>
             <div className="landing-actions">
               <a className="landing-primary-action" href="/login">
@@ -179,16 +177,18 @@ export default function HomePage() {
               </a>
             </div>
           </div>
+
+          <CinematicLandingStage />
         </section>
 
         <section id="workspace" className="landing-band workspace-band" aria-labelledby="workspace-title">
           <div className="landing-section-head">
             <Layers3 size={22} aria-hidden="true" />
             <div>
-              <h2 id="workspace-title">One operational surface, branded by the institute.</h2>
+              <h2 id="workspace-title">The day runs through one clean surface.</h2>
               <p>
                 Shii-Edu keeps each school or college visible through workspace name, logo, colors, and role-specific
-                navigation while the shared platform does the heavy lifting behind the scenes.
+                navigation while shared infrastructure handles the heavy lifting.
               </p>
             </div>
           </div>
@@ -209,10 +209,10 @@ export default function HomePage() {
           <div className="landing-section-head">
             <Users size={22} aria-hidden="true" />
             <div>
-              <h2 id="roles-title">Every role gets the right amount of product.</h2>
+              <h2 id="roles-title">Every role gets the amount of product it needs.</h2>
               <p>
-                Admins need control, teachers need speed, parents need clarity, and drivers need only the route view.
-                Shii-Edu keeps those responsibilities separate.
+                Admins need control, teachers need speed, parents need clarity, and drivers need route context. The
+                application keeps those responsibilities separated.
               </p>
             </div>
           </div>
@@ -226,6 +226,38 @@ export default function HomePage() {
                 </span>
               </article>
             ))}
+          </div>
+        </section>
+
+        <section id="theme" className="landing-band theme-band" aria-labelledby="theme-title">
+          <div className="theme-copy">
+            <Palette size={22} aria-hidden="true" />
+            <div>
+              <h2 id="theme-title">Admin theme changes travel with the institute.</h2>
+              <p>
+                The Brand Studio stores palette and logo choices against the institute record, so admins, teachers,
+                students, parents, and drivers with the same institute ID see the same identity.
+              </p>
+            </div>
+          </div>
+          <div className="theme-panel" aria-hidden="true">
+            <div className="theme-panel-top">
+              <span />
+              <strong>Brand Studio</strong>
+              <em>Live</em>
+            </div>
+            <div className="theme-swatches">
+              <span className="theme-swatch ink" />
+              <span className="theme-swatch violet" />
+              <span className="theme-swatch teal" />
+              <span className="theme-swatch gold" />
+            </div>
+            <div className="theme-preview-grid">
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
           </div>
         </section>
 
