@@ -33,6 +33,24 @@ const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 const Drawer = createDrawerNavigator();
 
+const adminDrawerLinks = [
+  { icon: 'people-outline', label: 'Users', routeName: 'AdminDashboard', params: { screen: 'MainTabs', params: { screen: 'Users' } } },
+  { icon: 'wallet-outline', label: 'Ledger', routeName: 'AdminDashboard', params: { screen: 'MainTabs', params: { screen: 'Ledger' } } },
+  { icon: 'megaphone-outline', label: 'Broadcasts', routeName: 'AdminDashboard', params: { screen: 'MainTabs', params: { screen: 'Broadcasts' } } },
+  { icon: 'briefcase-outline', label: 'Faculty', routeName: 'AdminDashboard', params: { screen: 'ManageTeachers' } },
+  { icon: 'calendar-outline', label: 'Master schedule', routeName: 'AdminDashboard', params: { screen: 'ManageRoutines' } },
+  { icon: 'calendar-number-outline', label: 'Calendar', routeName: 'AdminDashboard', params: { screen: 'ManageHolidays' } },
+  { icon: 'person-add-outline', label: 'Add users', routeName: 'AdminDashboard', params: { screen: 'AddUser' } },
+  { icon: 'color-palette-outline', label: 'Brand studio', routeName: 'AdminDashboard', params: { screen: 'BrandingSettings' } },
+  { icon: 'play-circle-outline', label: 'Courses', routeName: 'AdminDashboard', params: { screen: 'Courses' } },
+  { icon: 'images-outline', label: 'Gallery', routeName: 'AdminDashboard', params: { screen: 'UploadGallery' } },
+  { icon: 'document-attach-outline', label: 'PYQ PDFs', routeName: 'AdminDashboard', params: { screen: 'UploadPYQ' } },
+  { icon: 'print-outline', label: 'Reports', routeName: 'AdminDashboard', params: { screen: 'ReportsCenter' } },
+  { icon: 'chatbubbles-outline', label: 'Messages', routeName: 'AdminDashboard', params: { screen: 'CommunicationHub' } },
+  { icon: 'bus-outline', label: 'Live fleet', routeName: 'AdminDashboard', params: { screen: 'FleetTracking' } },
+  { icon: 'sparkles-outline', label: 'AI command', routeName: 'AdminDashboard', params: { screen: 'AICommandCenter' } },
+];
+
 // --- THE ADMIN BOTTOM BAR ---
 function AdminBottomTabs() {
   const { colors } = useRootLayout();
@@ -112,9 +130,11 @@ export default function AdminNavigator() {
       drawerContent={(props) => (
         <RoleDrawerContent
           {...props}
+          dashboardParams={{ screen: 'MainTabs', params: { screen: 'Dashboard' } }}
           dashboardRoute="AdminDashboard"
           profileRoute="AdminProfile"
           settingsRoute="AdminSettings"
+          workspaceLinks={adminDrawerLinks}
         />
       )}
       screenOptions={{

@@ -32,6 +32,23 @@ import GalleryView from '../screens/student/GalleryView';
 const Stack = createStackNavigator();
 const Drawer = createDrawerNavigator();
 
+const teacherDrawerLinks = [
+  { icon: 'checkmark-done-circle-outline', label: 'Attendance', routeName: 'TeacherDashboard', params: { screen: 'Attendance' } },
+  { icon: 'create-outline', label: 'Take attendance', routeName: 'TeacherDashboard', params: { screen: 'TakeAttendance' } },
+  { icon: 'people-outline', label: 'Student directory', routeName: 'TeacherDashboard', params: { screen: 'Students' } },
+  { icon: 'calendar-outline', label: 'Routine', routeName: 'TeacherDashboard', params: { screen: 'Routine' } },
+  { icon: 'document-text-outline', label: 'Assignments', routeName: 'TeacherDashboard', params: { screen: 'Assignments' } },
+  { icon: 'cloud-upload-outline', label: 'Upload assignment', routeName: 'TeacherDashboard', params: { screen: 'UploadAssignment' } },
+  { icon: 'stats-chart-outline', label: 'Upload grades', routeName: 'TeacherDashboard', params: { screen: 'UploadGrades' } },
+  { icon: 'megaphone-outline', label: 'Broadcasts', routeName: 'TeacherDashboard', params: { screen: 'TeacherNotifs' } },
+  { icon: 'play-circle-outline', label: 'Courses', routeName: 'TeacherDashboard', params: { screen: 'Courses' } },
+  { icon: 'document-attach-outline', label: 'PYQ PDFs', routeName: 'TeacherDashboard', params: { screen: 'UploadPYQ' } },
+  { icon: 'images-outline', label: 'Gallery', routeName: 'TeacherDashboard', params: { screen: 'GalleryView' } },
+  { icon: 'print-outline', label: 'Reports', routeName: 'TeacherDashboard', params: { screen: 'ReportsCenter' } },
+  { icon: 'chatbubbles-outline', label: 'Messages', routeName: 'TeacherDashboard', params: { screen: 'CommunicationHub' } },
+  { icon: 'library-outline', label: 'Syllabus AI', routeName: 'TeacherDashboard', params: { screen: 'SyllabusTutor' } },
+];
+
 function TeacherStackNavigator() {
   const { colors } = useRootLayout();
 
@@ -78,9 +95,11 @@ export default function TeacherNavigator() {
       drawerContent={(props) => (
         <RoleDrawerContent
           {...props}
+          dashboardParams={{ screen: 'TeacherHome' }}
           dashboardRoute="TeacherDashboard"
           profileRoute="TeacherProfileScreen"
           settingsRoute="TeacherSettings"
+          workspaceLinks={teacherDrawerLinks}
         />
       )}
       screenOptions={{

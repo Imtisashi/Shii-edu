@@ -191,30 +191,15 @@ const SecondaryActionButton = memo(function SecondaryActionButton({
   action: HomeDashboardAction;
 }) {
   const { colors, radii } = useRootLayout();
-  const pressed = useSharedValue(0);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        scale: interpolate(pressed.value, [0, 1], [1, 0.985]),
-      },
-    ],
-  }));
 
   return (
     <Pressable
       accessibilityLabel={action.accessibilityLabel || `Open ${action.title}`}
       accessibilityRole="button"
       onPress={action.onPress}
-      onPressIn={() => {
-        pressed.value = withTiming(1, pressTiming);
-      }}
-      onPressOut={() => {
-        pressed.value = withTiming(0, pressTiming);
-      }}
-      style={styles.secondaryPressable}
+      style={({ pressed }) => [styles.secondaryPressable, pressed && styles.secondaryPressablePressed]}
     >
-      <Animated.View
+      <View
         style={[
           styles.secondaryAction,
           {
@@ -222,7 +207,6 @@ const SecondaryActionButton = memo(function SecondaryActionButton({
             borderColor: colors.hairline,
             borderRadius: radii.control,
           },
-          animatedStyle,
         ]}
       >
         <View style={[styles.secondaryIcon, { backgroundColor: colors.pageElevated, borderColor: colors.hairline }]}>
@@ -231,7 +215,7 @@ const SecondaryActionButton = memo(function SecondaryActionButton({
         <Text numberOfLines={1} style={[styles.secondaryLabel, { color: colors.text }]}>
           {action.title}
         </Text>
-      </Animated.View>
+      </View>
     </Pressable>
   );
 });
@@ -252,6 +236,8 @@ export default function HomeDashboardScreen({
 }: HomeDashboardScreenProps) {
   const { brand, colors, insets, isCompact, isDesktop, maxContentWidth, radii, spacing, typography, viewport } = useRootLayout();
   const dashboardActions = primaryActions.slice(0, 4);
+  const visibleSecondaryActions = secondaryActions.slice(0, isCompact ? 4 : 6);
+  const hiddenSecondaryCount = Math.max(0, secondaryActions.length - visibleSecondaryActions.length);
   const safeProfileMeta = profileMeta.filter(Boolean).slice(0, 3);
   const safeNotices = notices.slice(0, 3);
   const singleColumn = viewport.width < 520;
@@ -331,7 +317,10 @@ export default function HomeDashboardScreen({
           },
         ]}
         keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled
+        scrollEventThrottle={16}
         showsVerticalScrollIndicator
+        style={styles.scrollView}
       >
         <View style={[styles.contentFrame, desktopFrameStyle]}>
           <View
@@ -411,14 +400,28 @@ export default function HomeDashboardScreen({
             ))}
           </View>
 
-          {secondaryActions.length > 0 ? (
+          {visibleSecondaryActions.length > 0 ? (
             <>
-              <Text style={[styles.compactSectionTitle, { color: colors.text }]}>Quick access</Text>
-              <View style={styles.secondaryGrid}>
-                {secondaryActions.map((action) => (
-                  <SecondaryActionButton action={action} key={action.key} />
-                ))}
+              <View style={styles.quickAccessHeader}>
+                <Text style={[styles.compactSectionTitle, { color: colors.text }]}>Quick access</Text>
+                {hiddenSecondaryCount > 0 ? (
+                  <Text style={[styles.quickAccessHint, { color: colors.muted }]}>
+                    {hiddenSecondaryCount} more in menu
+                  </Text>
+                ) : null}
               </View>
+              <ScrollView
+                horizontal
+                nestedScrollEnabled
+                showsHorizontalScrollIndicator={false}
+                style={styles.secondaryScroller}
+              >
+                <View style={styles.secondaryGrid}>
+                  {visibleSecondaryActions.map((action) => (
+                    <SecondaryActionButton action={action} key={action.key} />
+                  ))}
+                </View>
+              </ScrollView>
             </>
           ) : null}
 
@@ -775,10 +778,12 @@ const styles = StyleSheet.create({
   },
   screen: {
     flex: 1,
-    overflow: 'hidden',
   },
   scrollContent: {
     minHeight: '100%',
+  },
+  scrollView: {
+    flex: 1,
   },
   secondaryAction: {
     alignItems: 'center',
@@ -790,9 +795,9 @@ const styles = StyleSheet.create({
   },
   secondaryGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 20,
+    paddingBottom: 2,
+    paddingRight: 2,
   },
   secondaryIcon: {
     alignItems: 'center',
@@ -809,9 +814,23 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   secondaryPressable: {
-    flexBasis: '31%',
-    flexGrow: 1,
-    minWidth: 104,
+    minWidth: 132,
+  },
+  secondaryPressablePressed: {
+    transform: [{ scale: 0.985 }],
+  },
+  secondaryScroller: {
+    marginBottom: 20,
+  },
+  quickAccessHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  quickAccessHint: {
+    fontSize: 12,
+    fontWeight: '800',
   },
   sectionHeader: {
     alignItems: 'flex-end',

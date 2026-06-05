@@ -12,6 +12,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
 
+const SKELETON_COLORS = {
+  background: '#F8FAFC',
+  block: '#E2E8F0',
+  border: '#D7E0EC',
+  shimmer: '#FFFFFF',
+  surface: '#FFFFFF',
+};
+
 function SkeletonBlock({ height, shimmerTranslate, style }) {
   const shimmerStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: shimmerTranslate.value }],
@@ -52,8 +60,8 @@ export default function AttendanceSkeleton({
   useEffect(() => {
     shimmerTranslate.value = withRepeat(
       withTiming(420, {
-        duration: 1250,
-        easing: Easing.bezier(0.32, 0.72, 0, 1),
+        duration: 1180,
+        easing: Easing.linear,
       }),
       -1,
       false
@@ -68,7 +76,7 @@ export default function AttendanceSkeleton({
     <View
       accessibilityLabel={label}
       accessibilityRole="progressbar"
-      style={[styles.root, { backgroundColor: colors.page }]}
+      style={[styles.root, { backgroundColor: SKELETON_COLORS.background }]}
     >
       <View
         style={[
@@ -85,8 +93,8 @@ export default function AttendanceSkeleton({
           style={[
             styles.hero,
             {
-              backgroundColor: colors.cardStrong,
-              borderColor: colors.hairline,
+              backgroundColor: SKELETON_COLORS.surface,
+              borderColor: SKELETON_COLORS.border,
               borderRadius: radii.card,
             },
           ]}
@@ -110,8 +118,8 @@ export default function AttendanceSkeleton({
               style={[
                 styles.row,
                 {
-                  backgroundColor: colors.cardStrong,
-                  borderColor: colors.hairline,
+                  backgroundColor: SKELETON_COLORS.surface,
+                  borderColor: SKELETON_COLORS.border,
                   borderRadius: radii.control,
                 },
               ]}
@@ -141,6 +149,8 @@ const styles = StyleSheet.create({
   content: {
     alignSelf: 'center',
     flex: 1,
+    justifyContent: 'center',
+    minHeight: 620,
     width: '100%',
   },
   hero: {
@@ -165,6 +175,7 @@ const styles = StyleSheet.create({
   },
   root: {
     flex: 1,
+    minHeight: '100%',
   },
   row: {
     alignItems: 'center',
@@ -195,14 +206,15 @@ const styles = StyleSheet.create({
     width: '72%',
   },
   shimmer: {
-    backgroundColor: '#1E293B',
+    backgroundColor: SKELETON_COLORS.shimmer,
     bottom: 0,
+    opacity: 0.78,
     position: 'absolute',
     top: 0,
     width: 90,
   },
   skeletonBlock: {
-    backgroundColor: '#0F172A',
+    backgroundColor: SKELETON_COLORS.block,
     overflow: 'hidden',
   },
   statusLine: {

@@ -10,8 +10,16 @@ import Animated, {
 import { useRootLayout } from '../../contexts/RootLayoutContext';
 
 const SHIMMER_TIMING = {
-  duration: 1250,
-  easing: Easing.bezier(0.32, 0.72, 0, 1),
+  duration: 1180,
+  easing: Easing.linear,
+};
+
+const SKELETON_COLORS = {
+  background: '#F8FAFC',
+  border: '#D7E0EC',
+  block: '#E2E8F0',
+  shimmer: '#F8FAFC',
+  surface: '#FFFFFF',
 };
 
 const resolveLoaderSize = (size) => {
@@ -29,9 +37,7 @@ export function SkeletonBlock({
   style = undefined,
   width = '100%',
 }) {
-  const { brand } = useRootLayout();
   const progress = useSharedValue(0);
-  const isLight = brand.mode === 'light';
 
   useEffect(() => {
     progress.value = withRepeat(withTiming(1, SHIMMER_TIMING), -1, false);
@@ -41,7 +47,7 @@ export function SkeletonBlock({
   }, [progress]);
 
   const shimmerStyle = useAnimatedStyle(() => ({
-    opacity: isLight ? 0.42 : 0.34,
+    opacity: 0.78,
     transform: [{ translateX: -110 + progress.value * 340 }],
   }));
 
@@ -50,7 +56,7 @@ export function SkeletonBlock({
       style={[
         styles.skeletonBlock,
         {
-          backgroundColor: isLight ? '#E2E8F0' : '#111827',
+          backgroundColor: SKELETON_COLORS.block,
           borderRadius: radius,
           height,
           width,
@@ -62,7 +68,7 @@ export function SkeletonBlock({
         pointerEvents="none"
         style={[
           styles.shimmerBand,
-          { backgroundColor: isLight ? '#CBD5E1' : '#1E293B' },
+          { backgroundColor: SKELETON_COLORS.shimmer },
           shimmerStyle,
         ]}
       />
@@ -114,7 +120,7 @@ export function RosterSkeleton({
   showFilters = true,
   style,
 }) {
-  const { colors, insets, isDesktop, maxContentWidth, radii, spacing } = useRootLayout();
+  const { insets, isDesktop, maxContentWidth, radii, spacing } = useRootLayout();
   const rows = useMemo(
     () => Array.from({ length: Math.max(1, rowCount) }, (_, index) => index),
     [rowCount]
@@ -124,7 +130,7 @@ export function RosterSkeleton({
     <View
       accessibilityLabel="Preparing roster"
       accessibilityRole="progressbar"
-      style={[styles.rosterRoot, { backgroundColor: colors.page }, style]}
+      style={[styles.rosterRoot, { backgroundColor: SKELETON_COLORS.background }, style]}
     >
       <View
         style={[
@@ -141,8 +147,8 @@ export function RosterSkeleton({
           style={[
             styles.rosterSummary,
             {
-              backgroundColor: colors.cardStrong,
-              borderColor: colors.hairline,
+              backgroundColor: SKELETON_COLORS.surface,
+              borderColor: SKELETON_COLORS.border,
               borderRadius: radii.card,
             },
           ]}
@@ -159,8 +165,8 @@ export function RosterSkeleton({
             style={[
               styles.filterShell,
               {
-                backgroundColor: colors.cardStrong,
-                borderColor: colors.hairline,
+                backgroundColor: SKELETON_COLORS.surface,
+                borderColor: SKELETON_COLORS.border,
                 borderRadius: radii.control,
               },
             ]}
@@ -177,8 +183,8 @@ export function RosterSkeleton({
               style={[
                 styles.rosterRow,
                 {
-                  backgroundColor: colors.cardStrong,
-                  borderColor: colors.hairline,
+                  backgroundColor: SKELETON_COLORS.surface,
+                  borderColor: SKELETON_COLORS.border,
                   borderRadius: radii.card,
                 },
               ]}
@@ -204,7 +210,7 @@ export function DashboardSkeleton({
   rowCount = 4,
   style,
 }) {
-  const { colors, insets, isDesktop, maxContentWidth, radii, spacing } = useRootLayout();
+  const { insets, isDesktop, maxContentWidth, radii, spacing } = useRootLayout();
   const rows = useMemo(
     () => Array.from({ length: Math.max(1, rowCount) }, (_, index) => index),
     [rowCount]
@@ -214,7 +220,7 @@ export function DashboardSkeleton({
     <View
       accessibilityLabel="Preparing workspace"
       accessibilityRole="progressbar"
-      style={[styles.dashboardRoot, { backgroundColor: colors.page }, style]}
+      style={[styles.dashboardRoot, { backgroundColor: SKELETON_COLORS.background }, style]}
     >
       <View
         style={[
@@ -231,8 +237,8 @@ export function DashboardSkeleton({
           style={[
             styles.dashboardHero,
             {
-              backgroundColor: colors.cardStrong,
-              borderColor: colors.hairline,
+              backgroundColor: SKELETON_COLORS.surface,
+              borderColor: SKELETON_COLORS.border,
               borderRadius: radii.card,
             },
           ]}
@@ -254,8 +260,8 @@ export function DashboardSkeleton({
               style={[
                 styles.dashboardTile,
                 {
-                  backgroundColor: colors.cardStrong,
-                  borderColor: colors.hairline,
+                  backgroundColor: SKELETON_COLORS.surface,
+                  borderColor: SKELETON_COLORS.border,
                   borderRadius: radii.card,
                 },
               ]}
@@ -273,8 +279,8 @@ export function DashboardSkeleton({
           style={[
             styles.noticeSkeleton,
             {
-              backgroundColor: colors.cardStrong,
-              borderColor: colors.hairline,
+              backgroundColor: SKELETON_COLORS.surface,
+              borderColor: SKELETON_COLORS.border,
               borderRadius: radii.card,
             },
           ]}
@@ -300,6 +306,8 @@ const styles = StyleSheet.create({
   dashboardContent: {
     alignSelf: 'center',
     flex: 1,
+    justifyContent: 'center',
+    minHeight: 620,
     width: '100%',
   },
   dashboardGrid: {
@@ -324,6 +332,7 @@ const styles = StyleSheet.create({
   },
   dashboardRoot: {
     flex: 1,
+    minHeight: '100%',
   },
   dashboardTile: {
     alignItems: 'center',
@@ -364,10 +373,13 @@ const styles = StyleSheet.create({
   rosterContent: {
     alignSelf: 'center',
     flex: 1,
+    justifyContent: 'center',
+    minHeight: 620,
     width: '100%',
   },
   rosterRoot: {
     flex: 1,
+    minHeight: '100%',
   },
   rosterRow: {
     alignItems: 'center',

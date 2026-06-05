@@ -7,9 +7,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
 
 export default function RoleDrawerContent({
+  dashboardParams,
   dashboardRoute,
   profileRoute,
   settingsRoute,
+  workspaceLinks = [],
   ...props
 }) {
   const { logout, userData } = useAuth();
@@ -26,8 +28,9 @@ export default function RoleDrawerContent({
     fontWeight: '900',
   };
 
-  const navigateTo = (routeName) => {
-    props.navigation.navigate(routeName);
+  const navigateTo = (routeName, params) => {
+    props.navigation.navigate(routeName, params);
+    props.navigation.closeDrawer?.();
   };
 
   return (
@@ -50,9 +53,24 @@ export default function RoleDrawerContent({
           icon={({ size }) => <Ionicons name="grid-outline" color={colors.text} size={size} />}
           label="Dashboard"
           labelStyle={labelStyle}
-          onPress={() => navigateTo(dashboardRoute)}
+          onPress={() => navigateTo(dashboardRoute, dashboardParams)}
           style={drawerItemStyle}
         />
+        {workspaceLinks.length > 0 ? (
+          <View style={[styles.linkGroup, { borderTopColor: colors.hairline }]}>
+            <Text style={[styles.groupLabel, { color: colors.muted }]}>Workspace tools</Text>
+            {workspaceLinks.map((item) => (
+              <DrawerItem
+                icon={({ size }) => <Ionicons name={item.icon || 'ellipse-outline'} color={colors.text} size={size} />}
+                key={`${item.label}-${item.routeName}`}
+                label={item.label}
+                labelStyle={labelStyle}
+                onPress={() => navigateTo(item.routeName || dashboardRoute, item.params)}
+                style={drawerItemStyle}
+              />
+            ))}
+          </View>
+        ) : null}
         <DrawerItem
           icon={({ size }) => <Ionicons name="person-circle-outline" color={colors.text} size={size} />}
           label="Profile"
@@ -95,11 +113,23 @@ const styles = StyleSheet.create({
     marginTop: 'auto',
     paddingTop: 8,
   },
+  groupLabel: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0,
+    marginBottom: 4,
+    marginHorizontal: 22,
+  },
   identity: {
     borderBottomWidth: 1,
     marginHorizontal: 14,
     paddingBottom: 18,
     paddingTop: 8,
+  },
+  linkGroup: {
+    borderTopWidth: 1,
+    marginTop: 6,
+    paddingTop: 10,
   },
   instituteName: {
     fontSize: 18,
