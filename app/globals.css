@@ -1358,7 +1358,7 @@ p {
   --landing-dark: #111117;
   background: #ffffff;
   color: var(--landing-ink);
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-family: Aptos, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   min-height: 100vh;
 }
 
@@ -1994,9 +1994,9 @@ p {
 
 .landing-v2 .nav-wordmark {
   color: var(--landing-ink);
-  font-family: Arial, Helvetica, system-ui, sans-serif;
+  font-family: "Segoe UI Black", "Aptos Display", system-ui, sans-serif;
   font-size: 1.02rem;
-  font-weight: 850;
+  font-weight: 900;
   letter-spacing: 0;
   line-height: 1;
 }
@@ -2101,15 +2101,15 @@ p {
 }
 
 .landing-v2 .cinematic-dashboard {
-  animation: landing-float-y 8s ease-in-out infinite;
+  animation: landing-float-y 5.2s cubic-bezier(0.32, 0.72, 0, 1) infinite;
 }
 
 .landing-v2 .card-one {
-  animation: landing-float-a 7s ease-in-out infinite;
+  animation: landing-float-a 4.8s cubic-bezier(0.32, 0.72, 0, 1) infinite;
 }
 
 .landing-v2 .card-two {
-  animation: landing-float-b 7.5s ease-in-out infinite;
+  animation: landing-float-b 5s cubic-bezier(0.32, 0.72, 0, 1) infinite;
 }
 
 @keyframes landing-float-y {
@@ -2204,6 +2204,213 @@ p {
   font-weight: 820;
   line-height: 1;
   padding: 8px 10px;
+}
+
+.screenshot-band {
+  border-top: 1px solid var(--landing-line);
+}
+
+.ui-screenshot-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ui-shot {
+  --shot-accent: var(--landing-violet);
+  --shot-soft: #f3f3ff;
+  min-width: 0;
+}
+
+.ui-shot-violet,
+.ui-shot-indigo {
+  --shot-accent: var(--landing-violet);
+  --shot-soft: #f3f3ff;
+}
+
+.ui-shot-teal,
+.ui-shot-emerald {
+  --shot-accent: var(--landing-teal);
+  --shot-soft: #ecfdf5;
+}
+
+.ui-shot-slate {
+  --shot-accent: #334155;
+  --shot-soft: #f1f5f9;
+}
+
+.ui-shot-amber {
+  --shot-accent: var(--landing-gold);
+  --shot-soft: #fff7ed;
+}
+
+.ui-shot-window {
+  background: #ffffff;
+  border: 1px solid color-mix(in srgb, var(--shot-accent) 24%, var(--landing-line));
+  border-radius: var(--radius);
+  display: grid;
+  gap: 12px;
+  min-height: 344px;
+  overflow: hidden;
+  padding: 12px;
+  position: relative;
+  transition:
+    border-color 150ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 150ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.ui-shot-window::after {
+  animation: ui-shot-scan 2.8s cubic-bezier(0.32, 0.72, 0, 1) infinite;
+  animation-delay: var(--shot-delay, 0ms);
+  background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--shot-accent) 10%, transparent) 48%, transparent 100%);
+  bottom: 0;
+  content: '';
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  transform: translateX(-120%);
+  width: 44%;
+}
+
+.ui-shot:hover .ui-shot-window,
+.ui-shot:focus-within .ui-shot-window {
+  border-color: color-mix(in srgb, var(--shot-accent) 48%, var(--landing-line));
+  transform: translateY(-2px);
+}
+
+.ui-shot-topbar {
+  align-items: center;
+  border-bottom: 1px solid color-mix(in srgb, var(--shot-accent) 18%, var(--landing-line));
+  display: flex;
+  gap: 9px;
+  min-height: 34px;
+  padding-bottom: 10px;
+}
+
+.ui-shot-topbar > span {
+  background: var(--shot-accent);
+  border-radius: 8px;
+  height: 22px;
+  width: 22px;
+}
+
+.ui-shot-topbar strong {
+  color: var(--landing-ink);
+  flex: 1;
+  font-size: 0.88rem;
+  font-weight: 930;
+  min-width: 0;
+}
+
+.ui-shot-topbar em {
+  background: var(--shot-soft);
+  border: 1px solid color-mix(in srgb, var(--shot-accent) 28%, var(--landing-line));
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--shot-accent) 76%, var(--landing-ink));
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+  padding: 6px 8px;
+}
+
+.ui-shot-hero {
+  align-items: center;
+  background: var(--shot-soft);
+  border: 1px solid color-mix(in srgb, var(--shot-accent) 22%, var(--landing-line));
+  border-radius: var(--radius);
+  display: flex;
+  gap: 12px;
+  min-height: 92px;
+  padding: 12px;
+}
+
+.ui-shot-icon {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid color-mix(in srgb, var(--shot-accent) 26%, var(--landing-line));
+  border-radius: var(--radius);
+  color: var(--shot-accent);
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.ui-shot-hero p {
+  color: color-mix(in srgb, var(--shot-accent) 80%, var(--landing-ink));
+  font-size: 0.78rem;
+  font-weight: 860;
+  line-height: 1.25;
+  margin: 0 0 3px;
+}
+
+.ui-shot-hero h3 {
+  color: var(--landing-ink);
+  font-size: 1.05rem;
+  font-weight: 930;
+  line-height: 1.15;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.ui-shot-metrics {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ui-shot-metrics span {
+  background: #ffffff;
+  border: 1px solid #e0e1ea;
+  border-radius: var(--radius);
+  color: #343548;
+  font-size: 0.72rem;
+  font-weight: 900;
+  min-height: 42px;
+  padding: 12px 8px;
+  text-align: center;
+}
+
+.ui-shot-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.ui-shot-rows span {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e0e1ea;
+  border-radius: var(--radius);
+  color: #252639;
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 820;
+  gap: 9px;
+  min-height: 44px;
+  padding: 10px;
+}
+
+.ui-shot-rows i {
+  background: var(--shot-accent);
+  border-radius: 999px;
+  flex: 0 0 auto;
+  height: 7px;
+  width: 7px;
+}
+
+@keyframes ui-shot-scan {
+  0%,
+  42% {
+    transform: translateX(-120%);
+  }
+
+  70%,
+  100% {
+    transform: translateX(260%);
+  }
 }
 
 .explorer-band {
@@ -2482,6 +2689,10 @@ p {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .ui-screenshot-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .feature-cluster,
   .feature-cluster:nth-child(3n),
   .feature-cluster:nth-last-child(-n + 3) {
@@ -2657,8 +2868,23 @@ p {
   }
 
   .feature-map,
+  .ui-screenshot-grid,
   .role-explorer-panel {
     grid-template-columns: 1fr;
+  }
+
+  .ui-shot-window {
+    min-height: 316px;
+  }
+
+  .ui-shot-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .ui-shot-metrics span {
+    min-height: 38px;
+    padding: 10px;
+    text-align: left;
   }
 
   .feature-cluster,
@@ -2765,9 +2991,9 @@ p {
 }
 
 .role-choice-wordmark {
-  font-family: Arial, Helvetica, system-ui, sans-serif;
+  font-family: "Segoe UI Black", "Aptos Display", system-ui, sans-serif;
   font-size: 1rem;
-  font-weight: 850;
+  font-weight: 900;
 }
 
 .role-choice-copy {

@@ -114,8 +114,59 @@ const featureGroups = [
   },
   {
     icon: Sparkles,
-    title: 'Reviewed AI',
-    items: ['Syllabus tutor', 'CSV mapping', 'Smart compose', 'Substitute scheduling'],
+    title: 'AI-powered review',
+    items: ['Syllabus tutor', 'CSV mapping review', 'Smart compose', 'Substitute scheduling'],
+  },
+];
+
+const uiScreenshots = [
+  {
+    accent: 'violet',
+    icon: ShieldCheck,
+    metrics: ['Tiers', 'Institutes', 'Audit'],
+    role: 'Superadmin',
+    rows: ['Feature access matrix', 'Institute health', 'Recovery queue'],
+    title: 'Tier and institute control',
+  },
+  {
+    accent: 'indigo',
+    icon: Landmark,
+    metrics: ['Fees', 'Payroll', 'Routes'],
+    role: 'Admin',
+    rows: ['Quick access panel', 'Teacher payroll monitor', 'Driver route assignment'],
+    title: 'Operations dashboard',
+  },
+  {
+    accent: 'teal',
+    icon: GraduationCap,
+    metrics: ['Roster', 'Grades', 'AI'],
+    role: 'Teacher',
+    rows: ['Attendance grid', 'Assignment upload', 'AI-powered syllabus review'],
+    title: 'Classroom workspace',
+  },
+  {
+    accent: 'slate',
+    icon: BookOpen,
+    metrics: ['Courses', 'Fees', 'PYQ'],
+    role: 'Student',
+    rows: ['Routine timeline', 'Course player', 'Report card preview'],
+    title: 'Student portal',
+  },
+  {
+    accent: 'emerald',
+    icon: Users,
+    metrics: ['Alerts', 'Fees', 'Fleet'],
+    role: 'Parents',
+    rows: ['Linked student view', 'Fee status', 'Institute notices'],
+    title: 'Guardian companion',
+  },
+  {
+    accent: 'amber',
+    icon: Bus,
+    metrics: ['Map', 'Route', 'Status'],
+    role: 'Driver',
+    rows: ['Live map panel', 'Assigned stops', 'Large route controls'],
+    title: 'Route console',
   },
 ];
 
@@ -189,6 +240,7 @@ export default function HomePage() {
         <nav className="landing-links" aria-label="Home sections">
           <a href="#workspace">Workspace</a>
           <a href="#features">Features</a>
+          <a href="#screenshots">Screenshots</a>
           <a href="#roles">Roles</a>
           <a href="#different">Different</a>
           <a href="#theme">Theme</a>
@@ -266,7 +318,7 @@ export default function HomePage() {
             <div>
               <h2 id="features-title">The full platform map, not a thin school app.</h2>
               <p>
-                Shii-Edu covers academics, communication, finance, media, transport, and AI-assisted review. Superadmin
+                Shii-Edu covers academics, communication, finance, media, transport, and AI-powered review. Superadmin
                 can turn these modules into institute tiers without changing code for every campus.
               </p>
             </div>
@@ -280,6 +332,58 @@ export default function HomePage() {
                 </div>
                 <div className="feature-pills">
                   {items.map((item) => <span key={item}>{item}</span>)}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="screenshots" className="landing-band screenshot-band" aria-labelledby="screenshots-title">
+          <div className="landing-section-head">
+            <Sparkles size={22} aria-hidden="true" />
+            <div>
+              <h2 id="screenshots-title">Screenshots of every role UI.</h2>
+              <p>
+                Each screenshot frame maps to the surface Shii-Edu separates by role: platform control, institute admin,
+                classroom work, student access, guardian updates, and driver transport.
+              </p>
+            </div>
+          </div>
+          <div className="ui-screenshot-grid" aria-label="Shii-Edu role UI screenshots">
+            {uiScreenshots.map(({ accent, icon: Icon, metrics, role, rows, title }, index) => (
+              <article
+                className={`ui-shot ui-shot-${accent}`}
+                key={role}
+                style={{ '--shot-delay': `${index * 80}ms` }}
+              >
+                <div className="ui-shot-window">
+                  <div className="ui-shot-topbar">
+                    <span aria-hidden="true" />
+                    <strong>{role}</strong>
+                    <em>UI</em>
+                  </div>
+                  <div className="ui-shot-hero">
+                    <span className="ui-shot-icon">
+                      <Icon size={18} aria-hidden="true" />
+                    </span>
+                    <div>
+                      <p>{title}</p>
+                      <h3>{role} workspace</h3>
+                    </div>
+                  </div>
+                  <div className="ui-shot-metrics">
+                    {metrics.map((metric) => (
+                      <span key={metric}>{metric}</span>
+                    ))}
+                  </div>
+                  <div className="ui-shot-rows">
+                    {rows.map((row) => (
+                      <span key={row}>
+                        <i aria-hidden="true" />
+                        {row}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </article>
             ))}
