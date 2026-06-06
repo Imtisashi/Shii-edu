@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Image,
@@ -104,6 +104,12 @@ const getResetTicketStorageKey = (role: AuthRoleId, instituteId: string, userId:
 const getLockedRoleFromPath = (): AuthRoleId | null => {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return null;
   return getAuthRoleByPath(window.location.pathname);
+};
+
+const isInstalledRolePath = (path: string, rolePath: string): boolean => {
+  const normalizedPath = path.replace(/\/$/, '').toLowerCase();
+  const normalizedRolePath = rolePath.replace(/\/$/, '').toLowerCase();
+  return normalizedPath === normalizedRolePath || normalizedPath.startsWith(`${normalizedRolePath}/`);
 };
 
 const readSavedResetTicket = (role: AuthRoleId, instituteId: string, userId: string): PasswordResetTicket | null => {
@@ -232,10 +238,14 @@ export default function InstituteLoginScreen() {
     setPassword(value);
   };
 
-  const activeRoleConfig = getAuthRoleOption(activeRole);
+  const activeRoleConfig = useMemo(() => getAuthRoleOption(activeRole), [activeRole]);
+  const activeRoleAuthPath = activeRoleConfig.authPath;
   const visibleRoleOptions = lockedRole
     ? [getAuthRoleOption(lockedRole)]
     : AUTH_ROLE_OPTIONS;
+  const installedRolePath = Platform.OS === 'web' && typeof window !== 'undefined'
+    ? isInstalledRolePath(window.location.pathname, activeRoleConfig.appPath)
+    : false;
 
   const openPasswordReset = () => {
     const nextInstituteId = instituteId.trim();
@@ -271,7 +281,7 @@ export default function InstituteLoginScreen() {
           body: 'Open Shii-Edu to finish resetting your password.',
           tag: `password-reset-approved-${resetTicket.requestId}`,
           title: 'Password reset approved',
-          url: activeRoleConfig.authPath,
+          url: activeRoleAuthPath,
         }).catch(() => false);
       }
     } catch (error) {
@@ -281,7 +291,7 @@ export default function InstituteLoginScreen() {
     } finally {
       setResetChecking(false);
     }
-  }, [activeRoleConfig.authPath, resetApprovalNotified, resetTicket]);
+  }, [activeRoleAuthPath, resetApprovalNotified, resetTicket]);
 
   useEffect(() => {
     if (!resetModalVisible || !resetTicket || resetStatus?.status === 'approved' || resetStatus?.status === 'rejected') {
@@ -478,18 +488,25 @@ export default function InstituteLoginScreen() {
                   {activeRoleConfig.shortName} login
                 </Text>
               </View>
-              <TouchableOpacity
-                accessibilityLabel="Home"
-                accessibilityRole="button"
-                activeOpacity={0.82}
-                onPress={() => {
-                  openPublicWebPath('/');
-                }}
-                style={styles.homeButton}
-              >
-                <Ionicons color="#343548" name="home-outline" size={16} />
-                <Text style={styles.homeButtonText}>Home</Text>
-              </TouchableOpacity>
+              {installedRolePath ? (
+                <View style={[styles.homeButton, styles.lockedAppButton]}>
+                  <Ionicons color={activeRoleConfig.accent} name="shield-checkmark-outline" size={16} />
+                  <Text style={[styles.homeButtonText, { color: activeRoleConfig.accent }]}>Locked app</Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  accessibilityLabel="Home"
+                  accessibilityRole="button"
+                  activeOpacity={0.82}
+                  onPress={() => {
+                    openPublicWebPath('/');
+                  }}
+                  style={styles.homeButton}
+                >
+                  <Ionicons color="#343548" name="home-outline" size={16} />
+                  <Text style={styles.homeButtonText}>Home</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             <View style={[styles.header, layout.isMobile && styles.headerMobile]}>
@@ -759,20 +776,22 @@ export default function InstituteLoginScreen() {
             {authStage === 'biometric-required' ? (
               <Text style={styles.supportText}>Your password remains available if biometric access is unavailable.</Text>
             ) : null}
-            <TouchableOpacity
-              accessibilityLabel="Different role?"
-              accessibilityRole="button"
-              activeOpacity={0.8}
-              onPress={() => {
-                if (!openPublicWebPath('/roles')) {
-                  navigation.navigate('RoleSelection');
-                }
-              }}
-              style={styles.roleSelectionLink}
-            >
-              <Ionicons name="swap-horizontal-outline" size={15} color="#635BFF" />
-              <Text style={styles.roleSelectionLinkText}>Different role?</Text>
-            </TouchableOpacity>
+            {installedRolePath ? null : (
+              <TouchableOpacity
+                accessibilityLabel="Different role?"
+                accessibilityRole="button"
+                activeOpacity={0.8}
+                onPress={() => {
+                  if (!openPublicWebPath('/roles')) {
+                    navigation.navigate('RoleSelection');
+                  }
+                }}
+                style={styles.roleSelectionLink}
+              >
+                <Ionicons name="swap-horizontal-outline" size={15} color="#635BFF" />
+                <Text style={styles.roleSelectionLinkText}>Different role?</Text>
+              </TouchableOpacity>
+            )}
             <Text style={styles.supportText}>Contact your institute administrator if your password needs to be reset.</Text>
           </View>
           </View>
@@ -1060,6 +1079,9 @@ const styles = StyleSheet.create({
     gap: 6,
     minHeight: 36,
     paddingHorizontal: 10,
+  },
+  lockedAppButton: {
+    backgroundColor: '#F7F8FC',
   },
   homeButtonText: {
     color: '#343548',

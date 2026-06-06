@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
   Bell,
@@ -81,6 +81,18 @@ const roles = [
 const previewIcons = [CalendarCheck2, ReceiptText, MapPinned];
 
 const clampRoleIndex = (index) => (index + roles.length) % roles.length;
+const pageThemeVariables = [
+  '--role-page-accent',
+  '--role-page-ink',
+  '--role-page-soft',
+  '--role-page-rgb',
+];
+
+const roleRgb = {
+  driver: '180 83 9',
+  institute: '79 70 229',
+  parents: '15 118 110',
+};
 
 export default function RoleAppShowcase() {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -95,6 +107,23 @@ export default function RoleAppShowcase() {
     }),
     [activeRole]
   );
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    root.dataset.roleTheme = activeRole.key;
+    root.style.setProperty('--role-page-accent', activeRole.accent);
+    root.style.setProperty('--role-page-ink', activeRole.ink);
+    root.style.setProperty('--role-page-soft', activeRole.soft);
+    root.style.setProperty('--role-page-rgb', roleRgb[activeRole.key]);
+  }, [activeRole]);
+
+  useEffect(() => () => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    delete root.dataset.roleTheme;
+    pageThemeVariables.forEach((variable) => root.style.removeProperty(variable));
+  }, []);
 
   const focusTab = useCallback((index) => {
     const nextIndex = clampRoleIndex(index);
@@ -133,7 +162,7 @@ export default function RoleAppShowcase() {
     const delta = clientX - pointerStartX.current;
     pointerStartX.current = null;
     if (Math.abs(delta) < 42) return;
-    setActiveIndex((current) => clampRoleIndex(current + (delta < 0 ? 1 : -1)));
+    setActiveIndex((current) => clampRoleIndex(current + (delta < 0 ? -1 : 1)));
   }, []);
 
   const handleTouchEnd = useCallback((event) => {
@@ -141,37 +170,40 @@ export default function RoleAppShowcase() {
     const delta = event.changedTouches[0].clientX - touchStartX.current;
     touchStartX.current = null;
     if (Math.abs(delta) < 42) return;
-    setActiveIndex((current) => clampRoleIndex(current + (delta < 0 ? 1 : -1)));
+    setActiveIndex((current) => clampRoleIndex(current + (delta < 0 ? -1 : 1)));
   }, []);
 
   return (
-    <section
-      aria-label="Choose a Shii-Edu role app"
-      className="role-app-showcase role-app-game"
-      style={activeStyle}
-    >
-      <div className="role-app-nav" role="tablist" aria-label="Role app selector">
-        {roles.map(({ icon: Icon, installStartUrl, key, label, soft, accent, ink }, index) => (
-          <button
-            aria-controls={`role-app-card-${key}`}
-            aria-selected={index === activeIndex}
-            className="role-app-tab"
-            id={`role-app-tab-${key}`}
-            key={key}
-            onFocus={() => setActiveIndex(index)}
-            onKeyDown={(event) => handleTabKeyDown(event, index)}
-            onClick={() => setActiveIndex(index)}
-            onMouseEnter={() => setActiveIndex(index)}
-            role="tab"
-            style={{ '--role-accent': accent, '--role-ink': ink, '--role-soft': soft }}
-            type="button"
-          >
-            <Icon size={18} aria-hidden="true" />
-            <span>{label}</span>
-            <small>{installStartUrl.replace(/^\/app\//, '').replace(/\/$/, '')}</small>
-          </button>
-        ))}
+    <>
+      <div className="role-choice-watermark" aria-hidden="true">
+        {activeRole.label}
       </div>
+      <section
+        aria-label="Choose a Shii-Edu role app"
+        className="role-app-showcase role-app-game"
+        style={activeStyle}
+      >
+        <div className="role-app-nav" aria-label="Role app selector">
+          {roles.map(({ icon: Icon, installStartUrl, key, label, soft, accent, ink }, index) => (
+            <button
+              aria-controls={`role-app-card-${key}`}
+              aria-pressed={index === activeIndex}
+              className="role-app-tab"
+              id={`role-app-tab-${key}`}
+              key={key}
+              onFocus={() => setActiveIndex(index)}
+              onKeyDown={(event) => handleTabKeyDown(event, index)}
+              onClick={() => setActiveIndex(index)}
+              onMouseEnter={() => setActiveIndex(index)}
+              style={{ '--role-accent': accent, '--role-ink': ink, '--role-soft': soft }}
+              type="button"
+            >
+              <Icon size={18} aria-hidden="true" />
+              <span>{label}</span>
+              <small>{installStartUrl.replace(/^\/app\//, '').replace(/\/$/, '')}</small>
+            </button>
+          ))}
+        </div>
 
       <div
         className="role-app-board"
@@ -205,7 +237,6 @@ export default function RoleAppShowcase() {
               ].filter(Boolean).join(' ')}
               id={`role-app-card-${role.key}`}
               key={role.key}
-              role="tabpanel"
               style={{
                 '--role-accent': role.accent,
                 '--role-abs-distance': absoluteDistance,
@@ -277,6 +308,7 @@ export default function RoleAppShowcase() {
           );
         })}
       </div>
-    </section>
+      </section>
+    </>
   );
 }

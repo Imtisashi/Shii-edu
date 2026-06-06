@@ -146,7 +146,7 @@ export default function RoleInstallButton({ accent, label, manifestHref, startUr
         type="button"
       >
         <Download size={16} aria-hidden="true" />
-        Download app
+        Open install screen
       </button>
       <button
         className="role-choice-install role-choice-alert"

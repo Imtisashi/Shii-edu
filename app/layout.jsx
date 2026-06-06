@@ -19,7 +19,6 @@ export const metadata = {
     title: SITE.name,
   },
   applicationName: SITE.name,
-  manifest: '/manifest.webmanifest',
 };
 
 export default function RootLayout({ children }) {
