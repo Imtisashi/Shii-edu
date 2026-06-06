@@ -36,6 +36,7 @@ function RoleCard({ option }: { option: AuthRoleOption }) {
 
   return (
     <View style={[styles.roleCard, { borderColor: option.border, backgroundColor: option.soft }]}>
+      <View style={[styles.roleAccentBar, { backgroundColor: option.accent }]} />
       <View style={styles.roleCardTop}>
         <View style={[styles.roleIcon, { borderColor: option.border }]}>
           <Ionicons name={option.icon} size={25} color={option.accent} />
@@ -53,6 +54,10 @@ function RoleCard({ option }: { option: AuthRoleOption }) {
             <Text style={styles.featureText}>{feature}</Text>
           </View>
         ))}
+      </View>
+      <View style={[styles.roleCardMeta, { borderColor: option.border, backgroundColor: '#FFFFFF' }]}>
+        <Ionicons name="phone-portrait-outline" size={16} color={option.accent} />
+        <Text style={styles.roleCardMetaText}>Installable PWA with a dedicated start screen</Text>
       </View>
       <Pressable
         accessibilityRole="button"
@@ -117,12 +122,20 @@ export default function RoleSelectionScreen() {
               </View>
             </View>
             <Text style={[styles.title, layout.isMobile && styles.titleMobile]}>
-              One platform, three focused entry points.
+              Choose your role.
             </Text>
             <Text style={styles.subtitle}>
-              Pick the role that matches your account. Each app installs with its own name, start screen, and workspace
-              path so daily access stays clear.
+              Institute, Parents, and Driver access open different auth paths, app names, manifests, and notification
+              contexts so each user lands in the right workspace.
             </Text>
+            <View style={styles.heroMetaRow}>
+              {AUTH_ROLE_OPTIONS.map((option) => (
+                <View key={option.id} style={[styles.heroMetaChip, { borderColor: option.border, backgroundColor: option.soft }]}>
+                  <Ionicons name={option.icon} size={15} color={option.accent} />
+                  <Text style={styles.heroMetaText}>{option.shortName}</Text>
+                </View>
+              ))}
+            </View>
           </View>
           <View style={[styles.roleGrid, columns]}>
             {AUTH_ROLE_OPTIONS.map((option) => (
@@ -151,6 +164,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     backgroundColor: '#FFFFFF',
     padding: 22,
+  },
+  heroMetaChip: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 7,
+    minHeight: 34,
+    paddingHorizontal: 10,
+  },
+  heroMetaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 16,
+  },
+  heroMetaText: {
+    color: '#1E1F2F',
+    fontSize: 12,
+    fontWeight: '900',
   },
   brandRow: {
     alignItems: 'center',
@@ -211,7 +244,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flex: 1,
     minWidth: 0,
+    overflow: 'hidden',
     padding: 16,
+    paddingTop: 20,
+    position: 'relative',
+  },
+  roleAccentBar: {
+    height: 4,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
   },
   roleCardTop: {
     alignItems: 'center',
@@ -249,6 +292,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 20,
     marginTop: 13,
+  },
+  roleCardMeta: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+    minHeight: 40,
+    paddingHorizontal: 10,
+  },
+  roleCardMetaText: {
+    color: '#343548',
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 17,
   },
   featureList: {
     gap: 8,

@@ -15,10 +15,12 @@ const SHIMMER_TIMING = {
 };
 
 const SKELETON_COLORS = {
-  background: '#FFFFFF',
-  border: '#D7E0EC',
-  block: '#E7EAF1',
-  shimmer: '#FFFFFF',
+  accent: '#635BFF',
+  accentSoft: '#F2F0FF',
+  background: '#F8FAFC',
+  border: '#CBD5E1',
+  block: '#E2E8F0',
+  shimmer: '#FBFCFF',
   surface: '#FFFFFF',
 };
 
@@ -150,6 +152,20 @@ export function RosterSkeleton({
           },
         ]}
       >
+        <View style={styles.loaderHeader}>
+          <View style={styles.loaderHeaderLeft}>
+            <SkeletonBlock height={38} radius={8} width={38} />
+            <View style={styles.loaderHeaderCopy}>
+              <SkeletonBlock height={11} width="44%" />
+              <SkeletonBlock height={18} style={styles.skeletonGapSmall} width="72%" />
+            </View>
+          </View>
+          <View style={styles.loaderHeaderActions}>
+            <SkeletonBlock height={34} radius={8} width={34} />
+            <SkeletonBlock height={34} radius={8} width={34} />
+          </View>
+        </View>
+
         <View
           style={[
             styles.rosterSummary,
@@ -184,6 +200,20 @@ export function RosterSkeleton({
         ) : null}
 
         <View style={styles.rosterRows}>
+          <View
+            style={[
+              styles.rosterTableHeader,
+              {
+                backgroundColor: SKELETON_COLORS.accentSoft,
+                borderColor: SKELETON_COLORS.border,
+                borderRadius: radii.control,
+              },
+            ]}
+          >
+            <SkeletonBlock height={12} width="28%" />
+            <SkeletonBlock height={12} width="18%" />
+            <SkeletonBlock height={12} width="22%" />
+          </View>
           {rows.map((row) => (
             <View
               key={row}
@@ -247,6 +277,20 @@ export function DashboardSkeleton({
           },
         ]}
       >
+        <View style={styles.loaderHeader}>
+          <View style={styles.loaderHeaderLeft}>
+            <SkeletonBlock height={38} radius={8} width={38} />
+            <View style={styles.loaderHeaderCopy}>
+              <SkeletonBlock height={11} width="42%" />
+              <SkeletonBlock height={18} style={styles.skeletonGapSmall} width="68%" />
+            </View>
+          </View>
+          <View style={styles.loaderHeaderActions}>
+            <SkeletonBlock height={34} radius={8} width={34} />
+            <SkeletonBlock height={34} radius={8} width={34} />
+          </View>
+        </View>
+
         <View
           style={[
             styles.dashboardHero,
@@ -265,6 +309,12 @@ export function DashboardSkeleton({
             </View>
           </View>
           <SkeletonBlock height={56} radius={8} width="100%" />
+        </View>
+
+        <View style={styles.dashboardMetricRow}>
+          <SkeletonBlock height={38} radius={8} width="32%" />
+          <SkeletonBlock height={38} radius={8} width="32%" />
+          <SkeletonBlock height={38} radius={8} width="32%" />
         </View>
 
         <View style={styles.dashboardGrid}>
@@ -374,6 +424,33 @@ const styles = StyleSheet.create({
     gap: 3,
     justifyContent: 'center',
   },
+  dashboardMetricRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  loaderHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+    minHeight: 44,
+  },
+  loaderHeaderActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  loaderHeaderCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  loaderHeaderLeft: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: 10,
+    minWidth: 0,
+  },
   noticeSkeleton: {
     borderWidth: 1,
     marginTop: 14,
@@ -421,6 +498,15 @@ const styles = StyleSheet.create({
   rosterSummaryCopy: {
     flex: 1,
     minWidth: 0,
+  },
+  rosterTableHeader: {
+    alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+    minHeight: 44,
+    paddingHorizontal: 12,
   },
   shimmerBand: {
     bottom: 0,

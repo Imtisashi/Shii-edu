@@ -168,7 +168,8 @@ const DashboardCard = memo(function DashboardCard({
           animatedCard,
         ]}
       >
-        <View style={[styles.iconCell, { backgroundColor: colors.pageElevated, borderColor: colors.hairline }]}>
+        <View style={[styles.cardAccentDot, { backgroundColor: action.color }]} />
+        <View style={[styles.iconCell, { backgroundColor: action.softColor || colors.pageElevated, borderColor: colors.hairline }]}>
           <Ionicons name={action.icon} size={isCompact ? 22 : 24} color={action.color} />
         </View>
         <View style={styles.cardTextBlock}>
@@ -187,8 +188,10 @@ const DashboardCard = memo(function DashboardCard({
 
 const SecondaryActionButton = memo(function SecondaryActionButton({
   action,
+  singleColumn,
 }: {
   action: HomeDashboardAction;
+  singleColumn: boolean;
 }) {
   const { colors, radii } = useRootLayout();
 
@@ -197,7 +200,11 @@ const SecondaryActionButton = memo(function SecondaryActionButton({
       accessibilityLabel={action.accessibilityLabel || `Open ${action.title}`}
       accessibilityRole="button"
       onPress={action.onPress}
-      style={({ pressed }) => [styles.secondaryPressable, pressed && styles.secondaryPressablePressed]}
+      style={({ pressed }) => [
+        styles.secondaryPressable,
+        singleColumn && styles.secondaryPressablePhone,
+        pressed && styles.secondaryPressablePressed,
+      ]}
     >
       <View
         style={[
@@ -209,12 +216,13 @@ const SecondaryActionButton = memo(function SecondaryActionButton({
           },
         ]}
       >
-        <View style={[styles.secondaryIcon, { backgroundColor: colors.pageElevated, borderColor: colors.hairline }]}>
+        <View style={[styles.secondaryIcon, { backgroundColor: action.softColor || colors.pageElevated, borderColor: colors.hairline }]}>
           <Ionicons name={action.icon} size={17} color={action.color} />
         </View>
         <Text numberOfLines={1} style={[styles.secondaryLabel, { color: colors.text }]}>
           {action.title}
         </Text>
+        <Ionicons name="arrow-forward" size={14} color={colors.muted} style={styles.secondaryChevron} />
       </View>
     </Pressable>
   );
@@ -411,28 +419,30 @@ export default function HomeDashboardScreen({
           </View>
 
           {visibleSecondaryActions.length > 0 ? (
-            <>
+            <View
+              style={[
+                styles.quickAccessPanel,
+                {
+                  backgroundColor: colors.cardStrong,
+                  borderColor: colors.hairline,
+                  borderRadius: radii.card,
+                },
+              ]}
+            >
               <View style={styles.quickAccessHeader}>
                 <Text style={[styles.compactSectionTitle, { color: colors.text }]}>Quick access</Text>
                 {hiddenSecondaryCount > 0 ? (
-                  <Text style={[styles.quickAccessHint, { color: colors.muted }]}>
+                  <Text style={[styles.quickAccessHint, { color: colors.textSoft }]}>
                     {hiddenSecondaryCount} more in menu
                   </Text>
                 ) : null}
               </View>
-              <ScrollView
-                horizontal
-                nestedScrollEnabled
-                showsHorizontalScrollIndicator={false}
-                style={styles.secondaryScroller}
-              >
-                <View style={styles.secondaryGrid}>
-                  {visibleSecondaryActions.map((action) => (
-                    <SecondaryActionButton action={action} key={action.key} />
-                  ))}
-                </View>
-              </ScrollView>
-            </>
+              <View style={styles.secondaryGrid}>
+                {visibleSecondaryActions.map((action) => (
+                  <SecondaryActionButton action={action} key={action.key} singleColumn={singleColumn} />
+                ))}
+              </View>
+            </View>
           ) : null}
 
           <View
@@ -532,8 +542,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     minHeight: 96,
+    overflow: 'hidden',
     paddingHorizontal: 14,
     paddingVertical: 14,
+    position: 'relative',
   },
   dashboardGrid: {
     flexDirection: 'row',
@@ -555,6 +567,14 @@ const styles = StyleSheet.create({
   displayNamePhone: {
     fontSize: 23,
     lineHeight: 29,
+  },
+  cardAccentDot: {
+    borderRadius: 8,
+    height: 8,
+    position: 'absolute',
+    right: 12,
+    top: 12,
+    width: 8,
   },
   edgeHeader: {
     alignItems: 'center',
@@ -802,14 +822,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: 'row',
     gap: 10,
-    minHeight: 48,
-    paddingHorizontal: 10,
+    minHeight: 50,
+    paddingHorizontal: 11,
   },
   secondaryGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
-    paddingBottom: 2,
-    paddingRight: 2,
+    marginTop: 10,
+  },
+  secondaryChevron: {
+    marginLeft: 'auto',
   },
   secondaryIcon: {
     alignItems: 'center',
@@ -826,23 +849,30 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   secondaryPressable: {
-    minWidth: 132,
+    flexBasis: '31.5%',
+    flexGrow: 1,
+    minWidth: 152,
+  },
+  secondaryPressablePhone: {
+    flexBasis: '48%',
+    minWidth: 0,
   },
   secondaryPressablePressed: {
     transform: [{ scale: 0.985 }],
-  },
-  secondaryScroller: {
-    marginBottom: 20,
   },
   quickAccessHeader: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
   },
   quickAccessHint: {
     fontSize: 12,
     fontWeight: '800',
+  },
+  quickAccessPanel: {
+    borderWidth: 1,
+    marginBottom: 20,
+    padding: 14,
   },
   sectionHeader: {
     alignItems: 'flex-end',

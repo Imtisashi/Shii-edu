@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ArrowRight,
   Bell,
@@ -77,6 +77,28 @@ const previewIcons = [CalendarCheck2, ReceiptText, MapPinned];
 export default function RoleAppShowcase() {
   const [activeIndex, setActiveIndex] = useState(0);
   const activeRole = roles[activeIndex];
+  const focusTab = useCallback((index) => {
+    const nextIndex = (index + roles.length) % roles.length;
+    setActiveIndex(nextIndex);
+    requestAnimationFrame(() => {
+      document.getElementById(`role-app-tab-${roles[nextIndex].key}`)?.focus();
+    });
+  }, []);
+  const handleTabKeyDown = useCallback((event, index) => {
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      focusTab(index + 1);
+    } else if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      focusTab(index - 1);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      focusTab(0);
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      focusTab(roles.length - 1);
+    }
+  }, [focusTab]);
   const trackStyle = useMemo(
     () => ({
       '--role-accent': activeRole.accent,
@@ -103,6 +125,7 @@ export default function RoleAppShowcase() {
             className="role-app-tab"
             id={`role-app-tab-${key}`}
             key={key}
+            onKeyDown={(event) => handleTabKeyDown(event, index)}
             onClick={() => setActiveIndex(index)}
             role="tab"
             style={{ '--role-accent': roles[index].accent, '--role-soft': roles[index].soft }}
@@ -173,7 +196,7 @@ export default function RoleAppShowcase() {
 
                 <div className="role-app-actions">
                   <a className="role-choice-open" href={role.authHref}>
-                    Open auth
+                    Open {role.label} auth
                     <ArrowRight size={17} aria-hidden="true" />
                   </a>
                   <RoleInstallButton
