@@ -479,7 +479,8 @@ export default function InstituteLoginScreen() {
                 </Text>
               </View>
               <TouchableOpacity
-                accessibilityLabel="Go to Shii-Edu home"
+                accessibilityLabel="Home"
+                accessibilityRole="button"
                 activeOpacity={0.82}
                 onPress={() => {
                   openPublicWebPath('/');
@@ -574,6 +575,7 @@ export default function InstituteLoginScreen() {
               {biometricReturnAvailable ? (
                 <TouchableOpacity
                   accessibilityLabel={`Sign in with ${biometricLabel}`}
+                  accessibilityRole="button"
                   activeOpacity={0.84}
                   disabled={biometricSubmitting || submitting}
                   onPress={handleBiometricUnlock}
@@ -650,6 +652,7 @@ export default function InstituteLoginScreen() {
                   onSubmitEditing={handleLogin}
                 />
                 <TouchableOpacity
+                  accessibilityRole="button"
                   onPress={() => setShowPassword((current) => !current)}
                   style={styles.eyeIcon}
                   accessibilityLabel="Toggle password visibility"
@@ -659,7 +662,8 @@ export default function InstituteLoginScreen() {
               </View>
 
               <TouchableOpacity
-                accessibilityLabel="Request password reset"
+                accessibilityLabel="Forgot password?"
+                accessibilityRole="button"
                 activeOpacity={0.82}
                 onPress={openPasswordReset}
                 style={styles.forgotPasswordButton}
@@ -680,6 +684,8 @@ export default function InstituteLoginScreen() {
               <View style={styles.optionsRow}>
                 {biometricCapability.available ? (
                   <TouchableOpacity
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: enableBiometrics }}
                     style={styles.rememberRow}
                     onPress={() => {
                       setEnableBiometrics((current) => !current);
@@ -700,6 +706,9 @@ export default function InstituteLoginScreen() {
               </View>
 
               <TouchableOpacity
+                accessibilityLabel="Verify & Sign In"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: submitting || biometricSubmitting }}
                 style={[
                   styles.loginBtn,
                   { backgroundColor: activeRoleConfig.accent },
@@ -751,6 +760,8 @@ export default function InstituteLoginScreen() {
               <Text style={styles.supportText}>Your password remains available if biometric access is unavailable.</Text>
             ) : null}
             <TouchableOpacity
+              accessibilityLabel="Different role?"
+              accessibilityRole="button"
               activeOpacity={0.8}
               onPress={() => {
                 if (!openPublicWebPath('/roles')) {
@@ -796,6 +807,7 @@ export default function InstituteLoginScreen() {
                   </View>
                   <TouchableOpacity
                     accessibilityLabel="Close password reset"
+                    accessibilityRole="button"
                     onPress={() => setResetModalVisible(false)}
                     style={styles.resetCloseButton}
                   >
@@ -835,6 +847,8 @@ export default function InstituteLoginScreen() {
                     </Text>
                     {resetStatus?.status === 'approved' && resetStatus.resetLink ? (
                       <TouchableOpacity
+                        accessibilityLabel="Open secure reset link"
+                        accessibilityRole="button"
                         activeOpacity={0.84}
                         onPress={handleOpenResetLink}
                         style={[styles.resetPrimaryButton, { backgroundColor: activeRoleConfig.accent }]}
@@ -844,6 +858,9 @@ export default function InstituteLoginScreen() {
                       </TouchableOpacity>
                     ) : (
                       <TouchableOpacity
+                        accessibilityLabel="Check approval status"
+                        accessibilityRole="button"
+                        accessibilityState={{ disabled: resetChecking }}
                         activeOpacity={0.84}
                         disabled={resetChecking}
                         onPress={() => handleCheckResetStatus()}
@@ -916,6 +933,9 @@ export default function InstituteLoginScreen() {
                     />
 
                     <TouchableOpacity
+                      accessibilityLabel="Notify admin for approval"
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: resetSubmitting }}
                       activeOpacity={0.84}
                       disabled={resetSubmitting}
                       onPress={handleSubmitPasswordReset}

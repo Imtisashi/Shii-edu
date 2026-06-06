@@ -3891,6 +3891,7 @@ p {
     border-color: color-mix(in srgb, var(--role-accent) 32%, #d6d7e4);
     opacity: 0.7;
     pointer-events: none;
+    transform: translate3d(var(--role-shift-x), var(--role-shift-y), 0) scale(var(--role-scale));
   }
 
   .role-app-actions {

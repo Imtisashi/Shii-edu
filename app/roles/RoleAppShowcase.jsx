@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
   Bell,
@@ -84,8 +84,8 @@ const clampRoleIndex = (index) => (index + roles.length) % roles.length;
 
 export default function RoleAppShowcase() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [pointerStartX, setPointerStartX] = useState(null);
-  const [touchStartX, setTouchStartX] = useState(null);
+  const pointerStartX = useRef(null);
+  const touchStartX = useRef(null);
   const activeRole = roles[activeIndex];
   const activeStyle = useMemo(
     () => ({
@@ -129,20 +129,20 @@ export default function RoleAppShowcase() {
   }, [activeIndex]);
 
   const handlePointerSwipe = useCallback((clientX) => {
-    if (pointerStartX === null) return;
-    const delta = clientX - pointerStartX;
-    setPointerStartX(null);
+    if (pointerStartX.current === null) return;
+    const delta = clientX - pointerStartX.current;
+    pointerStartX.current = null;
     if (Math.abs(delta) < 42) return;
     setActiveIndex((current) => clampRoleIndex(current + (delta < 0 ? 1 : -1)));
-  }, [pointerStartX]);
+  }, []);
 
   const handleTouchEnd = useCallback((event) => {
-    if (touchStartX === null) return;
-    const delta = event.changedTouches[0].clientX - touchStartX;
-    setTouchStartX(null);
+    if (touchStartX.current === null) return;
+    const delta = event.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
     if (Math.abs(delta) < 42) return;
     setActiveIndex((current) => clampRoleIndex(current + (delta < 0 ? 1 : -1)));
-  }, [touchStartX]);
+  }, []);
 
   return (
     <section
@@ -175,15 +175,19 @@ export default function RoleAppShowcase() {
 
       <div
         className="role-app-board"
-        onPointerCancel={() => setPointerStartX(null)}
+        onPointerCancel={() => {
+          pointerStartX.current = null;
+        }}
         onPointerDown={(event) => {
           if (typeof window === 'undefined' || window.matchMedia('(pointer: fine)').matches) return;
-          setPointerStartX(event.clientX);
+          pointerStartX.current = event.clientX;
         }}
         onPointerMove={handleBoardPointerMove}
         onPointerUp={(event) => handlePointerSwipe(event.clientX)}
         onTouchEnd={handleTouchEnd}
-        onTouchStart={(event) => setTouchStartX(event.touches[0].clientX)}
+        onTouchStart={(event) => {
+          touchStartX.current = event.touches[0].clientX;
+        }}
       >
         {roles.map((role, index) => {
           const RoleIcon = role.icon;
@@ -209,8 +213,8 @@ export default function RoleAppShowcase() {
                 '--role-layer': 8 - absoluteDistance,
                 '--role-scale': 1 - absoluteDistance * 0.055,
                 '--role-soft': role.soft,
-                '--role-shift-x': `${distance * 34}px`,
-                '--role-shift-y': `${absoluteDistance * 18}px`,
+                '--role-shift-x': `${distance * 52}px`,
+                '--role-shift-y': `${absoluteDistance * 22}px`,
               }}
               tabIndex={selected ? 0 : -1}
               onMouseEnter={() => setActiveIndex(index)}
