@@ -20,7 +20,7 @@ import InstituteSyncSplash from '../../src/components/auth/InstituteSyncSplash';
 import { installWebPerformanceTuning } from '../../src/utils/webPerformanceTuning';
 import { installWebScrollFix } from '../../src/utils/webScrollFix';
 import { installFirestoreOfflinePersistence } from '../../src/services/offlinePersistence';
-import { getAuthRoleByAppPath, getAuthRoleOption } from '../../src/constants/authRoles';
+import { getAuthRoleByPath, getAuthRoleOption } from '../../src/constants/authRoles';
 import InstituteAuthNavigator from './src/navigation/InstituteAuthNavigator';
 
 const linking = Object.freeze({
@@ -45,7 +45,7 @@ const normalizeRole = (role) => String(role || '').trim().toLowerCase().replace(
 
 const getLockedRoleFromLocation = () => {
   if (typeof window === 'undefined') return null;
-  return getAuthRoleByAppPath(window.location.pathname);
+  return getAuthRoleByPath(window.location.pathname);
 };
 
 const roleCanOpenLockedApp = (lockedRole, userRole) => {

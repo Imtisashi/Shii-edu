@@ -113,12 +113,18 @@ export const getAuthRoleOption = (value: unknown): AuthRoleOption => {
   return AUTH_ROLE_OPTIONS.find((option) => option.id === role) || AUTH_ROLE_OPTIONS[0];
 };
 
-export const getAuthRoleByAppPath = (pathname: unknown): AuthRoleId | null => {
+export const getAuthRoleByPath = (pathname: unknown): AuthRoleId | null => {
   const normalizedPath = String(pathname || '').trim().toLowerCase();
   const match = AUTH_ROLE_OPTIONS.find((option) => {
     const appPath = option.appPath.replace(/\/$/, '').toLowerCase();
-    return normalizedPath === appPath || normalizedPath.startsWith(`${appPath}/`);
+    const authPath = option.authPath.replace(/\/$/, '').toLowerCase();
+    return normalizedPath === appPath ||
+      normalizedPath.startsWith(`${appPath}/`) ||
+      normalizedPath === authPath ||
+      normalizedPath.startsWith(`${authPath}/`);
   });
 
   return match?.id || null;
 };
+
+export const getAuthRoleByAppPath = getAuthRoleByPath;

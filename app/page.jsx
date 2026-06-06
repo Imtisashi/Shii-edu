@@ -10,7 +10,6 @@ import {
   GraduationCap,
   Landmark,
   Layers3,
-  LockKeyhole,
   Mail,
   MessageSquareText,
   Palette,
@@ -22,6 +21,7 @@ import {
   Workflow,
 } from 'lucide-react';
 import CinematicLandingStage from './components/CinematicLandingStage';
+import AnimatedSignInLink from './components/AnimatedSignInLink';
 import LandingRoleExplorer from './components/LandingRoleExplorer';
 import PixelCampusArtifact from './components/PixelCampusArtifact';
 import { routeMetadata, SITE } from './lib/site';
@@ -248,10 +248,7 @@ export default function HomePage() {
           <a href="#legal">Legal</a>
         </nav>
 
-        <a className="landing-login" href="/roles">
-          <LockKeyhole size={16} aria-hidden="true" />
-          Login
-        </a>
+        <AnimatedSignInLink />
       </header>
 
       <main id="main">

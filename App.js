@@ -15,7 +15,7 @@ import { installWebPerformanceTuning } from './src/utils/webPerformanceTuning';
 import { installWebScrollFix } from './src/utils/webScrollFix';
 import { installWebFeedbackBridge } from './src/utils/userFeedback';
 import { installFirestoreOfflinePersistence } from './src/services/offlinePersistence';
-import { getAuthRoleByAppPath, getAuthRoleOption } from './src/constants/authRoles';
+import { getAuthRoleByPath, getAuthRoleOption } from './src/constants/authRoles';
 
 const linking = {
   enabled: true,
@@ -38,7 +38,7 @@ const formatDefaultDocumentTitle = (options) => {
 
 const getLockedRoleFromLocation = () => {
   if (typeof window === 'undefined') return null;
-  return getAuthRoleByAppPath(window.location.pathname);
+  return getAuthRoleByPath(window.location.pathname);
 };
 
 export default function App() {

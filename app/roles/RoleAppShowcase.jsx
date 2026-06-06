@@ -20,13 +20,14 @@ const roles = [
     accent: '#4F46E5',
     authHref: '/auth/institute',
     icon: Landmark,
+    ink: '#312E81',
     installHref: '/manifest-institute.webmanifest',
     installStartUrl: '/app/institute',
     key: 'institute',
     label: 'Institute',
     soft: '#F1F0FF',
     title: 'Institute command workspace',
-    body: 'For admins, teachers, and students who need a campus-branded workspace with academic, finance, media, and communication controls.',
+    body: 'A campus-branded workspace for academic operations, finance, people, media, and controlled admin work.',
     features: ['Teacher and student workflows', 'Fee and payroll visibility', 'Brand and tier controls'],
     previewTitle: 'Institute console',
     previewRows: [
@@ -39,13 +40,14 @@ const roles = [
     accent: '#0F766E',
     authHref: '/auth/parents',
     icon: Users,
+    ink: '#134E4A',
     installHref: '/manifest-parents.webmanifest',
     installStartUrl: '/app/parents',
     key: 'parents',
     label: 'Parents',
-    soft: '#ECFDF5',
+    soft: '#E7FAF4',
     title: 'Parent companion app',
-    body: 'For guardians who need a clear view of student notices, fees, messages, academic updates, and transport visibility.',
+    body: 'A focused guardian view for student notices, fees, messages, academic updates, and transport status.',
     features: ['Linked-student updates', 'Fee reminders', 'Notice and message center'],
     previewTitle: 'Parent view',
     previewRows: [
@@ -58,13 +60,14 @@ const roles = [
     accent: '#B45309',
     authHref: '/auth/driver',
     icon: Bus,
+    ink: '#7C2D12',
     installHref: '/manifest-driver.webmanifest',
     installStartUrl: '/app/driver',
     key: 'driver',
     label: 'Driver',
-    soft: '#FFF7ED',
+    soft: '#FFF6E7',
     title: 'Driver route console',
-    body: 'For drivers who need large controls, route assignments, status updates, and live location sharing without admin clutter.',
+    body: 'A field-first route surface with live location sharing, assigned stops, and large readable controls.',
     features: ['Map-first route surface', 'Assigned destinations', 'Large field controls'],
     previewTitle: 'Route console',
     previewRows: [
@@ -77,16 +80,30 @@ const roles = [
 
 const previewIcons = [CalendarCheck2, ReceiptText, MapPinned];
 
+const clampRoleIndex = (index) => (index + roles.length) % roles.length;
+
 export default function RoleAppShowcase() {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [pointerStartX, setPointerStartX] = useState(null);
+  const [touchStartX, setTouchStartX] = useState(null);
   const activeRole = roles[activeIndex];
+  const activeStyle = useMemo(
+    () => ({
+      '--role-accent': activeRole.accent,
+      '--role-ink': activeRole.ink,
+      '--role-soft': activeRole.soft,
+    }),
+    [activeRole]
+  );
+
   const focusTab = useCallback((index) => {
-    const nextIndex = (index + roles.length) % roles.length;
+    const nextIndex = clampRoleIndex(index);
     setActiveIndex(nextIndex);
     requestAnimationFrame(() => {
       document.getElementById(`role-app-tab-${roles[nextIndex].key}`)?.focus();
     });
   }, []);
+
   const handleTabKeyDown = useCallback((event, index) => {
     if (event.key === 'ArrowRight') {
       event.preventDefault();
@@ -102,36 +119,51 @@ export default function RoleAppShowcase() {
       focusTab(roles.length - 1);
     }
   }, [focusTab]);
-  const trackStyle = useMemo(
-    () => ({
-      '--role-accent': activeRole.accent,
-      '--role-soft': activeRole.soft,
-      transform: `translate3d(-${activeIndex * 100}%, 0, 0)`,
-    }),
-    [activeIndex, activeRole]
-  );
+
+  const handleBoardPointerMove = useCallback((event) => {
+    if (typeof window === 'undefined' || !window.matchMedia('(pointer: fine)').matches) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const segment = rect.width / roles.length;
+    const nextIndex = Math.max(0, Math.min(roles.length - 1, Math.floor((event.clientX - rect.left) / segment)));
+    if (nextIndex !== activeIndex) setActiveIndex(nextIndex);
+  }, [activeIndex]);
+
+  const handlePointerSwipe = useCallback((clientX) => {
+    if (pointerStartX === null) return;
+    const delta = clientX - pointerStartX;
+    setPointerStartX(null);
+    if (Math.abs(delta) < 42) return;
+    setActiveIndex((current) => clampRoleIndex(current + (delta < 0 ? 1 : -1)));
+  }, [pointerStartX]);
+
+  const handleTouchEnd = useCallback((event) => {
+    if (touchStartX === null) return;
+    const delta = event.changedTouches[0].clientX - touchStartX;
+    setTouchStartX(null);
+    if (Math.abs(delta) < 42) return;
+    setActiveIndex((current) => clampRoleIndex(current + (delta < 0 ? 1 : -1)));
+  }, [touchStartX]);
 
   return (
     <section
       aria-label="Choose a Shii-Edu role app"
-      className="role-app-showcase"
-      style={{
-        '--role-accent': activeRole.accent,
-        '--role-soft': activeRole.soft,
-      }}
+      className="role-app-showcase role-app-game"
+      style={activeStyle}
     >
       <div className="role-app-nav" role="tablist" aria-label="Role app selector">
-        {roles.map(({ icon: Icon, installStartUrl, key, label }, index) => (
+        {roles.map(({ icon: Icon, installStartUrl, key, label, soft, accent, ink }, index) => (
           <button
-            aria-controls={`role-app-panel-${key}`}
+            aria-controls={`role-app-card-${key}`}
             aria-selected={index === activeIndex}
             className="role-app-tab"
             id={`role-app-tab-${key}`}
             key={key}
+            onFocus={() => setActiveIndex(index)}
             onKeyDown={(event) => handleTabKeyDown(event, index)}
             onClick={() => setActiveIndex(index)}
+            onMouseEnter={() => setActiveIndex(index)}
             role="tab"
-            style={{ '--role-accent': roles[index].accent, '--role-soft': roles[index].soft }}
+            style={{ '--role-accent': accent, '--role-ink': ink, '--role-soft': soft }}
             type="button"
           >
             <Icon size={18} aria-hidden="true" />
@@ -141,79 +173,105 @@ export default function RoleAppShowcase() {
         ))}
       </div>
 
-      <div className="role-app-viewport">
-        <div className="role-app-track" style={trackStyle}>
-          {roles.map((role, slideIndex) => {
-            const RoleIcon = role.icon;
-            return (
-              <article
-                aria-hidden={slideIndex !== activeIndex}
-                aria-labelledby={`role-app-tab-${role.key}`}
-                className="role-app-slide"
-                id={`role-app-panel-${role.key}`}
-                inert={slideIndex !== activeIndex ? '' : undefined}
-                key={role.key}
-                role="tabpanel"
-                style={{ '--role-accent': role.accent, '--role-soft': role.soft }}
-                tabIndex={slideIndex === activeIndex ? 0 : -1}
-              >
-                <div className="role-app-copy">
-                  <span className="role-app-kicker">
-                    <RoleIcon size={18} aria-hidden="true" />
-                    {role.label} app
-                  </span>
-                  <h1>{role.title}</h1>
-                  <p>{role.body}</p>
-                  <div className="role-app-feature-list" aria-label={`${role.label} app features`}>
-                    {role.features.map((feature) => (
-                      <span key={feature}>
-                        <ShieldCheck size={15} aria-hidden="true" />
-                        {feature}
+      <div
+        className="role-app-board"
+        onPointerCancel={() => setPointerStartX(null)}
+        onPointerDown={(event) => {
+          if (typeof window === 'undefined' || window.matchMedia('(pointer: fine)').matches) return;
+          setPointerStartX(event.clientX);
+        }}
+        onPointerMove={handleBoardPointerMove}
+        onPointerUp={(event) => handlePointerSwipe(event.clientX)}
+        onTouchEnd={handleTouchEnd}
+        onTouchStart={(event) => setTouchStartX(event.touches[0].clientX)}
+      >
+        {roles.map((role, index) => {
+          const RoleIcon = role.icon;
+          const selected = index === activeIndex;
+          const distance = index - activeIndex;
+          const absoluteDistance = Math.abs(distance);
+          return (
+            <article
+              aria-labelledby={`role-app-tab-${role.key}`}
+              className={[
+                'role-app-card',
+                selected ? 'is-active' : 'is-dimmed',
+                distance < 0 ? 'is-before' : '',
+                distance > 0 ? 'is-after' : '',
+              ].filter(Boolean).join(' ')}
+              id={`role-app-card-${role.key}`}
+              key={role.key}
+              role="tabpanel"
+              style={{
+                '--role-accent': role.accent,
+                '--role-abs-distance': absoluteDistance,
+                '--role-ink': role.ink,
+                '--role-layer': 8 - absoluteDistance,
+                '--role-scale': 1 - absoluteDistance * 0.055,
+                '--role-soft': role.soft,
+                '--role-shift-x': `${distance * 34}px`,
+                '--role-shift-y': `${absoluteDistance * 18}px`,
+              }}
+              tabIndex={selected ? 0 : -1}
+              onMouseEnter={() => setActiveIndex(index)}
+              onFocus={() => setActiveIndex(index)}
+            >
+              <div className="role-app-card-copy">
+                <span className="role-app-kicker">
+                  <RoleIcon size={18} aria-hidden="true" />
+                  {role.label} app
+                </span>
+                <h2>{role.title}</h2>
+                <p>{role.body}</p>
+                <div className="role-app-feature-list" aria-label={`${role.label} app features`}>
+                  {role.features.map((feature) => (
+                    <span key={feature}>
+                      <ShieldCheck size={15} aria-hidden="true" />
+                      {feature}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="role-app-preview" aria-hidden="true">
+                <div className="role-app-preview-bar">
+                  <span />
+                  <strong>{role.previewTitle}</strong>
+                  <Bell size={17} />
+                </div>
+                <div className="role-app-preview-hero">
+                  <RoleIcon size={24} />
+                  <span>{role.label}</span>
+                </div>
+                <div className="role-app-preview-list">
+                  {role.previewRows.map(([label, value], rowIndex) => {
+                    const PreviewIcon = previewIcons[rowIndex] || Route;
+                    return (
+                      <span key={label}>
+                        <PreviewIcon size={16} />
+                        <strong>{label}</strong>
+                        <em>{value}</em>
                       </span>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
+              </div>
 
-                <div className="role-app-preview" aria-hidden="true">
-                  <div className="role-app-preview-bar">
-                    <span />
-                    <strong>{role.previewTitle}</strong>
-                    <Bell size={17} />
-                  </div>
-                  <div className="role-app-preview-hero">
-                    <RoleIcon size={24} />
-                    <span>{role.label}</span>
-                  </div>
-                  <div className="role-app-preview-list">
-                    {role.previewRows.map(([label, value], rowIndex) => {
-                      const PreviewIcon = previewIcons[rowIndex] || Route;
-                      return (
-                        <span key={label}>
-                          <PreviewIcon size={16} />
-                          <strong>{label}</strong>
-                          <em>{value}</em>
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="role-app-actions">
-                  <a className="role-choice-open" href={role.authHref}>
-                    Open {role.label} auth
-                    <ArrowRight size={17} aria-hidden="true" />
-                  </a>
-                  <RoleInstallButton
-                    accent={role.accent}
-                    label={`Shii-Edu ${role.label}`}
-                    manifestHref={role.installHref}
-                    startUrl={role.installStartUrl}
-                  />
-                </div>
-              </article>
-            );
-          })}
-        </div>
+              <div className="role-app-actions">
+                <a className="role-choice-open" href={role.authHref}>
+                  Sign in as {role.label}
+                  <ArrowRight size={17} aria-hidden="true" />
+                </a>
+                <RoleInstallButton
+                  accent={role.accent}
+                  label={`Shii-Edu ${role.label}`}
+                  manifestHref={role.installHref}
+                  startUrl={role.installStartUrl}
+                />
+              </div>
+            </article>
+          );
+        })}
       </div>
     </section>
   );

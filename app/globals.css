@@ -3334,6 +3334,38 @@ p {
   }
 }
 
+@keyframes shii-route-enter {
+  from {
+    opacity: 0.92;
+    transform: translate3d(0, 10px, 0) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes shii-route-exit {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  to {
+    opacity: 0.94;
+    transform: translate3d(0, -6px, 0) scale(0.995);
+  }
+}
+
+::view-transition-old(root) {
+  animation: shii-route-exit 170ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+::view-transition-new(root) {
+  animation: shii-route-enter 210ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
 .role-choice-page {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.98) 100%),
@@ -3469,7 +3501,9 @@ p {
 }
 
 .role-app-showcase {
-  background: #ffffff;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--role-soft) 78%, #ffffff) 0%, #ffffff 54%),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--role-accent) 10%, transparent) 0 1px, transparent 1px 40px);
   border: 1px solid #d6d7e4;
   border-radius: 8px;
   display: grid;
@@ -3488,12 +3522,12 @@ p {
 }
 
 .role-app-nav {
-  background: #f8fafc;
-  border-bottom: 1px solid #d6d7e4;
+  background: color-mix(in srgb, var(--role-soft) 54%, #ffffff);
+  border-bottom: 1px solid color-mix(in srgb, var(--role-accent) 20%, #d6d7e4);
   display: grid;
-  gap: 1px;
+  gap: 8px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  padding: 12px 8px 8px;
+  padding: 14px 14px 10px;
 }
 
 .role-app-tab {
@@ -3504,19 +3538,20 @@ p {
   color: #343548;
   cursor: pointer;
   display: inline-flex;
+  flex-wrap: wrap;
   font: inherit;
   font-size: 0.88rem;
-  flex-wrap: wrap;
   font-weight: 900;
   gap: 8px;
   justify-content: center;
-  min-height: 44px;
+  min-height: 50px;
   padding: 8px 10px;
   transition:
-    background 150ms cubic-bezier(0.32, 0.72, 0, 1),
-    border-color 150ms cubic-bezier(0.32, 0.72, 0, 1),
-    color 150ms cubic-bezier(0.32, 0.72, 0, 1),
-    transform 150ms cubic-bezier(0.32, 0.72, 0, 1);
+    background 170ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 170ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 170ms cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 170ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 170ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .role-app-tab svg {
@@ -3534,7 +3569,8 @@ p {
 
 .role-app-tab:hover,
 .role-app-tab:focus-visible {
-  border-color: color-mix(in srgb, var(--role-accent) 34%, #d6d7e4);
+  border-color: color-mix(in srgb, var(--role-accent) 38%, #d6d7e4);
+  transform: translateY(-1px);
 }
 
 .role-app-tab:active {
@@ -3543,38 +3579,51 @@ p {
 
 .role-app-tab[aria-selected='true'] {
   background: var(--role-soft);
-  border-color: color-mix(in srgb, var(--role-accent) 42%, #d6d7e4);
-  color: color-mix(in srgb, var(--role-accent) 76%, #070712);
+  border-color: color-mix(in srgb, var(--role-accent) 48%, #d6d7e4);
+  color: var(--role-ink);
 }
 
 .role-app-tab[aria-selected='true'] small {
   color: color-mix(in srgb, var(--role-accent) 72%, #070712);
 }
 
-.role-app-viewport {
-  overflow: hidden;
-}
-
-.role-app-track {
-  display: flex;
-  transition: transform 210ms cubic-bezier(0.32, 0.72, 0, 1);
-  will-change: transform;
-}
-
-.role-app-slide {
-  align-items: stretch;
-  display: grid;
-  flex: 0 0 100%;
-  gap: clamp(18px, 3vw, 28px);
-  grid-template-columns: minmax(0, 0.95fr) minmax(280px, 0.72fr) minmax(180px, 0.42fr);
-  min-width: 0;
-  padding: clamp(18px, 4vw, 34px);
-}
-
-.role-app-copy {
-  align-content: center;
+.role-app-board {
   display: grid;
   gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: clamp(14px, 2vw, 20px);
+}
+
+.role-app-card {
+  align-content: start;
+  background: #ffffff;
+  border: 1px solid #d6d7e4;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: clamp(16px, 2vw, 22px);
+  transition:
+    background 210ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 210ms cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 210ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 210ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.role-app-card.is-active {
+  background: linear-gradient(180deg, #ffffff 0%, color-mix(in srgb, var(--role-soft) 58%, #ffffff) 100%);
+  border-color: color-mix(in srgb, var(--role-accent) 46%, #d6d7e4);
+  transform: translateY(-4px);
+}
+
+.role-app-card.is-dimmed {
+  opacity: 0.52;
+  transform: scale(0.985);
+}
+
+.role-app-card-copy {
+  display: grid;
+  gap: 12px;
   min-width: 0;
 }
 
@@ -3587,41 +3636,40 @@ p {
   gap: 8px;
 }
 
-.role-app-copy h1 {
+.role-app-card h2 {
   color: #070712;
-  font-size: clamp(2.05rem, 4vw, 3.8rem);
+  font-size: clamp(1.65rem, 3vw, 2.75rem);
   font-weight: 930;
-  line-height: 0.99;
-  max-width: 13ch;
+  line-height: 1;
+  max-width: 12ch;
   text-wrap: balance;
 }
 
-.role-app-copy p {
+.role-app-card p {
   color: #3f4054;
-  font-size: 0.98rem;
-  font-weight: 620;
-  line-height: 1.68;
-  max-width: 64ch;
+  font-size: 0.94rem;
+  font-weight: 650;
+  line-height: 1.58;
 }
 
 .role-app-feature-list {
   display: grid;
   gap: 8px;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .role-app-feature-list span {
   align-items: center;
   background: #ffffff;
-  border: 1px solid #e0e1ea;
+  border: 1px solid color-mix(in srgb, var(--role-accent) 14%, #e0e1ea);
   border-radius: 8px;
   color: #252639;
   display: flex;
-  font-size: 0.86rem;
+  font-size: 0.83rem;
   font-weight: 840;
   gap: 8px;
-  min-height: 40px;
-  padding: 9px 10px;
+  min-height: 38px;
+  padding: 8px 10px;
 }
 
 .role-app-feature-list svg {
@@ -3634,20 +3682,20 @@ p {
   border: 1px solid color-mix(in srgb, var(--role-accent) 26%, #d6d7e4);
   border-radius: 8px;
   display: grid;
-  gap: 12px;
-  min-height: 320px;
-  padding: 14px;
+  gap: 10px;
+  min-height: 280px;
+  padding: 12px;
   position: relative;
 }
 
 .role-app-preview::after {
-  background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--role-accent) 14%, transparent) 0 1px, transparent 1px 18px);
-  bottom: 14px;
+  background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--role-accent) 16%, transparent) 0 1px, transparent 1px 18px);
+  bottom: 12px;
   content: '';
   height: 1px;
-  left: 14px;
+  left: 12px;
   position: absolute;
-  right: 14px;
+  right: 12px;
 }
 
 .role-app-preview-bar {
@@ -3656,7 +3704,7 @@ p {
   display: flex;
   gap: 10px;
   justify-content: space-between;
-  padding-bottom: 12px;
+  padding-bottom: 10px;
 }
 
 .role-app-preview-bar span,
@@ -3673,7 +3721,7 @@ p {
 .role-app-preview-bar strong {
   color: #070712;
   flex: 1;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   font-weight: 930;
 }
 
@@ -3686,12 +3734,12 @@ p {
   color: #ffffff;
   display: flex;
   gap: 10px;
-  min-height: 108px;
+  min-height: 96px;
   padding: 14px;
 }
 
 .role-app-preview-hero span {
-  font-size: 1.2rem;
+  font-size: 1.12rem;
   font-weight: 930;
   line-height: 1;
 }
@@ -3708,9 +3756,9 @@ p {
   border-radius: 8px;
   display: grid;
   gap: 8px;
-  grid-template-columns: auto minmax(0, 0.55fr) minmax(0, 1fr);
-  min-height: 48px;
-  padding: 10px;
+  grid-template-columns: auto minmax(0, 0.48fr) minmax(0, 1fr);
+  min-height: 46px;
+  padding: 9px;
 }
 
 .role-app-preview-list svg {
@@ -3719,20 +3767,20 @@ p {
 
 .role-app-preview-list strong {
   color: #070712;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 930;
 }
 
 .role-app-preview-list em {
   color: #3f4054;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-style: normal;
   font-weight: 760;
   line-height: 1.25;
 }
 
 .role-app-actions {
-  align-content: center;
+  align-content: end;
   display: grid;
   gap: 10px;
   min-width: 0;
@@ -3815,8 +3863,34 @@ p {
     grid-template-columns: 1fr;
   }
 
-  .role-app-slide {
+  .role-app-board {
     grid-template-columns: 1fr;
+    min-height: 720px;
+    overflow: hidden;
+    padding: 18px;
+    position: relative;
+  }
+
+  .role-app-card {
+    grid-column: 1;
+    grid-row: 1;
+    max-width: 520px;
+    justify-self: center;
+    transform: translate3d(var(--role-shift-x), var(--role-shift-y), 0) scale(var(--role-scale));
+    width: min(calc(100% - 28px), 520px);
+    z-index: var(--role-layer);
+  }
+
+  .role-app-card.is-active {
+    transform: translate3d(0, 0, 0) scale(1);
+    z-index: 10;
+  }
+
+  .role-app-card.is-dimmed {
+    background: var(--role-soft);
+    border-color: color-mix(in srgb, var(--role-accent) 32%, #d6d7e4);
+    opacity: 0.7;
+    pointer-events: none;
   }
 
   .role-app-actions {
@@ -3859,14 +3933,40 @@ p {
   }
 
   .role-app-nav {
-    grid-template-columns: 1fr;
+    background: var(--role-soft);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 5;
   }
 
-  .role-app-slide {
+  .role-app-tab {
+    align-content: center;
+    gap: 4px;
+    min-height: 54px;
+    padding: 7px 6px;
+  }
+
+  .role-app-tab span {
+    font-size: 0.78rem;
+  }
+
+  .role-app-tab small {
+    font-size: 0.6rem;
+  }
+
+  .role-app-board {
+    min-height: 790px;
+    padding: 16px 14px 22px;
+    touch-action: pan-y;
+  }
+
+  .role-app-card {
     padding: 16px;
   }
 
-  .role-app-copy h1 {
+  .role-app-card h2 {
     font-size: clamp(2rem, 12vw, 2.75rem);
   }
 
@@ -3897,7 +3997,13 @@ p {
     animation: none;
   }
 
-  .role-app-track {
+  .role-app-card,
+  .role-app-tab {
     transition: none;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
   }
 }

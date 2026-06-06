@@ -24,7 +24,7 @@ import PwaNotificationPrompt from '../../components/auth/PwaNotificationPrompt';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   AUTH_ROLE_OPTIONS,
-  getAuthRoleByAppPath,
+  getAuthRoleByPath,
   getAuthRoleOption,
   normalizeAuthRole,
   type AuthRoleId,
@@ -88,13 +88,22 @@ const goToWebPath = (path: string) => {
   }
 };
 
+const openPublicWebPath = (path: string) => {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.location.assign(path);
+    return true;
+  }
+
+  return false;
+};
+
 const getResetTicketStorageKey = (role: AuthRoleId, instituteId: string, userId: string) => (
   `${PASSWORD_RESET_STORAGE_PREFIX}:${role}:${instituteId.trim().toLowerCase()}:${userId.trim().toLowerCase()}`
 );
 
 const getLockedRoleFromPath = (): AuthRoleId | null => {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return null;
-  return getAuthRoleByAppPath(window.location.pathname);
+  return getAuthRoleByPath(window.location.pathname);
 };
 
 const readSavedResetTicket = (role: AuthRoleId, instituteId: string, userId: string): PasswordResetTicket | null => {
@@ -462,6 +471,26 @@ export default function InstituteLoginScreen() {
               layout.isCompact && styles.cardCompact,
             ]}
           >
+            <View style={styles.authChrome}>
+              <View style={[styles.authRoleBadge, { borderColor: activeRoleConfig.border, backgroundColor: activeRoleConfig.soft }]}>
+                <Ionicons color={activeRoleConfig.accent} name={activeRoleConfig.icon} size={16} />
+                <Text style={[styles.authRoleBadgeText, { color: activeRoleConfig.accent }]}>
+                  {activeRoleConfig.shortName} login
+                </Text>
+              </View>
+              <TouchableOpacity
+                accessibilityLabel="Go to Shii-Edu home"
+                activeOpacity={0.82}
+                onPress={() => {
+                  openPublicWebPath('/');
+                }}
+                style={styles.homeButton}
+              >
+                <Ionicons color="#343548" name="home-outline" size={16} />
+                <Text style={styles.homeButtonText}>Home</Text>
+              </TouchableOpacity>
+            </View>
+
             <View style={[styles.header, layout.isMobile && styles.headerMobile]}>
               <View style={[styles.logoCage, layout.isMobile && styles.logoCageMobile]}>
                 {returningLogoUrl ? (
@@ -486,40 +515,39 @@ export default function InstituteLoginScreen() {
               </Text>
             </View>
 
-            <View style={lockedRole ? styles.lockedRoleTabs : styles.roleTabs}>
-              {visibleRoleOptions.map((tab) => {
-                const selected = activeRole === tab.id;
-                return (
-                  <TouchableOpacity
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected }}
-                    activeOpacity={0.84}
-                    disabled={Boolean(lockedRole)}
-                    key={tab.id}
-                    onPress={() => {
-                      if (lockedRole) return;
-                      clearErrors();
-                      setActiveRole(tab.id);
-                      goToWebPath(tab.authPath);
-                      navigation.navigate(tab.routeName, { initialRole: tab.id });
-                    }}
-                    style={[
-                      styles.roleTab,
-                      lockedRole && styles.lockedRoleTab,
-                      {
-                        borderColor: selected ? tab.border : '#D9D8E8',
-                        backgroundColor: selected ? tab.soft : '#FFFFFF',
-                      },
-                    ]}
-                  >
-                    <Ionicons color={selected ? tab.accent : '#737383'} name={tab.icon} size={17} />
-                    <Text style={[styles.roleTabText, { color: selected ? '#010110' : '#4B4B5F' }]}>
-                      {tab.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            {!lockedRole ? (
+              <View style={styles.roleTabs}>
+                {visibleRoleOptions.map((tab) => {
+                  const selected = activeRole === tab.id;
+                  return (
+                    <TouchableOpacity
+                      accessibilityRole="tab"
+                      accessibilityState={{ selected }}
+                      activeOpacity={0.84}
+                      key={tab.id}
+                      onPress={() => {
+                        clearErrors();
+                        setActiveRole(tab.id);
+                        goToWebPath(tab.authPath);
+                        navigation.navigate(tab.routeName, { initialRole: tab.id });
+                      }}
+                      style={[
+                        styles.roleTab,
+                        {
+                          borderColor: selected ? tab.border : '#D9D8E8',
+                          backgroundColor: selected ? tab.soft : '#FFFFFF',
+                        },
+                      ]}
+                    >
+                      <Ionicons color={selected ? tab.accent : '#737383'} name={tab.icon} size={17} />
+                      <Text style={[styles.roleTabText, { color: selected ? '#010110' : '#4B4B5F' }]}>
+                        {tab.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : null}
 
             {lockedRole ? (
               <View style={[styles.lockedRoleNotice, { borderColor: activeRoleConfig.border, backgroundColor: activeRoleConfig.soft }]}>
@@ -717,24 +745,23 @@ export default function InstituteLoginScreen() {
 
             <View style={styles.footer}>
               <Ionicons name="lock-closed-outline" size={15} color="#635BFF" />
-              <Text style={styles.footerText}>Every session opens only your institute workspace</Text>
+              <Text style={styles.footerText}>Every session opens only the {activeRoleConfig.shortName} workspace</Text>
             </View>
             {authStage === 'biometric-required' ? (
               <Text style={styles.supportText}>Your password remains available if biometric access is unavailable.</Text>
             ) : null}
-            {!lockedRole ? (
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => {
-                  goToWebPath('/roles');
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                if (!openPublicWebPath('/roles')) {
                   navigation.navigate('RoleSelection');
-                }}
-                style={styles.roleSelectionLink}
-              >
-                <Ionicons name="grid-outline" size={15} color="#635BFF" />
-                <Text style={styles.roleSelectionLinkText}>Choose a different role</Text>
-              </TouchableOpacity>
-            ) : null}
+                }
+              }}
+              style={styles.roleSelectionLink}
+            >
+              <Ionicons name="swap-horizontal-outline" size={15} color="#635BFF" />
+              <Text style={styles.roleSelectionLinkText}>Different role?</Text>
+            </TouchableOpacity>
             <Text style={styles.supportText}>Contact your institute administrator if your password needs to be reset.</Text>
           </View>
           </View>
@@ -983,6 +1010,42 @@ const styles = StyleSheet.create({
   cardDesktop: { maxWidth: 480, padding: 30 },
   cardMobile: { alignSelf: 'center', maxWidth: '100%', borderRadius: 8, padding: 18 },
   cardCompact: { padding: 16, borderRadius: 8 },
+  authChrome: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 20,
+  },
+  authRoleBadge: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 7,
+    minHeight: 36,
+    paddingHorizontal: 10,
+  },
+  authRoleBadgeText: {
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  homeButton: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D9D8E8',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    minHeight: 36,
+    paddingHorizontal: 10,
+  },
+  homeButtonText: {
+    color: '#343548',
+    fontSize: 12,
+    fontWeight: '900',
+  },
   header: { alignItems: 'center', marginBottom: 30 },
   headerMobile: { marginBottom: 18 },
   logoCage: { backgroundColor: '#FFFFFF', padding: 10, borderRadius: 8, marginBottom: 15, borderWidth: 1, borderColor: '#D9D8E8' },
@@ -1112,8 +1175,6 @@ const styles = StyleSheet.create({
   roleTab: { alignItems: 'center', borderRadius: 8, borderWidth: 1, flex: 1, flexDirection: 'row', justifyContent: 'center', minHeight: 42, paddingHorizontal: 7 },
   roleTabText: { fontSize: 12, fontWeight: '900', marginLeft: 6 },
   roleTabs: { flexDirection: 'row', gap: 7, marginBottom: 12 },
-  lockedRoleTabs: { flexDirection: 'row', marginBottom: 10 },
-  lockedRoleTab: { flex: 0, justifyContent: 'flex-start', paddingHorizontal: 12 },
   lockedRoleNotice: {
     alignItems: 'center',
     borderRadius: 8,
