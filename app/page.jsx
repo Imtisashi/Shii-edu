@@ -186,7 +186,7 @@ export default function HomePage() {
           </span>
         </a>
 
-        <nav className="landing-links" aria-label="Landing sections">
+        <nav className="landing-links" aria-label="Home sections">
           <a href="#workspace">Workspace</a>
           <a href="#features">Features</a>
           <a href="#roles">Roles</a>
@@ -198,7 +198,7 @@ export default function HomePage() {
 
         <a className="landing-login" href="/roles">
           <LockKeyhole size={16} aria-hidden="true" />
-          Choose role
+          Login
         </a>
       </header>
 
@@ -216,7 +216,7 @@ export default function HomePage() {
             </p>
             <div className="landing-actions">
               <a className="landing-primary-action" href="/roles">
-                Choose your role
+                Login
                 <ArrowRight size={17} aria-hidden="true" />
               </a>
               <a className="landing-secondary-action" href="#workspace">
@@ -292,7 +292,7 @@ export default function HomePage() {
             <div>
               <h2 id="explorer-title">Pick a role and the surface changes shape.</h2>
               <p>
-                The app is built around working roles, not one oversized menu. The landing page mirrors that behavior so
+                The app is built around working roles, not one oversized menu. The home page mirrors that behavior so
                 mobile visitors can understand the product by touching it.
               </p>
             </div>
@@ -410,7 +410,7 @@ export default function HomePage() {
             <div>
               <h2 id="legal-title">Public pages are ready to share.</h2>
               <p>
-                The landing page, policy pages, sitemap, robots file, and metadata render from the server for a stable
+                The home page, policy pages, sitemap, robots file, and metadata render from the server for a stable
                 public entry point.
               </p>
             </div>

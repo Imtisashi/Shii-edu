@@ -2546,14 +2546,19 @@ p {
   }
 
   .landing-v2 .landing-login {
-    display: none;
+    display: inline-flex;
+    font-size: 0.78rem;
+    min-height: 34px;
+    padding: 7px 11px;
   }
 
   .landing-v2 .landing-hero {
-    gap: 22px;
+    align-content: stretch;
+    gap: 20px;
+    min-height: calc(100svh - 112px);
     max-width: 100vw;
     overflow: hidden;
-    padding: 28px 14px 36px;
+    padding: 24px 14px 30px;
     width: 100%;
   }
 
@@ -2561,8 +2566,8 @@ p {
   .landing-v2 .landing-actions,
   .landing-v2 .landing-hero-line,
   .landing-v2 .landing-onboarding {
-    inline-size: calc(100vw - 28px);
-    max-inline-size: calc(100vw - 28px);
+    inline-size: 100%;
+    max-inline-size: 100%;
     min-width: 0;
   }
 
@@ -2585,20 +2590,20 @@ p {
   .landing-v2 .landing-hero-line {
     font-size: 0.96rem;
     line-height: 1.55;
-    margin-inline: 0 auto;
-    max-width: min(300px, calc(100vw - 48px)) !important;
+    margin-inline: 0;
+    max-width: 100% !important;
     overflow-wrap: anywhere;
     padding: 12px;
-    width: min(300px, calc(100vw - 48px)) !important;
+    width: 100% !important;
   }
 
   .landing-v2 .landing-actions,
   .landing-v2 .landing-onboarding {
     align-items: stretch;
     display: grid;
-    margin-inline: 0 auto;
-    max-width: min(300px, calc(100vw - 48px)) !important;
-    width: min(300px, calc(100vw - 48px)) !important;
+    margin-inline: 0;
+    max-width: 100% !important;
+    width: 100% !important;
   }
 
   .landing-v2 .landing-actions {
@@ -2617,10 +2622,10 @@ p {
 
   .landing-v2 .cinematic-stage {
     aspect-ratio: auto;
-    inline-size: min(300px, calc(100vw - 48px)) !important;
-    margin-inline: 0 auto;
-    max-inline-size: min(300px, calc(100vw - 48px)) !important;
-    min-height: 330px;
+    inline-size: 100% !important;
+    margin-inline: 0;
+    max-inline-size: 100% !important;
+    min-height: clamp(340px, 58svh, 430px);
     min-width: 0;
   }
 
@@ -3511,9 +3516,9 @@ p {
 @media (max-width: 680px) {
   .pixel-artifact-button {
     grid-template-columns: 1fr;
-    inline-size: min(300px, calc(100vw - 48px));
-    margin-inline: 0 auto;
-    max-inline-size: min(300px, calc(100vw - 48px));
+    inline-size: 100%;
+    margin-inline: 0;
+    max-inline-size: 100%;
   }
 
   .pixel-artifact-grid {

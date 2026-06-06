@@ -10,7 +10,7 @@ export function generateMetadata() {
   return routeMetadata({
     description: 'Choose the Shii-Edu role app for Institute, Parents, or Driver access.',
     path: '/roles',
-    title: 'Choose role',
+    title: 'Choose your role',
   });
 }
 
@@ -37,7 +37,7 @@ export default function RoleChoicePage() {
           </span>
         </a>
         <div className="role-choice-toplinks">
-          <a href="/">Landing</a>
+          <a href="/">Home</a>
           <a href="#register">Register</a>
         </div>
       </nav>
@@ -45,7 +45,7 @@ export default function RoleChoicePage() {
       <section className="role-choice-shell">
         <div className="role-choice-intro">
           <span>Installable role workspaces</span>
-          <h1>Choose the app identity that matches your account.</h1>
+          <h1>Choose your role.</h1>
           <p>
             Institute, Parents, and Driver users land in different auth flows, manifests, notification contexts, and
             app surfaces. Each one stays white, crisp, and tuned for the work that role actually does.
