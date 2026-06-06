@@ -15,6 +15,7 @@ import { installWebPerformanceTuning } from './src/utils/webPerformanceTuning';
 import { installWebScrollFix } from './src/utils/webScrollFix';
 import { installWebFeedbackBridge } from './src/utils/userFeedback';
 import { installFirestoreOfflinePersistence } from './src/services/offlinePersistence';
+import { getAuthRoleByAppPath, getAuthRoleOption } from './src/constants/authRoles';
 
 const linking = {
   enabled: true,
@@ -30,15 +31,19 @@ const linking = {
   },
 };
 
-const documentTitle = {
-  formatter: (options) => {
-    const routeTitle = options?.title;
-    return routeTitle && routeTitle !== 'Login' ? `${routeTitle} | Shii-Edu` : 'Shii-Edu';
-  },
+const formatDefaultDocumentTitle = (options) => {
+  const routeTitle = options?.title;
+  return routeTitle && routeTitle !== 'Login' ? `${routeTitle} | Shii-Edu` : 'Shii-Edu';
+};
+
+const getLockedRoleFromLocation = () => {
+  if (typeof window === 'undefined') return null;
+  return getAuthRoleByAppPath(window.location.pathname);
 };
 
 export default function App() {
   const [iconsReady, setIconsReady] = React.useState(false);
+  const [lockedRole, setLockedRole] = React.useState(getLockedRoleFromLocation);
 
   React.useEffect(() => {
     installWebFeedbackBridge();
@@ -60,6 +65,36 @@ export default function App() {
     };
   }, []);
 
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const syncLockedRole = () => setLockedRole(getLockedRoleFromLocation());
+    window.addEventListener('popstate', syncLockedRole);
+    return () => {
+      window.removeEventListener('popstate', syncLockedRole);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (!lockedRole) {
+      document.title = 'Shii-Edu';
+      return;
+    }
+    const lockedRoleOption = getAuthRoleOption(lockedRole);
+    document.title = `Shii-Edu ${lockedRoleOption.shortName}`;
+  }, [lockedRole]);
+
+  const navigationDocumentTitle = React.useMemo(
+    () => ({
+      formatter: (options) => {
+        if (!lockedRole) return formatDefaultDocumentTitle(options);
+        const lockedRoleOption = getAuthRoleOption(lockedRole);
+        return `Shii-Edu ${lockedRoleOption.shortName}`;
+      },
+    }),
+    [lockedRole]
+  );
+
   if (!iconsReady) {
     return <GestureHandlerRootView style={{ flex: 1, backgroundColor: EDGE_BACKGROUND }} />;
   }
@@ -72,9 +107,9 @@ export default function App() {
             <InstitutionProvider>
             <RootLayoutProvider>
               <LayoutContextProvider>
-                <NavigationContainer linking={linking} documentTitle={documentTitle}>
+                <NavigationContainer linking={lockedRole ? undefined : linking} documentTitle={navigationDocumentTitle}>
                   <RootLayout>
-                    <AppNavigator />
+                    <AppNavigator lockedRole={lockedRole} />
                   </RootLayout>
                 </NavigationContainer>
               </LayoutContextProvider>

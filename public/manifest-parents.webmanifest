@@ -6,20 +6,20 @@
     {
       "purpose": "any maskable",
       "sizes": "192x192",
-      "src": "/icon.png",
+      "src": "/icon-parents.png",
       "type": "image/png"
     },
     {
       "purpose": "any maskable",
       "sizes": "512x512",
-      "src": "/icon.png",
+      "src": "/icon-parents.png",
       "type": "image/png"
     }
   ],
-  "id": "/auth/parents",
+  "id": "/pwa/parents",
   "name": "Shii-Edu Parents",
-  "scope": "/",
+  "scope": "/app/parents",
   "short_name": "Parents",
-  "start_url": "/auth/parents",
+  "start_url": "/app/parents",
   "theme_color": "#0F766E"
 }

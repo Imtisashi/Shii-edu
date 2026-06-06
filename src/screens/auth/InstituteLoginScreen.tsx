@@ -24,6 +24,7 @@ import PwaNotificationPrompt from '../../components/auth/PwaNotificationPrompt';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   AUTH_ROLE_OPTIONS,
+  getAuthRoleByAppPath,
   getAuthRoleOption,
   normalizeAuthRole,
   type AuthRoleId,
@@ -91,6 +92,11 @@ const getResetTicketStorageKey = (role: AuthRoleId, instituteId: string, userId:
   `${PASSWORD_RESET_STORAGE_PREFIX}:${role}:${instituteId.trim().toLowerCase()}:${userId.trim().toLowerCase()}`
 );
 
+const getLockedRoleFromPath = (): AuthRoleId | null => {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return null;
+  return getAuthRoleByAppPath(window.location.pathname);
+};
+
 const readSavedResetTicket = (role: AuthRoleId, instituteId: string, userId: string): PasswordResetTicket | null => {
   if (Platform.OS !== 'web' || typeof window === 'undefined' || !instituteId || !userId) return null;
 
@@ -144,8 +150,12 @@ export default function InstituteLoginScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [biometricSubmitting, setBiometricSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const routeLockedRole = route?.params?.lockedRole
+    ? normalizeAuthRole(route.params.lockedRole)
+    : null;
+  const lockedRole = routeLockedRole || getLockedRoleFromPath();
   const [activeRole, setActiveRole] = useState<AuthRoleId>(
-    normalizeAuthRole(route?.params?.initialRole)
+    lockedRole || normalizeAuthRole(route?.params?.initialRole)
   );
   const [fieldWarnings, setFieldWarnings] = useState({
     instituteId: false,
@@ -176,8 +186,8 @@ export default function InstituteLoginScreen() {
   }, [cachedInstituteIdentity]);
 
   useEffect(() => {
-    setActiveRole(normalizeAuthRole(route?.params?.initialRole));
-  }, [route?.params?.initialRole]);
+    setActiveRole(lockedRole || normalizeAuthRole(route?.params?.initialRole));
+  }, [lockedRole, route?.params?.initialRole]);
 
   useEffect(() => {
     const roleOption = getAuthRoleOption(activeRole);
@@ -214,6 +224,9 @@ export default function InstituteLoginScreen() {
   };
 
   const activeRoleConfig = getAuthRoleOption(activeRole);
+  const visibleRoleOptions = lockedRole
+    ? [getAuthRoleOption(lockedRole)]
+    : AUTH_ROLE_OPTIONS;
 
   const openPasswordReset = () => {
     const nextInstituteId = instituteId.trim();
@@ -473,16 +486,18 @@ export default function InstituteLoginScreen() {
               </Text>
             </View>
 
-            <View style={styles.roleTabs}>
-              {AUTH_ROLE_OPTIONS.map((tab) => {
+            <View style={lockedRole ? styles.lockedRoleTabs : styles.roleTabs}>
+              {visibleRoleOptions.map((tab) => {
                 const selected = activeRole === tab.id;
                 return (
                   <TouchableOpacity
                     accessibilityRole="tab"
                     accessibilityState={{ selected }}
                     activeOpacity={0.84}
+                    disabled={Boolean(lockedRole)}
                     key={tab.id}
                     onPress={() => {
+                      if (lockedRole) return;
                       clearErrors();
                       setActiveRole(tab.id);
                       goToWebPath(tab.authPath);
@@ -490,6 +505,7 @@ export default function InstituteLoginScreen() {
                     }}
                     style={[
                       styles.roleTab,
+                      lockedRole && styles.lockedRoleTab,
                       {
                         borderColor: selected ? tab.border : '#D9D8E8',
                         backgroundColor: selected ? tab.soft : '#FFFFFF',
@@ -504,6 +520,15 @@ export default function InstituteLoginScreen() {
                 );
               })}
             </View>
+
+            {lockedRole ? (
+              <View style={[styles.lockedRoleNotice, { borderColor: activeRoleConfig.border, backgroundColor: activeRoleConfig.soft }]}>
+                <Ionicons color={activeRoleConfig.accent} name="phone-portrait-outline" size={18} />
+                <Text style={styles.lockedRoleNoticeText}>
+                  This installed app is locked to {activeRoleConfig.label} access.
+                </Text>
+              </View>
+            ) : null}
 
             <View style={[styles.rolePanel, { backgroundColor: activeRoleConfig.soft, borderColor: activeRoleConfig.border }]}>
               <View style={[styles.roleIcon, { backgroundColor: '#FFFFFF', borderColor: activeRoleConfig.border }]}>
@@ -678,7 +703,7 @@ export default function InstituteLoginScreen() {
                 borderColor={activeRoleConfig.border}
                 manifestHref={activeRoleConfig.manifestHref}
                 softColor={activeRoleConfig.soft}
-                startUrl={activeRoleConfig.authPath}
+                startUrl={activeRoleConfig.appPath}
                 style={styles.downloadAction}
               />
               <PwaNotificationPrompt
@@ -697,17 +722,19 @@ export default function InstituteLoginScreen() {
             {authStage === 'biometric-required' ? (
               <Text style={styles.supportText}>Your password remains available if biometric access is unavailable.</Text>
             ) : null}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => {
-                goToWebPath('/roles');
-                navigation.navigate('RoleSelection');
-              }}
-              style={styles.roleSelectionLink}
-            >
-              <Ionicons name="grid-outline" size={15} color="#635BFF" />
-              <Text style={styles.roleSelectionLinkText}>Choose a different role</Text>
-            </TouchableOpacity>
+            {!lockedRole ? (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => {
+                  goToWebPath('/roles');
+                  navigation.navigate('RoleSelection');
+                }}
+                style={styles.roleSelectionLink}
+              >
+                <Ionicons name="grid-outline" size={15} color="#635BFF" />
+                <Text style={styles.roleSelectionLinkText}>Choose a different role</Text>
+              </TouchableOpacity>
+            ) : null}
             <Text style={styles.supportText}>Contact your institute administrator if your password needs to be reset.</Text>
           </View>
           </View>
@@ -1085,6 +1112,26 @@ const styles = StyleSheet.create({
   roleTab: { alignItems: 'center', borderRadius: 8, borderWidth: 1, flex: 1, flexDirection: 'row', justifyContent: 'center', minHeight: 42, paddingHorizontal: 7 },
   roleTabText: { fontSize: 12, fontWeight: '900', marginLeft: 6 },
   roleTabs: { flexDirection: 'row', gap: 7, marginBottom: 12 },
+  lockedRoleTabs: { flexDirection: 'row', marginBottom: 10 },
+  lockedRoleTab: { flex: 0, justifyContent: 'flex-start', paddingHorizontal: 12 },
+  lockedRoleNotice: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+    minHeight: 42,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+  },
+  lockedRoleNoticeText: {
+    color: '#252639',
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 17,
+  },
   roleSelectionLink: {
     alignItems: 'center',
     alignSelf: 'center',

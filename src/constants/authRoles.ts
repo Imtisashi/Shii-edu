@@ -5,14 +5,17 @@ export type AuthRoleId = 'driver' | 'institute' | 'parent';
 
 export type AuthRoleOption = {
   accent: string;
+  appPath: string;
   authPath: string;
   border: string;
   copy: string;
   features: string[];
   helper: string;
   icon: ComponentProps<typeof Ionicons>['name'];
+  iconHref: string;
   id: AuthRoleId;
   label: string;
+  manifestId: string;
   manifestHref: string;
   placeholder: string;
   routeName: string;
@@ -24,6 +27,7 @@ export type AuthRoleOption = {
 export const AUTH_ROLE_OPTIONS: AuthRoleOption[] = [
   {
     accent: '#635BFF',
+    appPath: '/app/institute',
     authPath: '/auth/institute',
     border: '#D9D7FF',
     copy: 'For admins, teachers, and students entering their institute workspace.',
@@ -34,8 +38,10 @@ export const AUTH_ROLE_OPTIONS: AuthRoleOption[] = [
     ],
     helper: 'Institute accounts open the workspace tools assigned by your campus.',
     icon: 'business-outline',
+    iconHref: '/icon-institute.png',
     id: 'institute',
     label: 'Institute',
+    manifestId: '/pwa/institute',
     manifestHref: '/manifest-institute.webmanifest',
     placeholder: 'Admin, teacher, or student User ID',
     routeName: 'InstituteAuth',
@@ -45,6 +51,7 @@ export const AUTH_ROLE_OPTIONS: AuthRoleOption[] = [
   },
   {
     accent: '#0F766E',
+    appPath: '/app/parents',
     authPath: '/auth/parents',
     border: '#B6E3D8',
     copy: 'For parents and guardians checking fees, notices, messages, and route updates.',
@@ -55,8 +62,10 @@ export const AUTH_ROLE_OPTIONS: AuthRoleOption[] = [
     ],
     helper: 'Parents only see records linked to their registered student profile.',
     icon: 'people-outline',
+    iconHref: '/icon-parents.png',
     id: 'parent',
     label: 'Parents',
+    manifestId: '/pwa/parents',
     manifestHref: '/manifest-parents.webmanifest',
     placeholder: 'Parent or guardian User ID',
     routeName: 'ParentsAuth',
@@ -66,6 +75,7 @@ export const AUTH_ROLE_OPTIONS: AuthRoleOption[] = [
   },
   {
     accent: '#B45309',
+    appPath: '/app/driver',
     authPath: '/auth/driver',
     border: '#F2D49B',
     copy: 'For drivers broadcasting live route status and checking assigned destinations.',
@@ -76,8 +86,10 @@ export const AUTH_ROLE_OPTIONS: AuthRoleOption[] = [
     ],
     helper: 'Driver accounts open the route console after institute verification.',
     icon: 'bus-outline',
+    iconHref: '/icon-driver.png',
     id: 'driver',
     label: 'Driver',
+    manifestId: '/pwa/driver',
     manifestHref: '/manifest-driver.webmanifest',
     placeholder: 'Driver User ID',
     routeName: 'DriverAuth',
@@ -99,4 +111,14 @@ export const normalizeAuthRole = (value: unknown): AuthRoleId => {
 export const getAuthRoleOption = (value: unknown): AuthRoleOption => {
   const role = normalizeAuthRole(value);
   return AUTH_ROLE_OPTIONS.find((option) => option.id === role) || AUTH_ROLE_OPTIONS[0];
+};
+
+export const getAuthRoleByAppPath = (pathname: unknown): AuthRoleId | null => {
+  const normalizedPath = String(pathname || '').trim().toLowerCase();
+  const match = AUTH_ROLE_OPTIONS.find((option) => {
+    const appPath = option.appPath.replace(/\/$/, '').toLowerCase();
+    return normalizedPath === appPath || normalizedPath.startsWith(`${appPath}/`);
+  });
+
+  return match?.id || null;
 };

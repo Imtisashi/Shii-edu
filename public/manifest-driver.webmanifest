@@ -6,20 +6,20 @@
     {
       "purpose": "any maskable",
       "sizes": "192x192",
-      "src": "/icon.png",
+      "src": "/icon-driver.png",
       "type": "image/png"
     },
     {
       "purpose": "any maskable",
       "sizes": "512x512",
-      "src": "/icon.png",
+      "src": "/icon-driver.png",
       "type": "image/png"
     }
   ],
-  "id": "/auth/driver",
+  "id": "/pwa/driver",
   "name": "Shii-Edu Driver",
-  "scope": "/",
+  "scope": "/app/driver",
   "short_name": "Driver",
-  "start_url": "/auth/driver",
+  "start_url": "/app/driver",
   "theme_color": "#B45309"
 }

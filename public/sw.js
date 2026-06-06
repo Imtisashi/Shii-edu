@@ -1,8 +1,11 @@
-const CACHE_NAME = 'shii-edu-pwa-shell-v5';
+const CACHE_NAME = 'shii-edu-pwa-shell-v6';
 const SHELL_URLS = [
   '/',
   '/roles',
   '/login',
+  '/app/institute',
+  '/app/parents',
+  '/app/driver',
   '/auth/institute',
   '/auth/parents',
   '/auth/driver',
@@ -11,7 +14,15 @@ const SHELL_URLS = [
   '/manifest-institute.webmanifest',
   '/manifest-parents.webmanifest',
   '/manifest-driver.webmanifest',
-  '/icon.png'
+  '/icon.png',
+  '/icon-institute.png',
+  '/icon-parents.png',
+  '/icon-driver.png'
+];
+const ROLE_SCOPE_FALLBACKS = [
+  { scope: '/app/institute', fallback: '/app/institute' },
+  { scope: '/app/parents', fallback: '/app/parents' },
+  { scope: '/app/driver', fallback: '/app/driver' }
 ];
 
 self.addEventListener('install', function (event) {
@@ -38,6 +49,11 @@ const cacheAndReturn = function (request, response) {
   return response;
 };
 
+const getNavigationFallback = function (pathname) {
+  const match = ROLE_SCOPE_FALLBACKS.find(function (item) { return pathname === item.scope || pathname.indexOf(item.scope + "/") === 0; });
+  return match ? match.fallback : '/expo-index.html';
+};
+
 self.addEventListener('fetch', function (event) {
   const request = event.request;
   if (request.method !== "GET") return;
@@ -45,10 +61,11 @@ self.addEventListener('fetch', function (event) {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === 'navigate') {
+    const fallbackUrl = getNavigationFallback(url.pathname);
     event.respondWith(
       fetch(request)
         .then(function (response) { return cacheAndReturn(request, response); })
-        .catch(function () { return caches.match(request).then(function (cached) { return cached || caches.match('/expo-index.html') || caches.match('/'); }); })
+        .catch(function () { return caches.match(request).then(function (cached) { return cached || caches.match(fallbackUrl) || caches.match('/expo-index.html') || caches.match('/'); }); })
     );
     return;
   }

@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import InstituteSyncSplash from '../components/auth/InstituteSyncSplash';
+import { getAuthRoleOption } from '../constants/authRoles';
 
 // Import all institute navigators
 import InstituteAuthNavigator from './InstituteAuthNavigator';
@@ -12,8 +13,41 @@ import AdminNavigator from './AdminNavigator';
 import ParentNavigator from './ParentNavigator';
 import DriverNavigator from './DriverNavigator';
 
-export default function AppNavigator() {
+const roleCanOpenLockedApp = (lockedRole, userRole) => {
+  if (!lockedRole) return true;
+  if (lockedRole === 'parent') return userRole === 'parent';
+  if (lockedRole === 'driver') return userRole === 'driver';
+  return !['driver', 'parent', 'superadmin'].includes(userRole);
+};
+
+function ProfileIssueState({
+  buttonLabel = 'Sign out',
+  hint,
+  message,
+  onPress,
+  title,
+}) {
+  return (
+    <View style={styles.profileIssueContainer}>
+      <View style={styles.profileIssueCard}>
+        <View style={styles.profileIssueIcon}>
+          <Ionicons name="shield-outline" size={30} color="#635BFF" />
+        </View>
+        <Text style={styles.profileIssueTitle}>{title}</Text>
+        <Text style={styles.profileIssueText}>{message}</Text>
+        {hint ? <Text style={styles.profileIssueHint}>{hint}</Text> : null}
+        <TouchableOpacity style={styles.profileIssueButton} onPress={onPress}>
+          <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
+          <Text style={styles.profileIssueButtonText}>{buttonLabel}</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+export default function AppNavigator({ lockedRole = null }) {
   const { currentUser, userData, loading, logout, profileError } = useAuth();
+  const lockedRoleOption = lockedRole ? getAuthRoleOption(lockedRole) : null;
 
   // 1. Show loading while checking auth state or during the registration gap
   if (loading) {
@@ -22,52 +56,40 @@ export default function AppNavigator() {
 
   // 2. Not logged in? Use the institute-scoped login.
   if (!currentUser) {
-    return <InstituteAuthNavigator />;
+    return <InstituteAuthNavigator lockedRole={lockedRole} />;
   }
 
   if (!userData) {
     return (
-      <View style={styles.profileIssueContainer}>
-        <View style={styles.profileIssueCard}>
-          <View style={styles.profileIssueIcon}>
-            <Ionicons name="shield-outline" size={30} color="#635BFF" />
-          </View>
-          <Text style={styles.profileIssueTitle}>Account Profile Required</Text>
-          <Text style={styles.profileIssueText}>
-            {profileError || 'Your account is authenticated, but the platform profile could not be loaded.'}
-          </Text>
-          <Text style={styles.profileIssueHint}>
-            Ask the platform owner to create or repair your Firestore user profile, then sign in again.
-          </Text>
-          <TouchableOpacity style={styles.profileIssueButton} onPress={logout}>
-            <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
-            <Text style={styles.profileIssueButtonText}>Sign out</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <ProfileIssueState
+        hint="Ask the platform owner to create or repair your Firestore user profile, then sign in again."
+        message={profileError || 'Your account is authenticated, but the platform profile could not be loaded.'}
+        onPress={logout}
+        title="Account Profile Required"
+      />
     );
   }
 
   // 3. Institute role logic - using case-insensitive, whitespace-tolerant comparison.
   const userRole = userData?.role?.trim().toLowerCase().replace(/[\s_-]+/g, '') || '';
 
+  if (!roleCanOpenLockedApp(lockedRole, userRole)) {
+    return (
+      <ProfileIssueState
+        message={`This installed app is locked to ${lockedRoleOption.label} access. Sign out and open the correct Shii-Edu app for this account.`}
+        onPress={logout}
+        title={`${lockedRoleOption.shortName} App Only`}
+      />
+    );
+  }
+
   if (userRole === 'superadmin') {
     return (
-      <View style={styles.profileIssueContainer}>
-        <View style={styles.profileIssueCard}>
-          <View style={styles.profileIssueIcon}>
-            <Ionicons name="shield-outline" size={30} color="#635BFF" />
-          </View>
-          <Text style={styles.profileIssueTitle}>Institute App Only</Text>
-          <Text style={styles.profileIssueText}>
-            Superadmin accounts must use the separate Shii-Edu Superadmin application.
-          </Text>
-          <TouchableOpacity style={styles.profileIssueButton} onPress={logout}>
-            <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
-            <Text style={styles.profileIssueButtonText}>Sign out</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <ProfileIssueState
+        message="Superadmin accounts must use the separate Shii-Edu Superadmin application."
+        onPress={logout}
+        title="Institute App Only"
+      />
     );
   }
 
@@ -92,21 +114,11 @@ export default function AppNavigator() {
   }
 
   return (
-    <View style={styles.profileIssueContainer}>
-      <View style={styles.profileIssueCard}>
-        <View style={styles.profileIssueIcon}>
-          <Ionicons name="shield-outline" size={30} color="#635BFF" />
-        </View>
-        <Text style={styles.profileIssueTitle}>Unsupported Institute Role</Text>
-        <Text style={styles.profileIssueText}>
-          This account role is not enabled in the Shii-Edu application.
-        </Text>
-        <TouchableOpacity style={styles.profileIssueButton} onPress={logout}>
-          <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
-          <Text style={styles.profileIssueButtonText}>Sign out</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    <ProfileIssueState
+      message="This account role is not enabled in the Shii-Edu application."
+      onPress={logout}
+      title="Unsupported Institute Role"
+    />
   );
 }
 

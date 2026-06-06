@@ -77,7 +77,7 @@ function RoleCard({ option }: { option: AuthRoleOption }) {
         borderColor={option.border}
         manifestHref={option.manifestHref}
         softColor="#FFFFFF"
-        startUrl={option.authPath}
+        startUrl={option.appPath}
         style={styles.downloadAction}
       />
       <PwaNotificationPrompt

@@ -21,6 +21,7 @@ const roles = [
     authHref: '/auth/institute',
     icon: Landmark,
     installHref: '/manifest-institute.webmanifest',
+    installStartUrl: '/app/institute',
     key: 'institute',
     label: 'Institute',
     soft: '#F1F0FF',
@@ -39,6 +40,7 @@ const roles = [
     authHref: '/auth/parents',
     icon: Users,
     installHref: '/manifest-parents.webmanifest',
+    installStartUrl: '/app/parents',
     key: 'parents',
     label: 'Parents',
     soft: '#ECFDF5',
@@ -57,6 +59,7 @@ const roles = [
     authHref: '/auth/driver',
     icon: Bus,
     installHref: '/manifest-driver.webmanifest',
+    installStartUrl: '/app/driver',
     key: 'driver',
     label: 'Driver',
     soft: '#FFF7ED',
@@ -118,7 +121,7 @@ export default function RoleAppShowcase() {
       }}
     >
       <div className="role-app-nav" role="tablist" aria-label="Role app selector">
-        {roles.map(({ icon: Icon, key, label }, index) => (
+        {roles.map(({ icon: Icon, installStartUrl, key, label }, index) => (
           <button
             aria-controls={`role-app-panel-${key}`}
             aria-selected={index === activeIndex}
@@ -133,6 +136,7 @@ export default function RoleAppShowcase() {
           >
             <Icon size={18} aria-hidden="true" />
             <span>{label}</span>
+            <small>{installStartUrl.replace(/^\/app\//, '').replace(/\/$/, '')}</small>
           </button>
         ))}
       </div>
@@ -203,6 +207,7 @@ export default function RoleAppShowcase() {
                     accent={role.accent}
                     label={`Shii-Edu ${role.label}`}
                     manifestHref={role.installHref}
+                    startUrl={role.installStartUrl}
                   />
                 </div>
               </article>

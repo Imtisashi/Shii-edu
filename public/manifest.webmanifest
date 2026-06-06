@@ -17,6 +17,7 @@
     }
   ],
   "name": "Shii-Edu",
+  "id": "/pwa",
   "scope": "/",
   "short_name": "Shii-Edu",
   "start_url": "/roles",

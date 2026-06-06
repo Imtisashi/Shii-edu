@@ -20,6 +20,7 @@ import InstituteSyncSplash from '../../src/components/auth/InstituteSyncSplash';
 import { installWebPerformanceTuning } from '../../src/utils/webPerformanceTuning';
 import { installWebScrollFix } from '../../src/utils/webScrollFix';
 import { installFirestoreOfflinePersistence } from '../../src/services/offlinePersistence';
+import { getAuthRoleByAppPath, getAuthRoleOption } from '../../src/constants/authRoles';
 import InstituteAuthNavigator from './src/navigation/InstituteAuthNavigator';
 
 const linking = Object.freeze({
@@ -35,14 +36,24 @@ const linking = Object.freeze({
   },
 });
 
-const documentTitle = {
-  formatter: (options) => {
-    const routeTitle = options?.title;
-    return routeTitle ? `${routeTitle} | Shii-Edu` : 'Shii-Edu';
-  },
+const formatDefaultDocumentTitle = (options) => {
+  const routeTitle = options?.title;
+  return routeTitle ? `${routeTitle} | Shii-Edu` : 'Shii-Edu';
 };
 
 const normalizeRole = (role) => String(role || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+
+const getLockedRoleFromLocation = () => {
+  if (typeof window === 'undefined') return null;
+  return getAuthRoleByAppPath(window.location.pathname);
+};
+
+const roleCanOpenLockedApp = (lockedRole, userRole) => {
+  if (!lockedRole) return true;
+  if (lockedRole === 'parent') return userRole === 'parent';
+  if (lockedRole === 'driver') return userRole === 'driver';
+  return !['driver', 'parent', 'superadmin'].includes(userRole);
+};
 
 function AccessState({ title, message, onSignOut }) {
   const { colors } = useRootLayout();
@@ -64,15 +75,16 @@ function AccessState({ title, message, onSignOut }) {
   );
 }
 
-function InstituteAppNavigator() {
+function InstituteAppNavigator({ lockedRole }) {
   const { currentUser, userData, loading, logout, profileError } = useAuth();
+  const lockedRoleOption = lockedRole ? getAuthRoleOption(lockedRole) : null;
 
   if (loading) {
     return <InstituteSyncSplash />;
   }
 
   if (!currentUser) {
-    return <InstituteAuthNavigator />;
+    return <InstituteAuthNavigator lockedRole={lockedRole} />;
   }
 
   if (!userData) {
@@ -86,6 +98,16 @@ function InstituteAppNavigator() {
   }
 
   const userRole = normalizeRole(userData.role);
+
+  if (!roleCanOpenLockedApp(lockedRole, userRole)) {
+    return (
+      <AccessState
+        title={`${lockedRoleOption.shortName} App Only`}
+        message={`This installed app is locked to ${lockedRoleOption.label} access. Sign out and open the correct Shii-Edu app for this account.`}
+        onSignOut={logout}
+      />
+    );
+  }
 
   if (userRole === 'superadmin') {
     return (
@@ -126,8 +148,18 @@ function InstituteAppNavigator() {
   );
 }
 
-function InstituteNavigationContainer({ children }) {
+function InstituteNavigationContainer({ children, lockedRole }) {
   const { brand, colors } = useRootLayout();
+  const navigationDocumentTitle = React.useMemo(
+    () => ({
+      formatter: (options) => {
+        if (!lockedRole) return formatDefaultDocumentTitle(options);
+        const lockedRoleOption = getAuthRoleOption(lockedRole);
+        return `Shii-Edu ${lockedRoleOption.shortName}`;
+      },
+    }),
+    [lockedRole]
+  );
   const navigationTheme = React.useMemo(() => {
     const baseTheme = brand.mode === 'light' ? DefaultTheme : DarkTheme;
 
@@ -147,8 +179,8 @@ function InstituteNavigationContainer({ children }) {
 
   return (
     <NavigationContainer
-      documentTitle={documentTitle}
-      linking={linking}
+      documentTitle={navigationDocumentTitle}
+      linking={lockedRole ? undefined : linking}
       theme={navigationTheme}
     >
       {children}
@@ -158,6 +190,7 @@ function InstituteNavigationContainer({ children }) {
 
 export default function App() {
   const [iconsReady, setIconsReady] = React.useState(false);
+  const [lockedRole, setLockedRole] = React.useState(getLockedRoleFromLocation);
 
   React.useEffect(() => {
     installWebPerformanceTuning();
@@ -178,6 +211,15 @@ export default function App() {
     };
   }, []);
 
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const syncLockedRole = () => setLockedRole(getLockedRoleFromLocation());
+    window.addEventListener('popstate', syncLockedRole);
+    return () => {
+      window.removeEventListener('popstate', syncLockedRole);
+    };
+  }, []);
+
   if (!iconsReady) {
     return <GestureHandlerRootView style={styles.root} />;
   }
@@ -190,9 +232,9 @@ export default function App() {
             <InstitutionProvider>
               <RootLayoutProvider>
                 <LayoutContextProvider>
-                  <InstituteNavigationContainer>
+                  <InstituteNavigationContainer lockedRole={lockedRole}>
                     <RootLayout>
-                      <InstituteAppNavigator />
+                      <InstituteAppNavigator lockedRole={lockedRole} />
                     </RootLayout>
                   </InstituteNavigationContainer>
                 </LayoutContextProvider>

@@ -40,7 +40,12 @@ const prepareRemotePushSubscription = async (registration) => {
   });
 };
 
-export default function RoleInstallButton({ accent, label, manifestHref }) {
+const normalizedPath = (url) => {
+  const parsed = new URL(url, window.location.origin);
+  return parsed.pathname.replace(/\/$/, '') || '/';
+};
+
+export default function RoleInstallButton({ accent, label, manifestHref, startUrl }) {
   const [notificationPermission, setNotificationPermission] = useState('unsupported');
   const [prompt, setPrompt] = useState(null);
   const [notice, setNotice] = useState('');
@@ -75,6 +80,12 @@ export default function RoleInstallButton({ accent, label, manifestHref }) {
     link.setAttribute('href', manifestHref);
     document.head.appendChild(link);
 
+    if (startUrl && normalizedPath(window.location.href) !== normalizedPath(startUrl)) {
+      setNotice(`Opening the dedicated ${label} install screen.`);
+      window.location.assign(startUrl);
+      return;
+    }
+
     if (!prompt) {
       setNotice(installInstructions());
       return;
@@ -108,7 +119,7 @@ export default function RoleInstallButton({ accent, label, manifestHref }) {
     const remoteSubscription = await prepareRemotePushSubscription(readyRegistration).catch(() => null);
     await readyRegistration?.showNotification('Shii-Edu alerts are ready', {
       body: `${label} can show password reset, route, and institute alerts on this device.`,
-      data: { url: manifestHref.includes('driver') ? '/auth/driver' : manifestHref.includes('parents') ? '/auth/parents' : '/auth/institute' },
+      data: { url: startUrl || (manifestHref.includes('driver') ? '/app/driver' : manifestHref.includes('parents') ? '/app/parents' : '/app/institute') },
       icon: '/icon.png',
       tag: `role-alerts-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
     }).catch(() => null);

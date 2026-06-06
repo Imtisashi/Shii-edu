@@ -1,10 +1,15 @@
-import { routeMetadata, SITE } from '../lib/site';
+import { routeMetadata } from '../lib/site';
 import RoleAppShowcase from './RoleAppShowcase';
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 const onboardingMailto = 'mailto:sashimiofficials@gmail.com?subject=Institute%20onboarding%20request';
+const isolationPoints = [
+  ['Unique install identity', 'Each role has its own manifest ID, app name, icon, start URL, and Android launcher entry.'],
+  ['Locked app scope', 'Installed apps launch inside /app/institute, /app/parents, or /app/driver instead of one shared shell.'],
+  ['Role-only access', 'The app shell and login screen expose the selected role only, then server-backed auth checks the account role.'],
+];
 
 export function generateMetadata() {
   return routeMetadata({
@@ -50,6 +55,15 @@ export default function RoleChoicePage() {
             Institute, Parents, and Driver users land in different auth flows, manifests, notification contexts, and
             app surfaces. Each one stays white, crisp, and tuned for the work that role actually does.
           </p>
+        </div>
+
+        <div className="role-choice-isolation" aria-label="PWA isolation checks">
+          {isolationPoints.map(([title, copy]) => (
+            <div className="role-choice-isolation-cell" key={title}>
+              <strong>{title}</strong>
+              <span>{copy}</span>
+            </div>
+          ))}
         </div>
 
         <RoleAppShowcase />

@@ -49,6 +49,13 @@ const setManifestHref = (href?: string) => {
   if (!existing) document.head.appendChild(link);
 };
 
+const isCurrentPath = (target?: string) => {
+  if (Platform.OS !== 'web' || typeof window === 'undefined' || !target) return true;
+  const currentPath = window.location.pathname.replace(/\/$/, '') || '/';
+  const targetPath = new URL(target, window.location.origin).pathname.replace(/\/$/, '') || '/';
+  return currentPath === targetPath;
+};
+
 export default function DownloadAppAction({
   accentColor = '#635BFF',
   appName = 'Shii-Edu',
@@ -93,6 +100,11 @@ export default function DownloadAppAction({
   const handlePress = async () => {
     setManifestHref(manifestHref);
     setNotice('');
+
+    if (startUrl && !isCurrentPath(startUrl)) {
+      window.location.assign(startUrl);
+      return;
+    }
 
     if (installed) {
       setNotice(`${appName} is already installed on this device.`);

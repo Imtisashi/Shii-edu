@@ -6,20 +6,20 @@
     {
       "purpose": "any maskable",
       "sizes": "192x192",
-      "src": "/icon.png",
+      "src": "/icon-institute.png",
       "type": "image/png"
     },
     {
       "purpose": "any maskable",
       "sizes": "512x512",
-      "src": "/icon.png",
+      "src": "/icon-institute.png",
       "type": "image/png"
     }
   ],
-  "id": "/auth/institute",
+  "id": "/pwa/institute",
   "name": "Shii-Edu Institute",
-  "scope": "/",
+  "scope": "/app/institute",
   "short_name": "Institute",
-  "start_url": "/auth/institute",
+  "start_url": "/app/institute",
   "theme_color": "#635BFF"
 }
