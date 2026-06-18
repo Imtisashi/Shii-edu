@@ -12,6 +12,20 @@ export const isNotificationAuditor = (role) => {
   return normalized === 'admin' || normalized === 'superadmin';
 };
 
+export const getParentRecipientUids = (userData = {}) => {
+  const uids = [
+    userData.linkedStudentUid,
+    ...(Array.isArray(userData.childUids) ? userData.childUids : []),
+    ...(Array.isArray(userData.linkedStudents)
+      ? userData.linkedStudents.map((student) => student?.uid || student?.studentUid || student?.id)
+      : []),
+  ]
+    .map((uid) => String(uid || '').trim())
+    .filter(Boolean);
+
+  return [...new Set(uids)];
+};
+
 export const notificationMatchesAudience = (notification, currentUser, userData) => {
   if (!notification || !currentUser?.uid || !userData?.role) return false;
   if (isNotificationAuditor(userData.role)) return true;
@@ -20,8 +34,7 @@ export const notificationMatchesAudience = (notification, currentUser, userData)
   const targets = Array.isArray(notification.targetRoles) ? notification.targetRoles : [];
   const recipientUids = Array.isArray(notification.recipientUids) ? notification.recipientUids : [];
   const parentStudentMatch = userData.role === 'parent' &&
-    userData.linkedStudentUid &&
-    recipientUids.includes(userData.linkedStudentUid);
+    getParentRecipientUids(userData).some((uid) => recipientUids.includes(uid));
   const recipientMatch = recipientUids.length === 0 ||
     recipientUids.includes(currentUser.uid) ||
     parentStudentMatch;
@@ -54,12 +67,14 @@ export const buildVisibleNotificationQueries = ({ currentUser, db, userData }) =
     ),
   ];
 
-  if (userData.role === 'parent' && userData.linkedStudentUid) {
-    queries.push(query(
-      notificationsRef,
-      instituteFilter,
-      where('recipientUids', 'array-contains', userData.linkedStudentUid)
-    ));
+  if (userData.role === 'parent') {
+    getParentRecipientUids(userData).slice(0, 10).forEach((childUid) => {
+      queries.push(query(
+        notificationsRef,
+        instituteFilter,
+        where('recipientUids', 'array-contains', childUid)
+      ));
+    });
   }
 
   return queries;

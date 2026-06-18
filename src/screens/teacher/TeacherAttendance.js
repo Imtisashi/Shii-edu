@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -14,9 +14,12 @@ import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 import { useSingleFlightAction } from '../../hooks/useSingleFlightAction';
 import ScreenErrorBoundary from '../../components/errors/ScreenErrorBoundary';
 import { createSupabaseAttendanceRecords, listSupabaseUsers } from '../../services/supabaseTenantDataService';
+import {
+  filterStudentsForAttendanceAssignment,
+  getAttendanceAssignment,
+} from '../../utils/attendanceAssignment';
 
 const resolveStudentUid = (student = {}) => student.uid || student.authUid || student.id;
-const normalizeValue = (value) => String(value || '').trim().toLowerCase();
 const toDisplayText = (value, fallback = '') => (
   typeof value === 'string' || typeof value === 'number' ? String(value) : fallback
 );
@@ -34,6 +37,10 @@ function TeacherAttendanceContent() {
 
   const institutionType = String(userData?.instituteData?.institutionType || userData?.instituteData?.type || 'school').toLowerCase();
   const isSchool = !institutionType.includes('college');
+  const attendanceAssignment = useMemo(
+    () => getAttendanceAssignment(userData, isSchool),
+    [isSchool, userData]
+  );
   const safeStudents = Array.isArray(students) ? students : [];
   const safeAttendanceRecord = attendanceRecord && typeof attendanceRecord === 'object' ? attendanceRecord : {};
   const presentCount = safeStudents.filter((student) => {
@@ -111,31 +118,20 @@ function TeacherAttendanceContent() {
         }));
         }
 
-        const hasAssignedSchoolBatch = Boolean(userData?.assignedClass && userData?.assignedSection);
-        const hasAssignedCollegeBatch = Boolean(userData?.assignedDept && userData?.assignedSem);
-        const shouldLimitToAssignedBatch = Boolean(
-          userData?.isClassTeacher && (isSchool ? hasAssignedSchoolBatch : hasAssignedCollegeBatch)
-        );
-
         if (didCancel) return;
 
-        if (userData?.isClassTeacher && !shouldLimitToAssignedBatch) {
-          setErrorMessage(`No ${isSchool ? 'class/section' : 'department/semester'} assignment is attached to your teacher profile yet. Showing all students for now.`);
-        } else {
-          setErrorMessage('');
+        if (!attendanceAssignment.assigned) {
+          setErrorMessage(attendanceAssignment.message);
+          setStudents([]);
+          setAttendanceRecord({});
+          return;
         }
 
-        const studentList = shouldLimitToAssignedBatch
-          ? allStudents.filter((student) => {
-            if (isSchool) {
-              return normalizeValue(student.class) === normalizeValue(userData.assignedClass) &&
-                normalizeValue(student.section) === normalizeValue(userData.assignedSection);
-            }
+        const studentList = filterStudentsForAttendanceAssignment(allStudents, attendanceAssignment, isSchool);
 
-            return normalizeValue(student.dept) === normalizeValue(userData.assignedDept) &&
-              normalizeValue(student.sem) === normalizeValue(userData.assignedSem);
-          })
-          : allStudents;
+        setErrorMessage(studentList.length === 0
+          ? `No students found for assigned ${isSchool ? 'Class' : 'Department'} ${attendanceAssignment.primary} - ${isSchool ? 'Section' : 'Semester'} ${attendanceAssignment.secondary}.`
+          : '');
         
         studentList.sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || '')));
         
@@ -169,13 +165,9 @@ function TeacherAttendanceContent() {
     };
   }, [
     isSchool,
-    userData?.assignedClass,
-    userData?.assignedDept,
-    userData?.assignedSection,
-    userData?.assignedSem,
+    attendanceAssignment,
     currentUser,
     userData?.instituteId,
-    userData?.isClassTeacher,
   ]);
 
   const toggleAttendance = (studentId) => {
@@ -348,12 +340,11 @@ function TeacherAttendanceContent() {
             ) : null}
 
             <Text style={styles.summaryTitle}>
-              {!userData?.isClassTeacher
-                ? 'All Students'
-                : isSchool
-                ? `Class ${toDisplayText(userData?.assignedClass, 'Unassigned')} - Sec ${toDisplayText(userData?.assignedSection, 'Unassigned')}`
-                : `${toDisplayText(userData?.assignedDept, 'Unassigned')} - Sem ${toDisplayText(userData?.assignedSem, 'Unassigned')}`
-              }
+              {attendanceAssignment.assigned
+                ? isSchool
+                  ? `Class ${attendanceAssignment.primary} - Sec ${attendanceAssignment.secondary}`
+                  : `${attendanceAssignment.primary} - Sem ${attendanceAssignment.secondary}`
+                : 'Attendance assignment required'}
             </Text>
             <Text style={styles.summarySub}>Mark absentees, then submit to the server.</Text>
 

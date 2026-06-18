@@ -13,23 +13,172 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { deleteInstituteAsSuperAdmin, updateInstituteFeatureSettings } from '../../services/firebaseAdminService';
 import useResponsiveLayout from '../../hooks/useResponsiveLayout';
 import LoadingState, { SmoothSpinner } from '../../components/ui/LoadingState';
 import {
+  DEFAULT_FEATURE_TIER,
   FEATURE_DEFINITIONS,
   FEATURE_TIERS,
   getTierFeatureMap,
   resolveFeatureEntitlements,
 } from '../../constants/featureEntitlements';
+import rateLimitCatalog from '../../constants/rateLimitCatalog.json';
+
+const RATE_LIMIT_TIERS = rateLimitCatalog.tiers || {};
+const RATE_LIMIT_SCOPES = rateLimitCatalog.scopes || [];
+const DEFAULT_RATE_LIMIT_TIER = rateLimitCatalog.defaultTier || 'standard';
+const RATE_LIMIT_TIER_ALIASES = rateLimitCatalog.aliases || {};
+const PLAN_ORDER = ['basic', 'pro', 'max'];
+const PLAN_HIGHLIGHT_FEATURES = {
+  basic: ['people', 'attendance', 'finance'],
+  pro: ['ai_tools', 'bus_tracking', 'advanced_reports'],
+  max: ['custom_subdomain', 'api_access', 'ai_agent'],
+};
+const SUBSCRIPTION_STATUS_OPTIONS = [
+  { key: 'active', label: 'Active', tone: 'good' },
+  { key: 'trialing', label: 'Trial', tone: 'good' },
+  { key: 'past_due', label: 'Past Due', tone: 'warn' },
+  { key: 'cancelled', label: 'Cancelled', tone: 'danger' },
+  { key: 'expired', label: 'Expired', tone: 'danger' },
+];
+
+const normalizeRateLimitTier = (tier) => {
+  const rawTier = String(tier || DEFAULT_RATE_LIMIT_TIER).trim().toLowerCase();
+  const normalizedTier = RATE_LIMIT_TIER_ALIASES[rawTier] || rawTier;
+  return RATE_LIMIT_TIERS[normalizedTier] ? normalizedTier : DEFAULT_RATE_LIMIT_TIER;
+};
+
+const resolveInstituteRateLimits = (institute = {}) => {
+  const settings = institute.settings?.rateLimits ||
+    institute.configuration?.rateLimits ||
+    institute.rateLimits ||
+    {};
+  const tier = normalizeRateLimitTier(settings.tier);
+  const overrides = settings.overrides && typeof settings.overrides === 'object' ? settings.overrides : {};
+  return { overrides, tier };
+};
+
+const formatWindow = (windowMs) => {
+  const seconds = Math.round(Number(windowMs || 60000) / 1000);
+  if (seconds >= 60) return `${Math.round(seconds / 60)} min`;
+  return `${seconds}s`;
+};
+
+const asObject = (value) => (
+  value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+);
+
+const normalizeSubscriptionStatus = (status) => {
+  const normalized = String(status || '').trim().toLowerCase();
+  return SUBSCRIPTION_STATUS_OPTIONS.some((option) => option.key === normalized) ? normalized : 'active';
+};
+
+const getInstituteSubscription = (institute = {}) => {
+  const subscription = asObject(
+    institute.settings?.subscription ||
+    institute.configuration?.subscription ||
+    institute.subscription
+  );
+  return {
+    ...subscription,
+    status: normalizeSubscriptionStatus(subscription.status),
+  };
+};
+
+const getFeatureAudit = (institute = {}) => asObject(
+  institute.settings?.features ||
+  institute.configuration?.features ||
+  institute.features
+);
+
+const getTodayKey = () => new Date().toISOString().slice(0, 10);
+
+const normalizeInstituteId = (value) => String(value || '').trim();
+
+const getUsageKey = (data = {}, fallbackId = '') => normalizeInstituteId(
+  data.instituteId ||
+  data.instituteID ||
+  data.institutionId ||
+  data.tenantId ||
+  fallbackId
+);
+
+const createUsageEntry = ({ aiKnown = false, usersKnown = false } = {}) => ({
+  aiRequestsToday: aiKnown ? 0 : null,
+  users: usersKnown ? 0 : null,
+});
+
+const buildUsageByInstituteId = ({ aiUsageSnapshot, usersSnapshot }) => {
+  const usageByInstituteId = {};
+  const usersKnown = Boolean(usersSnapshot?.docs);
+  const aiKnown = Boolean(aiUsageSnapshot?.docs);
+  const ensureUsage = (instituteId) => {
+    const key = normalizeInstituteId(instituteId);
+    if (!key) return null;
+    if (!usageByInstituteId[key]) usageByInstituteId[key] = createUsageEntry({ aiKnown, usersKnown });
+    return usageByInstituteId[key];
+  };
+
+  usersSnapshot?.docs?.forEach((userDoc) => {
+    const data = userDoc.data?.() || {};
+    const entry = ensureUsage(getUsageKey(data));
+    if (entry) entry.users = Number(entry.users || 0) + 1;
+  });
+
+  aiUsageSnapshot?.docs?.forEach((usageDoc) => {
+    const data = usageDoc.data?.() || {};
+    const entry = ensureUsage(getUsageKey(data));
+    if (entry) entry.aiRequestsToday = Number(entry.aiRequestsToday || 0) + Number(data.requestCount || 0);
+  });
+
+  return { aiKnown, usageByInstituteId, usersKnown };
+};
+
+const resolveUsage = ({ aiKnown, instituteId, usageByInstituteId, usersKnown }) => ({
+  ...createUsageEntry({ aiKnown, usersKnown }),
+  ...(usageByInstituteId[normalizeInstituteId(instituteId)] || {}),
+});
+
+const formatCount = (value) => {
+  if (value === null || value === undefined || value === '') return 'Unknown';
+  return Number(value).toLocaleString();
+};
+
+const formatLimit = (value, unit = '') => {
+  if (value === null || value === undefined) return 'Unlimited';
+  return `${formatCount(value)}${unit}`;
+};
+
+const formatUsage = (used, limit, unit = '') => (
+  `${formatCount(used)} / ${formatLimit(limit, unit)}`
+);
+
+const getFeatureLabel = (featureKey) => (
+  FEATURE_DEFINITIONS.find((feature) => feature.key === featureKey)?.label || featureKey
+);
+
+const getPlanEnabledCount = (tierKey) => {
+  const features = getTierFeatureMap(tierKey);
+  return FEATURE_DEFINITIONS.filter((feature) => features[feature.key] !== false).length;
+};
+
+const getPlanHighlights = (tierKey) => {
+  const planFeatures = getTierFeatureMap(tierKey);
+  return (PLAN_HIGHLIGHT_FEATURES[tierKey] || [])
+    .filter((featureKey) => planFeatures[featureKey] !== false)
+    .map(getFeatureLabel);
+};
 
 export default function ManageInstitutes() {
   const navigation = useNavigation();
   const layout = useResponsiveLayout();
   const [institutes, setInstitutes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [usageWarning, setUsageWarning] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editInstituteId, setEditInstituteId] = useState('');
@@ -38,8 +187,12 @@ export default function ManageInstitutes() {
   const [deletingInstituteId, setDeletingInstituteId] = useState('');
   const [showFeaturesModal, setShowFeaturesModal] = useState(false);
   const [featureInstitute, setFeatureInstitute] = useState(null);
-  const [featureTier, setFeatureTier] = useState('complete');
+  const [featureTier, setFeatureTier] = useState(DEFAULT_FEATURE_TIER);
   const [featureOverrides, setFeatureOverrides] = useState({});
+  const [featureSubscriptionStatus, setFeatureSubscriptionStatus] = useState('active');
+  const [featureSaveError, setFeatureSaveError] = useState('');
+  const [rateLimitTier, setRateLimitTier] = useState(DEFAULT_RATE_LIMIT_TIER);
+  const [rateLimitOverrides, setRateLimitOverrides] = useState({});
   const [savingFeatures, setSavingFeatures] = useState(false);
 
   const sortedInstitutes = useMemo(
@@ -47,7 +200,18 @@ export default function ManageInstitutes() {
     [institutes]
   );
   const tierOptions = useMemo(
-    () => Object.entries(FEATURE_TIERS).map(([key, value]) => ({ key, ...value })),
+    () => [
+      ...PLAN_ORDER
+        .filter((key) => FEATURE_TIERS[key])
+        .map((key) => ({ key, ...FEATURE_TIERS[key] })),
+      ...Object.entries(FEATURE_TIERS)
+        .filter(([key]) => !PLAN_ORDER.includes(key))
+        .map(([key, value]) => ({ key, ...value })),
+    ],
+    []
+  );
+  const rateLimitTierOptions = useMemo(
+    () => Object.entries(RATE_LIMIT_TIERS).map(([key, value]) => ({ key, ...value })),
     []
   );
   const groupedFeatures = useMemo(
@@ -70,25 +234,53 @@ export default function ManageInstitutes() {
     }),
     [featureOverrides, featureTier]
   );
+  const selectedPlan = FEATURE_TIERS[featureTier] || {};
+  const selectedPlanLimits = selectedPlan.limits || {};
+  const selectedUsage = featureInstitute?.usage || createUsageEntry();
+  const featureAudit = getFeatureAudit(featureInstitute || {});
+  const featureUpdatedAt = featureAudit.updatedAt
+    ? new Date(featureAudit.updatedAt).toLocaleString()
+    : 'Not recorded';
 
   const fetchInstitutes = async ({ showLoader = true } = {}) => {
     if (showLoader) setLoading(true);
+    setLoadError('');
+    setUsageWarning('');
     try {
       const institutesRef = collection(db, 'institutes');
       const snapshot = await getDocs(institutesRef);
+      const today = getTodayKey();
+      const [usersResult, aiUsageResult] = await Promise.allSettled([
+        getDocs(collection(db, 'users')),
+        getDocs(query(collection(db, 'aiUsageDailyCounters'), where('day', '==', today))),
+      ]);
+      const usersSnapshot = usersResult.status === 'fulfilled' ? usersResult.value : null;
+      const aiUsageSnapshot = aiUsageResult.status === 'fulfilled' ? aiUsageResult.value : null;
+      const usageState = buildUsageByInstituteId({ aiUsageSnapshot, usersSnapshot });
+      const warnings = [];
+
+      if (usersResult.status === 'rejected') warnings.push('User usage unavailable');
+      if (aiUsageResult.status === 'rejected') warnings.push('AI usage unavailable');
+      if (warnings.length) setUsageWarning(warnings.join('. '));
+
       const institutesList = snapshot.docs.map((instituteDoc) => {
         const data = instituteDoc.data();
+        const instituteId = data.instituteId || instituteDoc.id;
         return {
           id: instituteDoc.id,
           ...data,
-          instituteId: data.instituteId || instituteDoc.id,
+          instituteId,
+          usage: resolveUsage({
+            ...usageState,
+            instituteId,
+          }),
         };
       });
 
       setInstitutes(institutesList);
     } catch (error) {
       console.error('Error fetching institutes:', error);
-      Alert.alert('Error', 'Failed to load institutes.');
+      setLoadError(error.message || 'Failed to load institutes.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -113,17 +305,27 @@ export default function ManageInstitutes() {
 
   const handleEditFeatures = (institute) => {
     const access = resolveFeatureEntitlements(institute);
+    const rateLimits = resolveInstituteRateLimits(institute);
+    const subscription = getInstituteSubscription(institute);
     setFeatureInstitute(institute);
     setFeatureTier(access.tier);
     setFeatureOverrides(access.overrides || {});
+    setFeatureSubscriptionStatus(subscription.status);
+    setFeatureSaveError('');
+    setRateLimitTier(rateLimits.tier);
+    setRateLimitOverrides(rateLimits.overrides || {});
     setShowFeaturesModal(true);
   };
 
   const closeFeaturesModal = () => {
     setShowFeaturesModal(false);
     setFeatureInstitute(null);
-    setFeatureTier('complete');
+    setFeatureTier(DEFAULT_FEATURE_TIER);
     setFeatureOverrides({});
+    setFeatureSubscriptionStatus('active');
+    setFeatureSaveError('');
+    setRateLimitTier(DEFAULT_RATE_LIMIT_TIER);
+    setRateLimitOverrides({});
   };
 
   const selectTier = (tier) => {
@@ -153,27 +355,56 @@ export default function ManageInstitutes() {
     });
   };
 
+  const updateRateLimitOverride = (scope, limitValue) => {
+    const numeric = String(limitValue || '').replace(/[^\d]/g, '');
+    setRateLimitOverrides((current) => {
+      const next = { ...current };
+      if (!numeric) {
+        delete next[scope.key];
+        return next;
+      }
+
+      next[scope.key] = {
+        limit: Number(numeric),
+        windowMs: scope.windowMs,
+      };
+      return next;
+    });
+  };
+
   const handleSaveFeatures = async () => {
     if (!featureInstitute) return;
 
     setSavingFeatures(true);
+    setFeatureSaveError('');
     try {
       const instituteId = featureInstitute.instituteId || featureInstitute.id;
       const result = await updateInstituteFeatureSettings(instituteId, {
-        overrides: featureOverrides,
-        tier: featureTier,
+        features: {
+          overrides: featureOverrides,
+          tier: featureTier,
+        },
+        rateLimits: {
+          overrides: rateLimitOverrides,
+          tier: rateLimitTier,
+        },
+        subscription: {
+          status: featureSubscriptionStatus,
+        },
       });
 
       if (!result.success) {
+        setFeatureSaveError(result.error || 'Failed to update subscription access.');
         Alert.alert('Error', result.error || 'Failed to update feature access.');
         return;
       }
 
-      Alert.alert('Success', 'Institute feature access updated.');
+      Alert.alert('Success', 'Institute feature access and rate limits updated.');
       closeFeaturesModal();
       fetchInstitutes({ showLoader: false });
     } catch (error) {
       console.error('Error updating institute features:', error);
+      setFeatureSaveError(error.message || 'Failed to update subscription access.');
       Alert.alert('Error', 'Failed to update feature access.');
     } finally {
       setSavingFeatures(false);
@@ -252,6 +483,11 @@ export default function ManageInstitutes() {
     const featureAccess = resolveFeatureEntitlements(item);
     const enabledCount = Object.values(featureAccess.enabledFeatures).filter(Boolean).length;
     const totalFeatureCount = FEATURE_DEFINITIONS.length;
+    const subscription = getInstituteSubscription(item);
+    const statusOption = SUBSCRIPTION_STATUS_OPTIONS.find((option) => option.key === subscription.status) || SUBSCRIPTION_STATUS_OPTIONS[0];
+    const plan = FEATURE_TIERS[featureAccess.tier] || {};
+    const limits = plan.limits || {};
+    const usage = item.usage || createUsageEntry();
 
     return (
       <View style={[styles.instituteCard, layout.isMobile && styles.instituteCardMobile, layout.listColumns > 1 && styles.instituteCardDesktop]}>
@@ -277,6 +513,18 @@ export default function ManageInstitutes() {
             <Text style={styles.featureSummaryText} numberOfLines={1}>
               {featureAccess.tierLabel} tier - {enabledCount}/{totalFeatureCount} features
             </Text>
+          </View>
+          <View style={styles.subscriptionSummary}>
+            <View style={styles.subscriptionLine}>
+              <Ionicons name="card-outline" size={13} color="#A7F3D0" />
+              <Text style={styles.subscriptionSummaryText} numberOfLines={1}>
+                {featureAccess.tierLabel} plan - {statusOption.label}
+              </Text>
+            </View>
+            <View style={styles.usageMiniGrid}>
+              <Text style={styles.usageMiniText} numberOfLines={1}>Users {formatUsage(usage.users, limits.maxUsers)}</Text>
+              <Text style={styles.usageMiniText} numberOfLines={1}>AI today {formatUsage(usage.aiRequestsToday, limits.aiRequestsPerDay)}</Text>
+            </View>
           </View>
         </View>
 
@@ -336,13 +584,35 @@ export default function ManageInstitutes() {
               <Ionicons name="add-circle" size={22} color="#fff" />
               <Text style={styles.buttonText} numberOfLines={1}>Create Institute With Type</Text>
             </TouchableOpacity>
+
+            {usageWarning ? (
+              <View style={styles.warningBanner}>
+                <Ionicons name="information-circle-outline" size={18} color="#FDE68A" />
+                <Text style={styles.warningBannerText}>{usageWarning}. Plan controls are still available.</Text>
+              </View>
+            ) : null}
+
+            {loadError ? (
+              <View style={styles.errorBanner}>
+                <Ionicons name="alert-circle-outline" size={18} color="#FCA5A5" />
+                <Text style={styles.errorBannerText}>{loadError}</Text>
+                <TouchableOpacity style={styles.retryButton} onPress={() => fetchInstitutes()}>
+                  <Text style={styles.retryButtonText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </>
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="school-outline" size={48} color="#2563EB" />
-            <Text style={styles.emptyTitle}>No institutes found</Text>
-            <Text style={styles.emptyText}>Use the dashboard to add the first campus and administrator.</Text>
+            <Ionicons name={loadError ? 'warning-outline' : 'school-outline'} size={48} color={loadError ? '#F97316' : '#2563EB'} />
+            <Text style={styles.emptyTitle}>{loadError ? 'Could not load institutes' : 'No institutes found'}</Text>
+            <Text style={styles.emptyText}>{loadError || 'Use the dashboard to add the first campus and administrator.'}</Text>
+            {loadError ? (
+              <TouchableOpacity style={styles.emptyRetryButton} onPress={() => fetchInstitutes()}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         }
       />
@@ -392,15 +662,79 @@ export default function ManageInstitutes() {
                 <View style={styles.modalIcon}>
                   <Ionicons name="layers" size={26} color="#2563EB" />
                 </View>
-                <Text style={[styles.modalTitle, styles.featureModalTitle]}>Feature Access</Text>
+                <Text style={[styles.modalTitle, styles.featureModalTitle]}>Subscription Management</Text>
                 <Text style={[styles.modalSubtitle, styles.featureModalSubtitle]}>
-                  {featureInstitute?.name || 'Institute'} - tier preset with per-feature overrides.
+                  {featureInstitute?.name || 'Institute'} - plan defaults, feature overrides, usage, and rate limits.
                 </Text>
+              </View>
+
+              <View style={styles.subscriptionPanel}>
+                <View style={styles.subscriptionPanelHeader}>
+                  <View style={styles.subscriptionPanelCopy}>
+                    <Text style={styles.featureGroupTitle}>Subscription Status</Text>
+                    <Text style={styles.featureToggleDescription}>
+                      Status is saved with the institute entitlement record. Last entitlement update: {featureUpdatedAt}.
+                    </Text>
+                  </View>
+                  <View style={styles.currentPlanBadge}>
+                    <Text style={styles.currentPlanBadgeText}>{effectiveFeatureAccess.tierLabel}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.statusGrid}>
+                  {SUBSCRIPTION_STATUS_OPTIONS.map((status) => {
+                    const selected = featureSubscriptionStatus === status.key;
+                    return (
+                      <TouchableOpacity
+                        key={status.key}
+                        onPress={() => setFeatureSubscriptionStatus(status.key)}
+                        style={[
+                          styles.statusButton,
+                          selected && styles.statusButtonSelected,
+                          selected && status.tone === 'warn' && styles.statusButtonWarn,
+                          selected && status.tone === 'danger' && styles.statusButtonDanger,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.statusButtonText,
+                            selected && styles.statusButtonTextSelected,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {status.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                <View style={styles.usageGrid}>
+                  <View style={styles.usageCard}>
+                    <Text style={styles.usageLabel}>Users</Text>
+                    <Text style={styles.usageValue}>{formatUsage(selectedUsage.users, selectedPlanLimits.maxUsers)}</Text>
+                  </View>
+                  <View style={styles.usageCard}>
+                    <Text style={styles.usageLabel}>AI today</Text>
+                    <Text style={styles.usageValue}>{formatUsage(selectedUsage.aiRequestsToday, selectedPlanLimits.aiRequestsPerDay)}</Text>
+                  </View>
+                  <View style={styles.usageCard}>
+                    <Text style={styles.usageLabel}>Storage</Text>
+                    <Text style={styles.usageValue}>{formatLimit(selectedPlanLimits.storageQuotaGB, ' GB')}</Text>
+                  </View>
+                  <View style={styles.usageCard}>
+                    <Text style={styles.usageLabel}>SMS / month</Text>
+                    <Text style={styles.usageValue}>{formatLimit(selectedPlanLimits.smsQuotaPerMonth)}</Text>
+                  </View>
+                </View>
               </View>
 
               <View style={styles.tierGrid}>
                 {tierOptions.map((tier) => {
                   const selected = featureTier === tier.key;
+                  const enabledFeatureCount = getPlanEnabledCount(tier.key);
+                  const highlights = getPlanHighlights(tier.key);
+                  const limits = tier.limits || {};
                   return (
                     <TouchableOpacity
                       key={tier.key}
@@ -412,6 +746,20 @@ export default function ManageInstitutes() {
                         {selected ? <Ionicons name="checkmark-circle" size={18} color="#2563EB" /> : null}
                       </View>
                       <Text style={styles.tierDescription}>{tier.description}</Text>
+                      <View style={styles.planMetrics}>
+                        <Text style={styles.planMetric}>{enabledFeatureCount}/{FEATURE_DEFINITIONS.length} features</Text>
+                        <Text style={styles.planMetric}>{formatLimit(limits.aiRequestsPerDay)} AI/day</Text>
+                        <Text style={styles.planMetric}>{formatLimit(limits.maxUsers)} users</Text>
+                      </View>
+                      {highlights.length ? (
+                        <View style={styles.planHighlights}>
+                          {highlights.map((label) => (
+                            <View key={label} style={styles.planHighlightPill}>
+                              <Text style={styles.planHighlightText}>{label}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      ) : null}
                     </TouchableOpacity>
                   );
                 })}
@@ -424,6 +772,10 @@ export default function ManageInstitutes() {
                     {features.map((feature) => {
                       const enabled = effectiveFeatureAccess.enabledFeatures[feature.key] !== false;
                       const isOverride = featureOverrides[feature.key] !== undefined;
+                      const source = effectiveFeatureAccess.featureSources?.[feature.key];
+                      const sourceLabel = source?.source === 'override'
+                        ? 'Institute override'
+                        : `${effectiveFeatureAccess.tierLabel} default`;
                       return (
                         <TouchableOpacity
                           key={feature.key}
@@ -433,7 +785,11 @@ export default function ManageInstitutes() {
                           <View style={styles.featureToggleCopy}>
                             <Text style={styles.featureToggleTitle}>{feature.label}</Text>
                             <Text style={styles.featureToggleDescription}>{feature.description}</Text>
-                            {isOverride ? <Text style={styles.overrideLabel}>Override</Text> : null}
+                            <View style={styles.sourceRow}>
+                              <Text style={[styles.sourceLabel, isOverride && styles.overrideLabel]}>
+                                {sourceLabel}
+                              </Text>
+                            </View>
                           </View>
                           <View style={[styles.toggleRail, enabled && styles.toggleRailEnabled]}>
                             <View style={[styles.toggleThumb, enabled && styles.toggleThumbEnabled]} />
@@ -445,8 +801,69 @@ export default function ManageInstitutes() {
                 ))}
               </View>
 
+              <View style={styles.rateLimitSection}>
+                <View style={styles.rateLimitHeader}>
+                  <View>
+                    <Text style={styles.featureGroupTitle}>Subscription Rate Limits</Text>
+                    <Text style={styles.featureToggleDescription}>
+                      Control mutation and automation traffic per institute. Empty overrides use the selected tier.
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.rateTierGrid}>
+                  {rateLimitTierOptions.map((tier) => {
+                    const selected = rateLimitTier === tier.key;
+                    return (
+                      <TouchableOpacity
+                        key={tier.key}
+                        onPress={() => setRateLimitTier(tier.key)}
+                        style={[styles.rateTierCard, selected && styles.rateTierCardSelected]}
+                      >
+                        <View style={styles.tierCardHeader}>
+                          <Text style={[styles.tierTitle, selected && styles.tierTitleSelected]}>{tier.label}</Text>
+                          {selected ? <Ionicons name="checkmark-circle" size={18} color="#2563EB" /> : null}
+                        </View>
+                        <Text style={styles.tierDescription}>{tier.description}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {RATE_LIMIT_SCOPES.map((scope) => {
+                  const overrideLimit = rateLimitOverrides[scope.key]?.limit;
+                  return (
+                    <View key={scope.key} style={styles.rateScopeRow}>
+                      <View style={styles.rateScopeCopy}>
+                        <Text style={styles.featureToggleTitle}>{scope.label}</Text>
+                        <Text style={styles.featureToggleDescription}>
+                          {scope.description} Window: {formatWindow(scope.windowMs)}. Bounds: {scope.min}-{scope.max}.
+                        </Text>
+                      </View>
+                      <TextInput
+                        accessibilityLabel={`${scope.label} rate limit`}
+                        keyboardType="number-pad"
+                        maxLength={3}
+                        onChangeText={(value) => updateRateLimitOverride(scope, value)}
+                        placeholder="Tier"
+                        placeholderTextColor="#64748B"
+                        style={styles.rateInput}
+                        value={overrideLimit ? String(overrideLimit) : ''}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+
+              {featureSaveError ? (
+                <View style={styles.modalErrorBanner}>
+                  <Ionicons name="alert-circle-outline" size={18} color="#B91C1C" />
+                  <Text style={styles.modalErrorText}>{featureSaveError}</Text>
+                </View>
+              ) : null}
+
               <TouchableOpacity style={[styles.modalBtn, savingFeatures && styles.disabledBtn]} onPress={handleSaveFeatures} disabled={savingFeatures}>
-                {savingFeatures ? <SmoothSpinner size={18} stroke={3} color="#FFFFFF" trackColor="#CBD5E1" /> : <Text style={styles.modalBtnText}>Save Feature Access</Text>}
+                {savingFeatures ? <SmoothSpinner size={18} stroke={3} color="#FFFFFF" trackColor="#CBD5E1" /> : <Text style={styles.modalBtnText}>Save Access Rules</Text>}
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalCancelBtn} onPress={closeFeaturesModal} disabled={savingFeatures}>
                 <Text style={styles.modalCancelBtnText}>Cancel</Text>
@@ -534,6 +951,42 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
   },
+  subscriptionSummary: {
+    backgroundColor: '#020617',
+    borderColor: '#1E293B',
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 8,
+    padding: 8,
+  },
+  subscriptionLine: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  subscriptionSummaryText: {
+    color: '#D1FAE5',
+    flexShrink: 1,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  usageMiniGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 6,
+  },
+  usageMiniText: {
+    backgroundColor: '#0F172A',
+    borderRadius: 8,
+    color: '#B9C6DD',
+    flexGrow: 1,
+    fontSize: 11,
+    fontWeight: '800',
+    minWidth: 116,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
   modePill: {
     alignSelf: 'flex-start',
     marginTop: 7,
@@ -597,7 +1050,63 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 20, color: '#F8FAFC', fontWeight: '900', marginTop: 14 },
   emptyText: { fontSize: 14, color: '#8EA4C8', textAlign: 'center', marginTop: 8, lineHeight: 21 },
-  modalContainer: { flex: 1, backgroundColor: '#020617' },
+  emptyRetryButton: {
+    backgroundColor: '#2563EB',
+    borderRadius: 8,
+    marginTop: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+  },
+  warningBanner: {
+    alignItems: 'center',
+    backgroundColor: '#422006',
+    borderColor: '#A16207',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    marginBottom: 12,
+    padding: 12,
+  },
+  warningBannerText: {
+    color: '#FEF3C7',
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 18,
+    marginLeft: 8,
+  },
+  errorBanner: {
+    alignItems: 'center',
+    backgroundColor: '#450A0A',
+    borderColor: '#7F1D1D',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 12,
+    padding: 12,
+  },
+  errorBannerText: {
+    color: '#FECACA',
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 18,
+    minWidth: 180,
+  },
+  retryButton: {
+    backgroundColor: '#991B1B',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  modalContainer: { flex: 1, backgroundColor: '#0F172A' },
   modalScrollContent: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   featureModalScrollContent: {
     flexGrow: 1,
@@ -608,37 +1117,135 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '100%',
     maxWidth: 420,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
     padding: 22,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#E2E8F0',
   },
   featureModalContent: {
     width: '100%',
     maxWidth: 820,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
     padding: 22,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: '#E2E8F0',
   },
   modalHeader: { alignItems: 'center', marginBottom: 18 },
   modalIcon: {
     width: 58,
     height: 58,
     borderRadius: 8,
-    backgroundColor: '#082F49',
+    backgroundColor: '#EFF6FF',
     borderWidth: 1,
-    borderColor: '#075985',
+    borderColor: '#BFDBFE',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
-  modalTitle: { fontSize: 22, fontWeight: '900', color: '#F8FAFC' },
-  modalSubtitle: { color: '#8EA4C8', fontSize: 13, marginTop: 5, textAlign: 'center' },
+  modalTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A' },
+  modalSubtitle: { color: '#64748B', fontSize: 13, marginTop: 5, textAlign: 'center' },
   featureModalTitle: { color: '#0F172A' },
   featureModalSubtitle: { color: '#475569' },
+  subscriptionPanel: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 14,
+    padding: 12,
+  },
+  subscriptionPanelHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    justifyContent: 'space-between',
+  },
+  subscriptionPanelCopy: {
+    flex: 1,
+    minWidth: 220,
+  },
+  currentPlanBadge: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  currentPlanBadgeText: {
+    color: '#1D4ED8',
+    fontSize: 12,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  statusGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  statusButton: {
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexGrow: 1,
+    minHeight: 40,
+    minWidth: 104,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  statusButtonSelected: {
+    backgroundColor: '#DCFCE7',
+    borderColor: '#16A34A',
+  },
+  statusButtonWarn: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#D97706',
+  },
+  statusButtonDanger: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#DC2626',
+  },
+  statusButtonText: {
+    color: '#475569',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  statusButtonTextSelected: {
+    color: '#0F172A',
+  },
+  usageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  usageCard: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexBasis: 150,
+    flexGrow: 1,
+    padding: 10,
+  },
+  usageLabel: {
+    color: '#64748B',
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  usageValue: {
+    color: '#0F172A',
+    fontSize: 14,
+    fontWeight: '900',
+    marginTop: 4,
+  },
   tierGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -679,8 +1286,101 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     marginTop: 8,
   },
+  planMetrics: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 10,
+  },
+  planMetric: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    color: '#334155',
+    fontSize: 11,
+    fontWeight: '900',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  planHighlights: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 9,
+  },
+  planHighlightPill: {
+    backgroundColor: '#ECFDF5',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  planHighlightText: {
+    color: '#047857',
+    fontSize: 11,
+    fontWeight: '900',
+  },
   featureGroups: {
     gap: 14,
+  },
+  rateInput: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    borderWidth: 1,
+    color: '#0F172A',
+    fontSize: 15,
+    fontWeight: '900',
+    minHeight: 44,
+    outlineStyle: 'none',
+    paddingHorizontal: 12,
+    textAlign: 'center',
+    width: 78,
+  },
+  rateLimitHeader: {
+    marginBottom: 12,
+  },
+  rateLimitSection: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 16,
+    padding: 12,
+  },
+  rateScopeCopy: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 12,
+  },
+  rateScopeRow: {
+    alignItems: 'center',
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    minHeight: 74,
+    padding: 12,
+  },
+  rateTierCard: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexBasis: 180,
+    flexGrow: 1,
+    minHeight: 98,
+    padding: 12,
+  },
+  rateTierCardSelected: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#2563EB',
+  },
+  rateTierGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 4,
   },
   featureGroup: {
     backgroundColor: '#FFFFFF',
@@ -740,6 +1440,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
+  sourceRow: {
+    flexDirection: 'row',
+    marginTop: 7,
+  },
+  sourceLabel: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    color: '#475569',
+    fontSize: 11,
+    fontWeight: '900',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
   toggleRail: {
     backgroundColor: '#CBD5E1',
     borderRadius: 999,
@@ -763,17 +1477,35 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#020617',
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#E2E8F0',
     borderRadius: 8,
     marginBottom: 12,
   },
   icon: { paddingHorizontal: 14 },
-  input: { flex: 1, paddingVertical: 15, fontSize: 15, color: '#F8FAFC', outlineStyle: 'none' },
+  input: { flex: 1, paddingVertical: 15, fontSize: 15, color: '#0F172A', outlineStyle: 'none' },
   modalBtn: { backgroundColor: '#2563EB', paddingVertical: 15, borderRadius: 8, alignItems: 'center', marginTop: 6 },
+  modalErrorBanner: {
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FCA5A5',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    marginTop: 14,
+    padding: 12,
+  },
+  modalErrorText: {
+    color: '#991B1B',
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 18,
+    marginLeft: 8,
+  },
   disabledBtn: { opacity: 0.6 },
   modalBtnText: { color: '#ffffff', fontSize: 16, fontWeight: '900' },
   modalCancelBtn: { alignItems: 'center', paddingVertical: 13 },
-  modalCancelBtnText: { fontSize: 15, color: '#8EA4C8', fontWeight: '800' },
+  modalCancelBtnText: { fontSize: 15, color: '#64748B', fontWeight: '800' },
 });

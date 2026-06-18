@@ -50,7 +50,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const actor = await authenticateUserProfile(req, ['student', 'parent']);
-    assertRateLimit({ actor, req, scope: 'payments:create-intent', limit: 12, windowMs: 60 * 1000 });
+    await assertRateLimit({ actor, req, scope: 'payments:create-intent', limit: 12, windowMs: 60 * 1000 });
     const { firestore } = getAdminServices();
     const body = parseBody(await getBody(req));
     const invoiceRef = firestore.collection('feeInvoices').doc(body.invoiceId);

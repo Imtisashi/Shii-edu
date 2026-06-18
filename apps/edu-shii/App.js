@@ -20,6 +20,7 @@ import InstituteSyncSplash from '../../src/components/auth/InstituteSyncSplash';
 import { installWebPerformanceTuning } from '../../src/utils/webPerformanceTuning';
 import { installWebScrollFix } from '../../src/utils/webScrollFix';
 import { installFirestoreOfflinePersistence } from '../../src/services/offlinePersistence';
+import { installMobilePerformanceMonitoring } from '../../src/utils/mobilePerformanceMonitoring';
 import { getAuthRoleByPath, getAuthRoleOption } from '../../src/constants/authRoles';
 import InstituteAuthNavigator from './src/navigation/InstituteAuthNavigator';
 
@@ -196,6 +197,7 @@ export default function App() {
     installWebPerformanceTuning();
     installWebScrollFix();
     installFirestoreOfflinePersistence();
+    installMobilePerformanceMonitoring();
 
     let mounted = true;
     Font.loadAsync(Ionicons.font)

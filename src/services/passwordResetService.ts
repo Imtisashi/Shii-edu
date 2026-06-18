@@ -41,7 +41,7 @@ const parseApiResponse = async (response: Response) => {
 
   try {
     data = text ? JSON.parse(text) : {};
-  } catch (_error) {
+  } catch {
     data = { error: text };
   }
 

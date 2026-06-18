@@ -21,6 +21,7 @@ public/metadata.json
 
 # Native
 .kotlin/
+.gradle-local/
 *.orig.*
 *.jks
 *.p8
@@ -79,6 +80,7 @@ IMPLEMENTATION_SUMMARY.md
 # generated native folders
 /ios
 /android
+android-role-shells/
 
 .vercel
 

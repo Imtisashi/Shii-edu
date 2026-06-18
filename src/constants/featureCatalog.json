@@ -1,11 +1,68 @@
 {
-  "defaultTier": "complete",
+  "defaultTier": "basic",
+  "aliases": {
+    "ai": "ai_tools",
+    "dashboard": "institute_dashboard",
+    "transport": "bus_tracking"
+  },
+  "tierAliases": {
+    "starter": "basic",
+    "growth": "pro",
+    "complete": "max",
+    "free": "basic",
+    "basic": "basic",
+    "pro": "pro",
+    "enterprise": "max",
+    "max": "max"
+  },
   "features": [
+    {
+      "key": "institute_dashboard",
+      "label": "Institute dashboard",
+      "description": "Core dashboard and role workspace entry points.",
+      "category": "Core"
+    },
     {
       "key": "people",
       "label": "People and directory",
-      "description": "Student, staff, parent, driver, and faculty records.",
+      "description": "Shared people directory used by student, staff, parent, driver, and faculty records.",
       "category": "Core"
+    },
+    {
+      "key": "admin_management",
+      "label": "Admin management",
+      "description": "Institute administrator management and admin-only workflows.",
+      "category": "Core"
+    },
+    {
+      "key": "teacher_management",
+      "label": "Teacher management",
+      "description": "Teacher profiles, assignments, payroll visibility, and faculty administration.",
+      "category": "Core"
+    },
+    {
+      "key": "student_management",
+      "label": "Student management",
+      "description": "Student profiles, identifiers, classes, sections, and learner administration.",
+      "category": "Core"
+    },
+    {
+      "key": "parent_management",
+      "label": "Parent management",
+      "description": "Parent and guardian profiles, linked-student access, and parent support readiness.",
+      "category": "Core"
+    },
+    {
+      "key": "class_section_management",
+      "label": "Class and section management",
+      "description": "School classes, sections, and cohort organization.",
+      "category": "Academics"
+    },
+    {
+      "key": "subject_management",
+      "label": "Subject management",
+      "description": "Subject, department, and course assignment metadata.",
+      "category": "Academics"
     },
     {
       "key": "attendance",
@@ -15,8 +72,8 @@
     },
     {
       "key": "routines",
-      "label": "Routines and calendar",
-      "description": "Timetables, master schedules, holidays, and calendar events.",
+      "label": "Timetable and calendar",
+      "description": "Basic timetable, master schedules, holidays, and calendar events.",
       "category": "Academics"
     },
     {
@@ -33,7 +90,7 @@
     },
     {
       "key": "notices",
-      "label": "Notices and broadcasts",
+      "label": "Notices and announcements",
       "description": "Role-aware notices, alerts, broadcasts, and notifications.",
       "category": "Communication"
     },
@@ -44,10 +101,34 @@
       "category": "Communication"
     },
     {
+      "key": "parent_support",
+      "label": "Parent support desk",
+      "description": "Assisted parent rollout, parent linking checks, and low-tech support exports.",
+      "category": "School Operations"
+    },
+    {
       "key": "finance",
       "label": "Fees and ledger",
       "description": "Fee assignments, manual payments, dues, receipts, and payment metadata.",
       "category": "Operations"
+    },
+    {
+      "key": "reports",
+      "label": "Basic reports",
+      "description": "Basic operational and academic report surfaces.",
+      "category": "Reports"
+    },
+    {
+      "key": "advanced_reports",
+      "label": "Advanced reports",
+      "description": "Deeper operator reports, exports, analytics, and review workflows.",
+      "category": "Reports"
+    },
+    {
+      "key": "bus_tracking",
+      "label": "Bus tracking",
+      "description": "Driver portal, assigned route visibility, and live fleet tracking surfaces.",
+      "category": "Transport"
     },
     {
       "key": "courses",
@@ -68,92 +149,326 @@
       "category": "Learning"
     },
     {
-      "key": "reports",
-      "label": "Reports",
-      "description": "Operational and academic report surfaces.",
-      "category": "Operations"
-    },
-    {
-      "key": "transport",
-      "label": "Transport and live fleet",
-      "description": "Driver portal, route visibility, and live fleet tracking.",
-      "category": "Operations"
-    },
-    {
-      "key": "ai",
-      "label": "AI assistance",
+      "key": "ai_tools",
+      "label": "AI tools",
       "description": "Syllabus tutor, smart compose, CSV mapping, and approved AI workflows.",
-      "category": "Advanced"
+      "category": "AI"
+    },
+    {
+      "key": "ai_agent",
+      "label": "Max AI admin agent",
+      "description": "Bounded natural-language admin reports, exports, and audit-logged operator assistance.",
+      "category": "AI"
+    },
+    {
+      "key": "ai_lesson_planner",
+      "label": "AI Lesson Planner",
+      "description": "AI-powered lesson planning and curriculum mapping.",
+      "category": "AI"
+    },
+    {
+      "key": "ai_automated_grading",
+      "label": "Automated Grading",
+      "description": "AI-assisted grading and feedback for assignments.",
+      "category": "AI"
+    },
+    {
+      "key": "ai_insights",
+      "label": "AI-Powered Insights",
+      "description": "AI-generated analytics and insights on student performance and engagement.",
+      "category": "AI"
+    },
+    {
+      "key": "advanced_analytics",
+      "label": "Advanced Analytics Dashboard",
+      "description": "Customizable dashboards for attendance trends, bus utilization, and performance analytics.",
+      "category": "Analytics"
+    },
+    {
+      "key": "white_labeling",
+      "label": "White Labeling",
+      "description": "Ability to remove EduHub branding and apply institute marks and custom themes.",
+      "category": "Customization"
     },
     {
       "key": "branding",
       "label": "Brand studio",
       "description": "Institute logo, palette, and theme controls.",
-      "category": "Advanced"
+      "category": "Customization"
+    },
+    {
+      "key": "custom_subdomain",
+      "label": "Custom subdomain",
+      "description": "Use an institute-specific Shii-Edu subdomain for portal access.",
+      "category": "Customization"
+    },
+    {
+      "key": "custom_domain",
+      "label": "Custom Domain",
+      "description": "Use a custom domain name for the institute's portal.",
+      "category": "Customization"
+    },
+    {
+      "key": "custom_ssl",
+      "label": "Custom SSL",
+      "description": "Upload and use custom SSL certificates for custom domains.",
+      "category": "Customization"
+    },
+    {
+      "key": "branded_mobile_apps",
+      "label": "Branded Mobile Apps",
+      "description": "Custom-branded mobile apps for iOS and Android with institute logo and colors.",
+      "category": "Customization"
+    },
+    {
+      "key": "advanced_customization",
+      "label": "Advanced customization",
+      "description": "Higher-touch theme, domain, and app branding configuration.",
+      "category": "Customization"
+    },
+    {
+      "key": "storage_quota",
+      "label": "Storage Quota",
+      "description": "Cloud storage allocation for documents, assets, and backups.",
+      "category": "Resources"
+    },
+    {
+      "key": "sms_notifications",
+      "label": "SMS Notifications",
+      "description": "Send SMS notifications via Twilio for attendance, fees, and announcements.",
+      "category": "Communication"
+    },
+    {
+      "key": "api_access",
+      "label": "API Access",
+      "description": "REST API access for third-party integrations (SIS, LMS, etc.).",
+      "category": "Integration"
+    },
+    {
+      "key": "marketplace",
+      "label": "Marketplace Access",
+      "description": "Access to EduHub Marketplace for educational content and tools (revenue share).",
+      "category": "Marketplace"
+    },
+    {
+      "key": "priority_support",
+      "label": "Priority Support",
+      "description": "Priority support with faster response times.",
+      "category": "Support"
+    },
+    {
+      "key": "dedicated_account_manager",
+      "label": "Dedicated Account Manager",
+      "description": "Dedicated account manager for large institute customers.",
+      "category": "Support"
     }
   ],
   "tiers": {
-    "starter": {
-      "label": "Starter",
-      "description": "Core institute operations for early rollout.",
+    "basic": {
+      "label": "Basic",
+      "description": "Core institute management and educational features for smaller campuses.",
+      "limits": {
+        "aiRequestsPerDay": 0,
+        "aiLessonPlannerRequestsPerDay": 0,
+        "aiAutomatedGradingRequestsPerDay": 0,
+        "aiInsightsRequestsPerDay": 0,
+        "apiRateLimitTier": "basic",
+        "maxUsers": 100,
+        "storageQuotaGB": 1,
+        "smsQuotaPerMonth": 0,
+        "supportsAi": false,
+        "supportsBusTracking": false,
+        "supportsCustomSubdomain": false,
+        "supportsWhiteLabeling": false,
+        "supportsCustomDomain": false,
+        "supportsCustomSSL": false,
+        "supportsBrandedMobileApps": false,
+        "supportsAdvancedAnalytics": false,
+        "supportsApiAccess": false,
+        "supportsMarketplace": false,
+        "supportsPrioritySupport": false,
+        "supportsDedicatedAccountManager": false
+      },
       "features": {
+        "institute_dashboard": true,
         "people": true,
+        "admin_management": true,
+        "teacher_management": true,
+        "student_management": true,
+        "parent_management": true,
+        "class_section_management": true,
+        "subject_management": true,
         "attendance": true,
         "routines": true,
         "assignments": true,
         "grades": true,
         "notices": true,
         "messages": false,
-        "finance": false,
+        "parent_support": false,
+        "finance": true,
+        "reports": true,
+        "advanced_reports": false,
+        "bus_tracking": false,
         "courses": false,
         "media": false,
         "pyq": false,
-        "reports": false,
-        "transport": false,
-        "ai": false,
-        "branding": false
+        "ai_tools": false,
+        "ai_agent": false,
+        "ai_lesson_planner": false,
+        "ai_automated_grading": false,
+        "ai_insights": false,
+        "advanced_analytics": false,
+        "white_labeling": false,
+        "custom_domain": false,
+        "custom_ssl": false,
+        "branded_mobile_apps": false,
+        "storage_quota": true,
+        "sms_notifications": false,
+        "api_access": false,
+        "marketplace": false,
+        "priority_support": false,
+        "dedicated_account_manager": false,
+        "branding": true,
+        "custom_subdomain": false,
+        "advanced_customization": false
       }
     },
-    "growth": {
-      "label": "Growth",
-      "description": "Full academic and communication workflows.",
+    "pro": {
+      "label": "Pro",
+      "description": "Everything in Basic plus controlled AI tools, bus tracking, advanced reports, and priority support.",
+      "limits": {
+        "aiRequestsPerDay": 100,
+        "aiLessonPlannerRequestsPerDay": 50,
+        "aiAutomatedGradingRequestsPerDay": 50,
+        "aiInsightsRequestsPerDay": 20,
+        "apiRateLimitTier": "pro",
+        "maxUsers": 500,
+        "storageQuotaGB": 10,
+        "smsQuotaPerMonth": 100,
+        "supportsAi": true,
+        "supportsBusTracking": true,
+        "supportsCustomSubdomain": false,
+        "supportsWhiteLabeling": false,
+        "supportsCustomDomain": false,
+        "supportsCustomSSL": false,
+        "supportsBrandedMobileApps": false,
+        "supportsAdvancedAnalytics": true,
+        "supportsApiAccess": false,
+        "supportsMarketplace": false,
+        "supportsPrioritySupport": true,
+        "supportsDedicatedAccountManager": false
+      },
       "features": {
+        "institute_dashboard": true,
         "people": true,
+        "admin_management": true,
+        "teacher_management": true,
+        "student_management": true,
+        "parent_management": true,
+        "class_section_management": true,
+        "subject_management": true,
         "attendance": true,
         "routines": true,
         "assignments": true,
         "grades": true,
         "notices": true,
         "messages": true,
+        "parent_support": true,
         "finance": true,
+        "reports": true,
+        "advanced_reports": true,
+        "bus_tracking": true,
         "courses": true,
         "media": true,
         "pyq": true,
-        "reports": true,
-        "transport": false,
-        "ai": false,
-        "branding": true
+        "ai_tools": true,
+        "ai_agent": false,
+        "ai_lesson_planner": true,
+        "ai_automated_grading": true,
+        "ai_insights": true,
+        "advanced_analytics": true,
+        "white_labeling": false,
+        "custom_domain": false,
+        "custom_ssl": false,
+        "branded_mobile_apps": false,
+        "storage_quota": true,
+        "sms_notifications": true,
+        "api_access": false,
+        "marketplace": false,
+        "priority_support": true,
+        "dedicated_account_manager": false,
+        "branding": true,
+        "custom_subdomain": false,
+        "advanced_customization": false
       }
     },
-    "complete": {
-      "label": "Complete",
-      "description": "Every shipped module enabled for the institute.",
+    "max": {
+      "label": "Max",
+      "description": "Everything in Pro plus custom subdomain, higher AI and platform limits, API access, marketplace, and premium administration.",
+      "limits": {
+        "aiRequestsPerDay": 1000,
+        "aiLessonPlannerRequestsPerDay": 500,
+        "aiAutomatedGradingRequestsPerDay": 500,
+        "aiInsightsRequestsPerDay": 200,
+        "apiRateLimitTier": "max",
+        "maxUsers": null,
+        "storageQuotaGB": 100,
+        "smsQuotaPerMonth": 5000,
+        "supportsAi": true,
+        "supportsBusTracking": true,
+        "supportsCustomSubdomain": true,
+        "supportsWhiteLabeling": true,
+        "supportsCustomDomain": true,
+        "supportsCustomSSL": true,
+        "supportsBrandedMobileApps": true,
+        "supportsAdvancedAnalytics": true,
+        "supportsApiAccess": true,
+        "supportsMarketplace": true,
+        "supportsPrioritySupport": true,
+        "supportsDedicatedAccountManager": true
+      },
       "features": {
+        "institute_dashboard": true,
         "people": true,
+        "admin_management": true,
+        "teacher_management": true,
+        "student_management": true,
+        "parent_management": true,
+        "class_section_management": true,
+        "subject_management": true,
         "attendance": true,
         "routines": true,
         "assignments": true,
         "grades": true,
         "notices": true,
         "messages": true,
+        "parent_support": true,
         "finance": true,
+        "reports": true,
+        "advanced_reports": true,
+        "bus_tracking": true,
         "courses": true,
         "media": true,
         "pyq": true,
-        "reports": true,
-        "transport": true,
-        "ai": true,
-        "branding": true
+        "ai_tools": true,
+        "ai_agent": true,
+        "ai_lesson_planner": true,
+        "ai_automated_grading": true,
+        "ai_insights": true,
+        "advanced_analytics": true,
+        "white_labeling": true,
+        "custom_domain": true,
+        "custom_ssl": true,
+        "branded_mobile_apps": true,
+        "storage_quota": true,
+        "sms_notifications": true,
+        "api_access": true,
+        "marketplace": true,
+        "priority_support": true,
+        "dedicated_account_manager": true,
+        "branding": true,
+        "custom_subdomain": true,
+        "advanced_customization": true
       }
     }
   }

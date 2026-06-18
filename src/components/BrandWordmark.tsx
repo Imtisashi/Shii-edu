@@ -12,10 +12,10 @@ type BrandWordmarkProps = {
 };
 
 const WORDMARK_SIZES: Record<BrandWordmarkSize, { lead: number; rest: number; lineHeight: number }> = {
-  sm: { lead: 22, lineHeight: 27, rest: 15 },
-  md: { lead: 30, lineHeight: 36, rest: 21 },
-  lg: { lead: 42, lineHeight: 49, rest: 29 },
-  xl: { lead: 54, lineHeight: 62, rest: 37 },
+  sm: { lead: 21, lineHeight: 27, rest: 18 },
+  md: { lead: 29, lineHeight: 36, rest: 24 },
+  lg: { lead: 42, lineHeight: 49, rest: 32 },
+  xl: { lead: 54, lineHeight: 62, rest: 41 },
 };
 
 export default function BrandWordmark({
@@ -55,12 +55,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
   },
   rest: {
-    fontWeight: '900',
+    fontWeight: '800',
     letterSpacing: 0,
   },
   root: {
     fontFamily: Fonts.block,
     fontWeight: '900',
+    includeFontPadding: false,
     letterSpacing: 0,
     textTransform: 'uppercase',
   },

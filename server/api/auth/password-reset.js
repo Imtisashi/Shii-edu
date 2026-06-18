@@ -117,6 +117,7 @@ const serializeRequest = (document) => {
     contact: data.contact || '',
     createdAt: timestampToIso(data.createdAt),
     id: document.id,
+    approvalRole: data.approvalRole || (normalizeRole(data.userRole) === 'admin' ? 'superadmin' : 'admin'),
     instituteId: data.instituteId || '',
     note: data.note || '',
     rejectedAt: timestampToIso(data.rejectedAt),
@@ -191,6 +192,11 @@ const findInstituteAdmins = async ({ firestore, instituteId }) => {
     .filter((profile) => normalizeRole(profile.role) === 'admin');
 };
 
+const findSuperadmins = async ({ firestore }) => {
+  const snapshot = await firestore.collection('users').where('role', '==', 'superadmin').limit(50).get();
+  return snapshot.docs.map((document) => ({ id: document.id, ...document.data() }));
+};
+
 const createNotification = async ({
   body,
   data = {},
@@ -249,6 +255,11 @@ const createNotification = async ({
 
 const ensureAdminCanAccessRequest = (actor, requestData) => {
   if (actor.role === 'superadmin') return;
+  if (normalizeRole(requestData.userRole) === 'admin') {
+    const error = new Error('Administrator password reset requests require Superadmin approval.');
+    error.statusCode = 403;
+    throw error;
+  }
   if (actor.profile?.instituteId && actor.profile.instituteId === requestData.instituteId) return;
 
   const error = new Error('Admins can only manage password reset requests for their own institute.');
@@ -257,7 +268,7 @@ const ensureAdminCanAccessRequest = (actor, requestData) => {
 };
 
 const handleCreateRequest = async (req, res, body) => {
-  assertRateLimit({ req, scope: 'auth:password-reset-request', limit: 6, windowMs: 10 * 60 * 1000 });
+  await assertRateLimit({ req, scope: 'auth:password-reset-request', limit: 6, windowMs: 10 * 60 * 1000 });
 
   const payload = parseWithSchema(RequestSchema, body);
   const instituteId = assertInstituteId(payload.instituteId);
@@ -290,12 +301,17 @@ const handleCreateRequest = async (req, res, body) => {
 
   const requestToken = createRequestToken();
   const requestRef = firestore.collection(RESET_COLLECTION).doc();
-  const admins = await findInstituteAdmins({ firestore, instituteId });
-  const adminUids = admins.map((profileData) => profileData.id || profileData.uid).filter(Boolean);
+  const userRole = normalizeRole(profile.role);
+  const requiresSuperadminApproval = userRole === 'admin';
+  const approvers = requiresSuperadminApproval
+    ? await findSuperadmins({ firestore })
+    : await findInstituteAdmins({ firestore, instituteId });
+  const approverUids = approvers.map((profileData) => profileData.id || profileData.uid).filter(Boolean);
   const webPushSubscription = normalizeWebPushSubscription(payload.webPushSubscription);
 
   await requestRef.set({
-    adminUids,
+    adminUids: approverUids,
+    approvalRole: requiresSuperadminApproval ? 'superadmin' : 'admin',
     authEmail,
     contact: payload.contact || '',
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -313,13 +329,15 @@ const handleCreateRequest = async (req, res, body) => {
     userId,
     userIdKey: toIdentifierKey(userId),
     userName: profile.name || profile.displayName || userId,
-    userRole: normalizeRole(profile.role),
+    userRole,
     userUid: profile.id || profile.uid || null,
     webPushSubscription,
   });
 
   await createNotification({
-    body: `${profile.name || userId} requested a password reset for User ID ${userId}.`,
+    body: requiresSuperadminApproval
+      ? `${profile.name || userId} requested an administrator password reset for institute ${instituteId}. Verify in person before approval.`
+      : `${profile.name || userId} requested a password reset for User ID ${userId}.`,
     data: {
       requestId: requestRef.id,
       role: payload.role,
@@ -328,9 +346,9 @@ const handleCreateRequest = async (req, res, body) => {
     },
     firestore,
     instituteId,
-    recipientUids: adminUids,
-    roleTargets: ['admin'],
-    title: 'Password reset request',
+    recipientUids: approverUids,
+    roleTargets: requiresSuperadminApproval ? ['superadmin'] : ['admin'],
+    title: requiresSuperadminApproval ? 'Admin password reset review' : 'Password reset request',
     type: 'warning',
   }).catch((error) => {
     console.warn('Admin password reset notification failed:', error?.message || error);
@@ -368,7 +386,7 @@ const handleStatus = async (_req, res, body) => {
 
 const handleList = async (req, res, body) => {
   const actor = await authenticateUserProfile(req, ['admin', 'superadmin']);
-  assertRateLimit({ actor, req, scope: 'admin:password-reset-list', limit: 60, windowMs: 60 * 1000 });
+  await assertRateLimit({ actor, req, scope: 'admin:password-reset-list', limit: 60, windowMs: 60 * 1000 });
   const payload = parseWithSchema(ListSchema, body);
   const { firestore } = getAdminServices();
   const instituteId = actor.role === 'superadmin'
@@ -384,6 +402,7 @@ const handleList = async (req, res, body) => {
 
   const requests = snapshot.docs
     .filter((document) => payload.status === 'all' || document.data()?.status === payload.status)
+    .filter((document) => actor.role === 'superadmin' || normalizeRole(document.data()?.userRole) !== 'admin')
     .sort((left, right) => createdAtToMillis(right.data()?.createdAt) - createdAtToMillis(left.data()?.createdAt))
     .map(serializeRequest);
 
@@ -392,7 +411,7 @@ const handleList = async (req, res, body) => {
 
 const handleApprove = async (req, res, body) => {
   const actor = await authenticateUserProfile(req, ['admin', 'superadmin']);
-  assertRateLimit({ actor, req, scope: 'admin:password-reset-approve', limit: 24, windowMs: 60 * 1000 });
+  await assertRateLimit({ actor, req, scope: 'admin:password-reset-approve', limit: 24, windowMs: 60 * 1000 });
   const payload = parseWithSchema(ApproveSchema, body);
   const { firestore } = getAdminServices();
   const requestRef = firestore.collection(RESET_COLLECTION).doc(payload.requestId);
@@ -466,7 +485,7 @@ const handleApprove = async (req, res, body) => {
 
 const handleReject = async (req, res, body) => {
   const actor = await authenticateUserProfile(req, ['admin', 'superadmin']);
-  assertRateLimit({ actor, req, scope: 'admin:password-reset-reject', limit: 24, windowMs: 60 * 1000 });
+  await assertRateLimit({ actor, req, scope: 'admin:password-reset-reject', limit: 24, windowMs: 60 * 1000 });
   const payload = parseWithSchema(RejectSchema, body);
   const { firestore } = getAdminServices();
   const requestRef = firestore.collection(RESET_COLLECTION).doc(payload.requestId);

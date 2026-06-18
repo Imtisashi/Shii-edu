@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
@@ -8,6 +8,7 @@ import StudentScreenScaffold, { EnterprisePanel, ScreenIntro } from '../../compo
 import { useAuth } from '../../contexts/AuthContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
 import StripePaymentButton from '../../components/payments/StripePaymentButton';
+import { useParentLinkedStudents } from '../../hooks/useParentLinkedStudents';
 
 const formatCurrency = (value) => `Rs. ${Number(value || 0).toLocaleString()}`;
 
@@ -80,12 +81,60 @@ function FeeRow({ fee }) {
   );
 }
 
+function ParentChildSelector({ selectedStudentId, setSelectedStudentId, students }) {
+  const { colors, radii } = useRootLayout();
+  if (!students || students.length <= 1) return null;
+
+  return (
+    <EnterprisePanel style={styles.childSelector}>
+      <Text style={[styles.childSelectorLabel, { color: colors.muted }]}>Viewing child</Text>
+      <View style={styles.childSelectorRow}>
+        {students.map((student) => {
+          const selected = student.id === selectedStudentId;
+          const studentId = student.loginId || student.uniqueId || student.studentId || student.id;
+
+          return (
+            <TouchableOpacity
+              accessibilityLabel={`Show fees for ${student.name || studentId}`}
+              accessibilityRole="button"
+              key={student.id}
+              onPress={() => setSelectedStudentId(student.id)}
+              style={[
+                styles.childSelectorChip,
+                {
+                  backgroundColor: selected ? colors.text : colors.card,
+                  borderColor: selected ? colors.text : colors.hairline,
+                  borderRadius: radii.control,
+                },
+              ]}
+            >
+              <Text numberOfLines={1} style={[styles.childSelectorName, { color: selected ? colors.page : colors.text }]}>
+                {student.name || 'Student'}
+              </Text>
+              <Text numberOfLines={1} style={[styles.childSelectorId, { color: selected ? colors.page : colors.muted }]}>
+                {studentId}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </EnterprisePanel>
+  );
+}
+
 export default function FeePayment() {
   const { userData } = useAuth();
   const { colors } = useRootLayout();
   const [feeData, setFeeData] = useState(null);
   const [invoices, setInvoices] = useState([]);
-  const ledgerUserUid = userData?.role === 'parent' ? userData?.linkedStudentUid : userData?.uid;
+  const {
+    loading: linkedStudentsLoading,
+    selectedStudent,
+    selectedStudentId,
+    setSelectedStudentId,
+    students: linkedStudents,
+  } = useParentLinkedStudents(userData);
+  const ledgerUserUid = userData?.role === 'parent' ? selectedStudent?.id : userData?.uid;
 
   useEffect(() => {
     if (!ledgerUserUid) {
@@ -148,7 +197,7 @@ export default function FeePayment() {
     [invoices]
   );
 
-  if (!feeData) {
+  if (!feeData || (userData?.role === 'parent' && linkedStudentsLoading)) {
     return (
       <StudentScreenScaffold style={styles.scaffoldContent} title="Fees">
         <LoadingState />
@@ -164,6 +213,12 @@ export default function FeePayment() {
         subtitle="Track assigned dues, payments, receipts, and Stripe clearance status."
         title="Fees"
         trailing={<Ionicons name="wallet" size={27} color={colors.bronze} />}
+      />
+
+      <ParentChildSelector
+        selectedStudentId={selectedStudentId}
+        setSelectedStudentId={setSelectedStudentId}
+        students={linkedStudents}
       />
 
       <LedgerHero
@@ -218,6 +273,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
+  },
+  childSelector: {
+    marginBottom: 16,
+  },
+  childSelectorChip: {
+    borderWidth: 1,
+    flexGrow: 1,
+    minHeight: 54,
+    minWidth: 132,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  childSelectorId: {
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  childSelectorLabel: {
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  childSelectorName: {
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  childSelectorRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
   },
   emptyPanel: {
     alignItems: 'center',

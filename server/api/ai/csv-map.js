@@ -10,8 +10,8 @@ const {
 } = require('../_lib/firebaseAdmin');
 const { generateStructured, getGeminiConfig } = require('../_lib/gemini');
 const { assertNoPromptInjection } = require('../_lib/promptSafety');
-const { assertFeatureEnabled } = require('../_lib/featureEntitlements');
 const { assertRateLimit } = require('../_lib/rateLimit');
+const { assertAiDailyUsage } = require('../_lib/subscriptionEntitlements');
 
 const SCHOOL_FIELDS = ['firstName', 'lastName', 'userId', 'password', 'parentName', 'parentPhone', 'standard', 'section'];
 const COLLEGE_FIELDS = ['firstName', 'lastName', 'userId', 'password', 'parentName', 'parentPhone', 'department', 'semester'];
@@ -110,10 +110,10 @@ module.exports = async function handler(req, res) {
 
   try {
     const actor = await authenticateUserProfile(req, ['admin', 'superadmin']);
-    assertRateLimit({ actor, req, scope: 'ai:csv-map', limit: 18, windowMs: 60 * 1000 });
+    await assertRateLimit({ actor, req, scope: 'ai:csv-map', limit: 18, windowMs: 60 * 1000 });
     const { firestore } = getAdminServices();
     if (actor.profile?.instituteId) {
-      await assertFeatureEnabled({ firestore, instituteId: actor.profile.instituteId, featureKey: 'ai' });
+      await assertAiDailyUsage({ actor, firestore, instituteId: actor.profile.instituteId, featureKey: 'ai_tools' });
     }
     const body = parseBody(await getBody(req));
     body.headers.forEach((header) => assertNoPromptInjection(header, 'CSV header'));

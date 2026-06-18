@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   addDoc,
   collection,
+  doc,
   serverTimestamp,
+  setDoc,
 } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../../firebaseConfig';
@@ -226,8 +228,40 @@ export const createUnifiedNotification = async (notificationData) => {
   }
 };
 
+export const submitNotificationResponse = async ({
+  answer,
+  currentUser,
+  instituteId,
+  notificationId,
+  prompt,
+  responseType,
+}) => {
+  if (!currentUser?.uid || !instituteId || !notificationId) {
+    throw new Error('Sign in before sending a response.');
+  }
+
+  const cleanedAnswer = String(answer || '').trim();
+  if (!cleanedAnswer) {
+    throw new Error('Choose or type a response before sending.');
+  }
+
+  const responseRef = doc(db, 'notificationResponses', `${notificationId}_${currentUser.uid}`);
+  await setDoc(responseRef, {
+    answer: cleanedAnswer,
+    instituteId,
+    notificationId,
+    prompt: String(prompt || '').trim() || null,
+    responseType: responseType || 'opinion',
+    uid: currentUser.uid,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+
+  return responseRef.id;
+};
+
 export default {
   useUnifiedNotifications,
   createUnifiedNotification,
+  submitNotificationResponse,
   NotificationType
 };

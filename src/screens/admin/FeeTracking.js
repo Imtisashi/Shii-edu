@@ -29,8 +29,11 @@ export default function FeeManagement() {
   const [feeTitle, setFeeTitle] = useState('');
   const [feeType, setFeeType] = useState(''); // e.g., Monthly, Exam, Lab
   const [feeAmount, setFeeAmount] = useState('');
+  const [feeDescription, setFeeDescription] = useState('');
+  const [feeDueDate, setFeeDueDate] = useState('');
   const [targetScope, setTargetScope] = useState('all');
   const [targetGroup, setTargetGroup] = useState('');
+  const [targetGroupSecondary, setTargetGroupSecondary] = useState('');
   const [isAllocating, setIsAllocating] = useState(false);
   const allocationIdempotencyKeyRef = React.useRef(null);
 
@@ -38,6 +41,11 @@ export default function FeeManagement() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [offlineTargetScope, setOfflineTargetScope] = useState('all');
+  const [offlineTargetGroup, setOfflineTargetGroup] = useState('');
+  const [offlineTargetGroupSecondary, setOfflineTargetGroupSecondary] = useState('');
+  const [offlineNote, setOfflineNote] = useState('');
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
 
   const instType = String(userData?.instituteData?.institutionType || userData?.instituteData?.type || 'school').toLowerCase();
   const isSchool = instType.includes('school');
@@ -46,12 +54,32 @@ export default function FeeManagement() {
       { id: 'all', label: 'Entire Institute' },
       { id: 'class', label: 'Class' },
       { id: 'section', label: 'Section' },
+      { id: 'classSection', label: 'Class + Section' },
     ]
     : [
       { id: 'all', label: 'Entire Institute' },
       { id: 'department', label: 'Department' },
       { id: 'semester', label: 'Semester' },
+      { id: 'departmentSemester', label: 'Department + Semester' },
     ];
+
+  const isCompoundScope = (scope) => scope === 'classSection' || scope === 'departmentSemester';
+  const buildTargetValue = (scope, primary, secondary) => {
+    if (scope === 'all') return '';
+    const first = primary.trim();
+    const second = secondary.trim();
+    return isCompoundScope(scope) ? `${first}|${second}` : first;
+  };
+  const formatTargetHint = (scope) => {
+    if (scope === 'class') return 'Enter the class label used on student profiles.';
+    if (scope === 'section') return 'Enter the section label used on student profiles.';
+    if (scope === 'classSection') return 'Enter both class and section for a precise cohort.';
+    if (scope === 'department') return 'Enter the department label used on student profiles.';
+    if (scope === 'semester') return 'Enter the semester label used on student profiles.';
+    if (scope === 'departmentSemester') return 'Enter both department and semester for a precise cohort.';
+    return '';
+  };
+  const getOutstandingAmount = (student) => Math.max(0, Number(student?.totalFee || 0) - Number(student?.feePaid || 0));
 
   // --- 1. FETCH STUDENTS & CALCULATE REVENUE ---
   useEffect(() => {
@@ -116,7 +144,33 @@ export default function FeeManagement() {
       setSelectedStudent(null);
       setPaymentAmount('');
     } catch (error) {
-      showAlert("Error", error.message || "Could not process payment.");
+      showAlert("Payment Not Recorded", error.message || "Could not record this offline payment. Check the amount and try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRecordFullOutstanding = async () => {
+    Keyboard.dismiss();
+    if (!selectedStudent) return;
+
+    setIsProcessing(true);
+    try {
+      const result = await authenticatedFetch('/api/admin/fees/record-payment', currentUser, {
+        method: 'POST',
+        retryCount: 0,
+        body: {
+          currency: 'INR',
+          markFullOutstanding: true,
+          note: 'Marked paid offline by admin.',
+          studentUid: selectedStudent.id,
+        },
+      });
+      showAlert("Payment Recorded", `Cleared Rs. ${Number(result.amount).toLocaleString()} across ${result.allocatedInvoices} invoice(s).`);
+      setSelectedStudent(null);
+      setPaymentAmount('');
+    } catch (error) {
+      showAlert("Payment Not Recorded", error.message || "Could not clear this student's offline balance.");
     } finally {
       setIsProcessing(false);
     }
@@ -125,7 +179,8 @@ export default function FeeManagement() {
   // --- 3. BULK ALLOCATE FEES ---
   const handleAllocateFees = async () => {
     Keyboard.dismiss();
-    if (!feeTitle || !feeType || !feeAmount || (targetScope !== 'all' && !targetGroup.trim())) {
+    const targetValue = buildTargetValue(targetScope, targetGroup, targetGroupSecondary);
+    if (!feeTitle || !feeType || !feeAmount || (targetScope !== 'all' && !targetGroup.trim()) || (isCompoundScope(targetScope) && !targetGroupSecondary.trim())) {
       return showAlert("Incomplete", "Please fill in all fee details.");
     }
 
@@ -144,29 +199,69 @@ export default function FeeManagement() {
           feeType: feeType.trim(),
           amount: Number(feeAmount),
           currency: 'INR',
+          description: feeDescription.trim(),
+          dueDate: feeDueDate.trim(),
           idempotencyKey: allocationIdempotencyKeyRef.current,
           targetScope,
-          targetValue: targetScope === 'all' ? '' : targetGroup.trim(),
+          targetValue,
         },
       });
 
       if (result.background) {
         showNativeMessage('Processing in Background', 'Fee invoices are being generated safely. Students and parents will be notified when the job completes.');
-        setFeeTitle(''); setFeeType(''); setFeeAmount(''); setTargetGroup(''); setTargetScope('all');
+        setFeeTitle(''); setFeeType(''); setFeeAmount(''); setFeeDescription(''); setFeeDueDate(''); setTargetGroup(''); setTargetGroupSecondary(''); setTargetScope('all');
         setActiveTab('ledger');
         return;
       }
 
       showAlert("Success", `Allocated Rs. ${Number(result.amount).toLocaleString()} to ${result.assignedStudents} students.`);
-      setFeeTitle(''); setFeeType(''); setFeeAmount(''); setTargetGroup(''); setTargetScope('all');
+      setFeeTitle(''); setFeeType(''); setFeeAmount(''); setFeeDescription(''); setFeeDueDate(''); setTargetGroup(''); setTargetGroupSecondary(''); setTargetScope('all');
       setActiveTab('ledger');
 
     } catch (error) {
-      showAlert("Error", "Failed to allocate fees.");
+      showAlert("Fee Not Allocated", error.message || "The fee could not be assigned. Check the selected group and try again.");
       console.error(error);
     } finally {
       allocationIdempotencyKeyRef.current = null;
       setIsAllocating(false);
+    }
+  };
+
+  const handleBulkOfflinePayment = async () => {
+    Keyboard.dismiss();
+    const targetValue = buildTargetValue(offlineTargetScope, offlineTargetGroup, offlineTargetGroupSecondary);
+    if ((offlineTargetScope !== 'all' && !offlineTargetGroup.trim()) || (isCompoundScope(offlineTargetScope) && !offlineTargetGroupSecondary.trim())) {
+      showAlert("Choose a Group", "Select a group and fill in the required class, section, department, or semester.");
+      return;
+    }
+
+    setIsBulkProcessing(true);
+    try {
+      const result = await authenticatedFetch('/api/admin/fees/record-payment', currentUser, {
+        method: 'POST',
+        timeoutMs: 60000,
+        retryCount: 0,
+        body: {
+          currency: 'INR',
+          markFullOutstanding: true,
+          note: offlineNote.trim() || 'Bulk offline fee reconciliation by admin.',
+          targetScope: offlineTargetScope,
+          targetValue,
+        },
+      });
+      showAlert(
+        "Offline Payments Recorded",
+        `Cleared Rs. ${Number(result.amount).toLocaleString()} for ${result.studentsUpdated} student${result.studentsUpdated === 1 ? '' : 's'} across ${result.allocatedInvoices} invoice(s).`
+      );
+      setOfflineTargetScope('all');
+      setOfflineTargetGroup('');
+      setOfflineTargetGroupSecondary('');
+      setOfflineNote('');
+      setActiveTab('ledger');
+    } catch (error) {
+      showAlert("Offline Payments Not Recorded", error.message || "Could not clear this group. Check the selected students and try again.");
+    } finally {
+      setIsBulkProcessing(false);
     }
   };
 
@@ -197,6 +292,9 @@ export default function FeeManagement() {
           </TouchableOpacity>
           <TouchableOpacity style={[styles.tab, activeTab === 'allocate' && styles.activeTab]} onPress={() => setActiveTab('allocate')}>
             <Text style={[styles.tabText, activeTab === 'allocate' && styles.activeTabText]}>Allocate Fees</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.tab, activeTab === 'offline' && styles.activeTab]} onPress={() => setActiveTab('offline')}>
+            <Text style={[styles.tabText, activeTab === 'offline' && styles.activeTabText]}>Offline Payments</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -271,6 +369,26 @@ export default function FeeManagement() {
               </View>
             </View>
 
+            <Text style={styles.label}>Due Date (optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. 2026-07-15"
+              placeholderTextColor={colors.muted}
+              value={feeDueDate}
+              onChangeText={setFeeDueDate}
+            />
+
+            <Text style={styles.label}>Description (optional)</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Add a short note students and parents can understand."
+              placeholderTextColor={colors.muted}
+              value={feeDescription}
+              onChangeText={setFeeDescription}
+              multiline
+              textAlignVertical="top"
+            />
+
             <Text style={styles.label}>Target Group</Text>
             <View style={styles.scopeRow}>
               {targetScopes.map((scopeOption) => (
@@ -278,7 +396,8 @@ export default function FeeManagement() {
                   key={scopeOption.id}
                   onPress={() => {
                     setTargetScope(scopeOption.id);
-                    if (scopeOption.id === 'all') setTargetGroup('');
+                    setTargetGroup('');
+                    setTargetGroupSecondary('');
                   }}
                   style={[styles.scopeChip, targetScope === scopeOption.id && styles.scopeChipActive]}
                 >
@@ -289,20 +408,117 @@ export default function FeeManagement() {
             {targetScope !== 'all' && (
               <>
                 <Text style={styles.hint}>
-                  Enter the exact {targetScope} label used on student profiles.
+                  {formatTargetHint(targetScope)}
                 </Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder={isSchool ? (targetScope === 'class' ? 'e.g. 10' : 'e.g. A') : (targetScope === 'department' ? 'e.g. CSE' : 'e.g. 3')}
-                  placeholderTextColor={colors.muted}
-                  value={targetGroup}
-                  onChangeText={setTargetGroup}
-                />
+                <View style={[styles.row, isCompoundScope(targetScope) ? null : styles.singleInputRow]}>
+                  <View style={[styles.fieldPane, isCompoundScope(targetScope) && styles.fieldPaneSpacing]}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder={isSchool ? (targetScope === 'section' ? 'e.g. A' : 'e.g. 10') : (targetScope === 'semester' ? 'e.g. 3' : 'e.g. CSE')}
+                      placeholderTextColor={colors.muted}
+                      value={targetGroup}
+                      onChangeText={setTargetGroup}
+                    />
+                  </View>
+                  {isCompoundScope(targetScope) && (
+                    <View style={styles.fieldPane}>
+                      <TextInput
+                        style={styles.input}
+                        placeholder={isSchool ? 'Section, e.g. A' : 'Semester, e.g. 3'}
+                        placeholderTextColor={colors.muted}
+                        value={targetGroupSecondary}
+                        onChangeText={setTargetGroupSecondary}
+                      />
+                    </View>
+                  )}
+                </View>
               </>
             )}
 
             <TouchableOpacity style={styles.allocateBtn} onPress={handleAllocateFees} disabled={isAllocating}>
               {isAllocating ? <SmoothSpinner color="#fff" /> : <Text style={styles.allocateText}>Bulk Allocate Fees</Text>}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      )}
+
+      {/* TAB: OFFLINE PAYMENT RECONCILIATION */}
+      {activeTab === 'offline' && (
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <View style={styles.formCard}>
+            <View style={styles.formHeader}>
+              <Ionicons name="receipt" size={24} color="#10B981" />
+              <View>
+                <Text style={styles.formTitle}>Offline Payment Reconciliation</Text>
+                <Text style={styles.formSubtitle}>Clear unpaid invoices after cash, bank transfer, or counter payment is verified.</Text>
+              </View>
+            </View>
+
+            <Text style={styles.label}>Student Group</Text>
+            <View style={styles.scopeRow}>
+              {targetScopes.map((scopeOption) => (
+                <TouchableOpacity
+                  key={scopeOption.id}
+                  onPress={() => {
+                    setOfflineTargetScope(scopeOption.id);
+                    setOfflineTargetGroup('');
+                    setOfflineTargetGroupSecondary('');
+                  }}
+                  style={[styles.scopeChip, offlineTargetScope === scopeOption.id && styles.scopeChipSuccess]}
+                >
+                  <Text style={[styles.scopeChipText, offlineTargetScope === scopeOption.id && styles.scopeChipSuccessText]}>{scopeOption.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {offlineTargetScope !== 'all' && (
+              <>
+                <Text style={styles.hint}>{formatTargetHint(offlineTargetScope)}</Text>
+                <View style={[styles.row, isCompoundScope(offlineTargetScope) ? null : styles.singleInputRow]}>
+                  <View style={[styles.fieldPane, isCompoundScope(offlineTargetScope) && styles.fieldPaneSpacing]}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder={isSchool ? (offlineTargetScope === 'section' ? 'e.g. A' : 'e.g. 10') : (offlineTargetScope === 'semester' ? 'e.g. 3' : 'e.g. CSE')}
+                      placeholderTextColor={colors.muted}
+                      value={offlineTargetGroup}
+                      onChangeText={setOfflineTargetGroup}
+                    />
+                  </View>
+                  {isCompoundScope(offlineTargetScope) && (
+                    <View style={styles.fieldPane}>
+                      <TextInput
+                        style={styles.input}
+                        placeholder={isSchool ? 'Section, e.g. A' : 'Semester, e.g. 3'}
+                        placeholderTextColor={colors.muted}
+                        value={offlineTargetGroupSecondary}
+                        onChangeText={setOfflineTargetGroupSecondary}
+                      />
+                    </View>
+                  )}
+                </View>
+              </>
+            )}
+
+            <Text style={styles.label}>Internal Note (optional)</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="e.g. Bank deposit verified by accounts office."
+              placeholderTextColor={colors.muted}
+              value={offlineNote}
+              onChangeText={setOfflineNote}
+              multiline
+              textAlignVertical="top"
+            />
+
+            <View style={styles.reconcileBox}>
+              <Ionicons name="shield-checkmark-outline" size={22} color="#A7F3D0" />
+              <Text style={styles.reconcileText}>
+                This action marks only existing unpaid invoice balances as paid. It does not create a new fee.
+              </Text>
+            </View>
+
+            <TouchableOpacity style={styles.reconcileBtn} onPress={handleBulkOfflinePayment} disabled={isBulkProcessing}>
+              {isBulkProcessing ? <SmoothSpinner color="#fff" /> : <Text style={styles.allocateText}>Mark Outstanding Paid Offline</Text>}
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -317,11 +533,20 @@ export default function FeeManagement() {
               <TouchableOpacity onPress={() => setSelectedStudent(null)}><Ionicons name="close-circle" size={28} color={colors.muted} /></TouchableOpacity>
             </View>
             <Text style={styles.modalSub}>Receiving from <Text style={styles.modalStudentName}>{selectedStudent.name}</Text></Text>
+            <View style={styles.modalBalanceRow}>
+              <Text style={styles.modalBalanceLabel}>Outstanding balance</Text>
+              <Text style={styles.modalBalanceValue}>Rs. {getOutstandingAmount(selectedStudent).toLocaleString()}</Text>
+            </View>
             
             <View style={styles.inputWrapper}>
               <Text style={styles.currencySymbol}>Rs.</Text>
               <TextInput style={styles.modalInput} placeholder="0" placeholderTextColor={colors.muted} keyboardType="numeric" value={paymentAmount} onChangeText={setPaymentAmount} autoFocus />
             </View>
+
+            <TouchableOpacity style={styles.fullOutstandingBtn} onPress={handleRecordFullOutstanding} disabled={isProcessing}>
+              <Ionicons name="checkmark-done-outline" size={18} color="#A7F3D0" />
+              <Text style={styles.fullOutstandingText}>Clear Full Outstanding Offline</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity style={styles.submitBtn} onPress={handleRecordPayment} disabled={isProcessing}>
               {isProcessing ? <SmoothSpinner color="#fff" /> : <Text style={styles.submitText}>Confirm Payment</Text>}
@@ -376,17 +601,27 @@ const baseStyles = StyleSheet.create({
   formCard: { backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1, padding: 20 },
   formHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, borderBottomWidth: 1, borderBottomColor: '#334155', paddingBottom: 15 },
   formTitle: { fontSize: 18, fontWeight: '900', color: '#F8FAFC', marginLeft: 10 },
+  formSubtitle: { color: '#B9C6DD', fontSize: 12, fontWeight: '700', lineHeight: 18, marginLeft: 10, marginTop: 3 },
   label: { fontSize: 14, fontWeight: 'bold', color: '#B9C6DD', marginBottom: 8 },
   hint: { fontSize: 11, color: '#8EA4C8', marginBottom: 8, fontWeight: '800' },
   input: { backgroundColor: '#020617', borderWidth: 1, borderColor: '#334155', borderRadius: 8, color: '#F8FAFC', padding: 15, fontSize: 16, marginBottom: 20, outlineStyle: 'none' },
+  textArea: { minHeight: 92, paddingTop: 14 },
   row: { flexDirection: 'row' },
+  singleInputRow: { maxWidth: 420 },
+  fieldPane: { flex: 1, minWidth: 0 },
+  fieldPaneSpacing: { marginRight: 10 },
   scopeRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
   scopeChip: { backgroundColor: '#111827', borderColor: '#334155', borderRadius: 8, borderWidth: 1, marginBottom: 8, marginRight: 8, paddingHorizontal: 12, paddingVertical: 8 },
   scopeChipActive: { backgroundColor: '#1E1B4B', borderColor: '#6D28D9' },
   scopeChipText: { color: '#B9C6DD', fontSize: 12, fontWeight: '900' },
   scopeChipTextActive: { color: '#DDD6FE' },
+  scopeChipSuccess: { backgroundColor: '#064E3B', borderColor: '#047857' },
+  scopeChipSuccessText: { color: '#A7F3D0' },
   allocateBtn: { backgroundColor: '#8B5CF6', paddingVertical: 18, borderRadius: 8, alignItems: 'center', marginTop: 10 },
   allocateText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  reconcileBox: { alignItems: 'flex-start', backgroundColor: '#064E3B', borderColor: '#047857', borderRadius: 8, borderWidth: 1, flexDirection: 'row', marginBottom: 16, padding: 13 },
+  reconcileText: { color: '#D1FAE5', flex: 1, fontSize: 12, fontWeight: '800', lineHeight: 18, marginLeft: 9 },
+  reconcileBtn: { backgroundColor: '#047857', paddingVertical: 18, borderRadius: 8, alignItems: 'center', marginTop: 4 },
 
   modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center', zIndex: 100, padding: 20 },
   modalCard: { backgroundColor: '#0F172A', borderColor: '#334155', borderWidth: 1, width: '100%', maxWidth: 400, borderRadius: 8, padding: 25 },
@@ -394,9 +629,14 @@ const baseStyles = StyleSheet.create({
   modalTitle: { fontSize: 20, fontWeight: '900', color: '#F8FAFC' },
   modalSub: { fontSize: 14, color: '#B9C6DD', marginTop: 10, marginBottom: 20 },
   modalStudentName: { fontWeight: 'bold', color: '#F8FAFC' },
+  modalBalanceRow: { alignItems: 'center', backgroundColor: '#020617', borderColor: '#334155', borderRadius: 8, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14, paddingHorizontal: 12, paddingVertical: 10 },
+  modalBalanceLabel: { color: '#8EA4C8', fontSize: 12, fontWeight: '900' },
+  modalBalanceValue: { color: '#F8FAFC', fontSize: 14, fontWeight: '900' },
   inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#020617', borderWidth: 1, borderColor: '#334155', borderRadius: 8, paddingHorizontal: 15 },
   currencySymbol: { fontSize: 24, fontWeight: 'bold', color: '#94A3B8', marginRight: 10 },
   modalInput: { flex: 1, fontSize: 28, fontWeight: 'bold', color: '#F8FAFC', paddingVertical: 15, outlineStyle: 'none' },
+  fullOutstandingBtn: { alignItems: 'center', backgroundColor: '#064E3B', borderColor: '#047857', borderRadius: 8, borderWidth: 1, flexDirection: 'row', justifyContent: 'center', marginTop: 14, minHeight: 46 },
+  fullOutstandingText: { color: '#A7F3D0', fontSize: 13, fontWeight: '900', marginLeft: 7 },
   submitBtn: { backgroundColor: '#8B5CF6', paddingVertical: 18, borderRadius: 8, alignItems: 'center', marginTop: 25 },
   submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
 });

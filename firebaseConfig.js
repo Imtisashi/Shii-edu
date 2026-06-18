@@ -1,12 +1,7 @@
 // firebaseConfig.js
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import {
-  getFirestore,
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
-} from 'firebase/firestore';
+import { getFirestore } from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
 import { Platform } from 'react-native';
 
@@ -35,20 +30,16 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const existingApps = getApps();
+const app = existingApps.length === 0 ? initializeApp(firebaseConfig) : existingApps[0];
+const firestoreCacheKey = '__shiiEduFirestoreDb';
 
 const createFirestore = () => {
   if (Platform.OS !== 'web') return getFirestore(app);
-
-  try {
-    return initializeFirestore(app, {
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager(),
-      }),
-    });
-  } catch {
-    return getFirestore(app);
-  }
+  if (globalThis[firestoreCacheKey]) return globalThis[firestoreCacheKey];
+  const firestore = getFirestore(app);
+  globalThis[firestoreCacheKey] = firestore;
+  return firestore;
 };
 
 // Initialize Firebase services

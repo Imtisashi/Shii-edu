@@ -1,6 +1,6 @@
-import 'bootstrap/dist/css/bootstrap.min.css';
 import './globals.css';
 import { SITE } from './lib/site';
+import { SubscriptionProvider } from './components/SubscriptionProvider';
 
 export const viewport = {
   colorScheme: 'light dark',
@@ -23,17 +23,19 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body>
-        <a className="skip-link" href="#main">
-          Skip to content
-        </a>
-        {children}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(SITE.organizationJsonLd) }}
-        />
-      </body>
-    </html>
+    <SubscriptionProvider>
+      <html lang="en">
+        <body>
+          <a className="skip-link" href="#main">
+            Skip to content
+          </a>
+          {children}
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(SITE.organizationJsonLd) }}
+          />
+        </body>
+      </html>
+    </SubscriptionProvider>
   );
 }

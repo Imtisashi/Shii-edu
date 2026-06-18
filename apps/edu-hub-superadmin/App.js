@@ -17,6 +17,7 @@ import LoadingState from '../../src/components/ui/LoadingState';
 import { installWebPerformanceTuning } from '../../src/utils/webPerformanceTuning';
 import { installWebScrollFix } from '../../src/utils/webScrollFix';
 import { installFirestoreOfflinePersistence } from '../../src/services/offlinePersistence';
+import { installMobilePerformanceMonitoring } from '../../src/utils/mobilePerformanceMonitoring';
 
 const linking = {
   enabled: true,
@@ -91,6 +92,7 @@ export default function App() {
     installWebPerformanceTuning();
     installWebScrollFix();
     installFirestoreOfflinePersistence();
+    installMobilePerformanceMonitoring();
 
     let mounted = true;
     Font.loadAsync(Ionicons.font)

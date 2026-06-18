@@ -187,7 +187,8 @@ service cloud.firestore {
         (
           recipients.size() == 0 ||
           request.auth.uid in recipients ||
-          (isParent() && profile().keys().hasAny(['linkedStudentUid']) && profile().linkedStudentUid in recipients)
+          (isParent() && profile().keys().hasAny(['linkedStudentUid']) && profile().linkedStudentUid in recipients) ||
+          (isParent() && profile().keys().hasAny(['childUids']) && profile().childUids is list && profile().childUids.hasAny(recipients))
         );
     }
 
@@ -213,6 +214,14 @@ service cloud.firestore {
       );
 
       allow delete: if isSuperAdmin();
+    }
+
+    match /fleetRouteAssignments/{assignmentId} {
+      allow read: if isSuperAdmin() || sameInstitute(resource.data);
+      allow create: if isSuperAdmin() || adminFor(request.resource.data.instituteId);
+      allow update: if isSuperAdmin() ||
+        (adminFor(resource.data.instituteId) && sameInstituteUpdate());
+      allow delete: if isSuperAdmin() || adminFor(resource.data.instituteId);
     }
 
     match /notices/{noticeId} {
@@ -431,6 +440,16 @@ service cloud.firestore {
 
     match /syllabusChunks/{chunkId} {
       allow read, write: if false;
+    }
+
+    match /aiUsageDailyCounters/{counterId} {
+      allow read: if isSuperAdmin() || adminFor(resource.data.instituteId);
+      allow write: if false;
+    }
+
+    match /aiUsageLogs/{logId} {
+      allow read: if isSuperAdmin() || adminFor(resource.data.instituteId);
+      allow write: if false;
     }
 
     match /teacherAbsences/{absenceId} {

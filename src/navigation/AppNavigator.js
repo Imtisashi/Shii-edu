@@ -20,7 +20,7 @@ const roleCanOpenLockedApp = (lockedRole, userRole) => {
   return !['driver', 'parent', 'superadmin'].includes(userRole);
 };
 
-function ProfileIssueState({
+export function ProfileIssueState({
   buttonLabel = 'Sign out',
   hint,
   message,
@@ -76,9 +76,9 @@ export default function AppNavigator({ lockedRole = null }) {
   if (!roleCanOpenLockedApp(lockedRole, userRole)) {
     return (
       <ProfileIssueState
-        message={`This installed app is locked to ${lockedRoleOption.label} access. Sign out and open the correct Shii-Edu app for this account.`}
+        message={`This app is for ${lockedRoleOption.label} accounts. Sign out, then open the Shii-Edu app for your account.`}
         onPress={logout}
-        title={`${lockedRoleOption.shortName} App Only`}
+        title={`${lockedRoleOption.shortName} App`}
       />
     );
   }
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   profileIssueButton: {
     marginTop: 18,
     backgroundColor: '#010110',
-    borderRadius: 999,
+    borderRadius: 8,
     paddingHorizontal: 18,
     paddingVertical: 13,
     flexDirection: 'row',

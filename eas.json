@@ -14,6 +14,46 @@
         "buildType": "apk"
       }
     },
+    "preview-institute": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_LOCKED_ROLE": "institute",
+        "SHII_EDU_APP_ROLE": "institute"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "preview-parents": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_LOCKED_ROLE": "parent",
+        "SHII_EDU_APP_ROLE": "parents"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "preview-driver": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_LOCKED_ROLE": "driver",
+        "SHII_EDU_APP_ROLE": "driver"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "preview-superadmin": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_LOCKED_ROLE": "superadmin",
+        "SHII_EDU_APP_ROLE": "superadmin"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "android": {

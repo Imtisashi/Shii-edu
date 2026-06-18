@@ -44,6 +44,44 @@ const safeDocumentId = (value) => String(value || '')
   .replace(/[^a-zA-Z0-9_-]/g, '_')
   .slice(0, 180);
 
+const handlePayrollTransferEvent = async ({ event, firestore }) => {
+  const object = event.data.object || {};
+  const metadata = object.metadata || {};
+  const payrollRunId = metadata.payrollRunId;
+  if (!payrollRunId || !metadata.instituteId || !metadata.teacherUid) return false;
+
+  const timestamp = admin.firestore.FieldValue.serverTimestamp();
+  const eventRef = firestore.collection('stripeWebhookEvents').doc(safeDocumentId(event.id));
+  const payrollRef = firestore.collection('teacherPayrollPayments').doc(safeDocumentId(payrollRunId));
+  await firestore.runTransaction(async (transaction) => {
+    const eventSnap = await transaction.get(eventRef);
+    if (eventSnap.exists) return;
+
+    const status = event.type === 'transfer.reversed'
+      ? 'reversed'
+      : event.type === 'transfer.failed'
+        ? 'failed'
+        : 'submitted';
+
+    transaction.set(eventRef, {
+      eventId: event.id,
+      eventType: event.type,
+      payrollRunId,
+      receivedAt: timestamp,
+      stripeTransferId: object.id || null,
+    });
+    transaction.set(payrollRef, {
+      lastStripeEventId: event.id,
+      lastStripeEventType: event.type,
+      status,
+      stripeTransferId: object.id || null,
+      updatedAt: timestamp,
+    }, { merge: true });
+  });
+
+  return true;
+};
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ received: false });
@@ -60,6 +98,13 @@ module.exports = async function handler(req, res) {
     const signature = req.headers['stripe-signature'];
     const rawBody = await readRawBody(req);
     const event = stripe.webhooks.constructEvent(rawBody, signature, config.webhookSecret);
+    const { firestore } = getAdminServices();
+    const handledPayrollTransfer = await handlePayrollTransferEvent({ event, firestore });
+    if (handledPayrollTransfer) {
+      res.status(200).json({ received: true });
+      return;
+    }
+
     const paymentData = eventPaymentData(event);
     if (!paymentData) {
       res.status(200).json({ received: true, ignored: true });
@@ -72,7 +117,6 @@ module.exports = async function handler(req, res) {
       return;
     }
 
-    const { firestore } = getAdminServices();
     const canonicalProviderId = paymentData.paymentIntentId || paymentData.checkoutSessionId || event.id;
     const paymentRef = firestore.collection('payments').doc(`stripe_${safeDocumentId(canonicalProviderId)}`);
     const eventRef = firestore.collection('stripeWebhookEvents').doc(safeDocumentId(event.id));

@@ -4,6 +4,7 @@ import { sharedStackScreenOptions } from './animatedScreenOptions';
 import SuperadminMasterDashboard from '../screens/superAdmin/SuperadminMasterDashboard';
 import ManageAdminUsers from '../screens/superAdmin/ManageAdminUsers';
 import ManageInstitutes from '../screens/superAdmin/ManageInstitutes';
+import PasswordResetRequests from '../screens/admin/PasswordResetRequests';
 import { EDGE_BACKGROUND } from '../contexts/RootLayoutContext';
 
 const Stack = createStackNavigator();
@@ -34,6 +35,7 @@ export default function SuperAdminNavigator() {
       <Stack.Screen name="SuperAdminHome" component={SuperadminMasterDashboard} options={{ title: 'Superadmin Master' }} />
       <Stack.Screen name="ManageAdminUsers" component={ManageAdminUsers} options={{ title: 'Administrators' }} />
       <Stack.Screen name="ManageInstitutes" component={ManageInstitutes} options={{ title: 'Institutes' }} />
+      <Stack.Screen name="PasswordResetRequests" component={PasswordResetRequests} options={{ title: 'Password Resets' }} />
     </Stack.Navigator>
   );
 }

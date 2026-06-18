@@ -1,6 +1,13 @@
 import { FileCheck2 } from 'lucide-react';
 import { legalJsonLd, legalUpdatedAt, termsSections } from '../lib/legal';
 import { routeMetadata, SITE } from '../lib/site';
+import Image from 'next/image';
+
+function BrandMark() {
+  return (
+    <Image src="/shii-edu-logo.png" alt="Shii Edu" width={160} height={50} style={{ objectFit: 'contain' }} />
+  );
+}
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
@@ -28,7 +35,7 @@ export default function TermsPage() {
   return (
     <main id="main" className="legal-page">
       <nav className="brand-lockup legal-nav" aria-label="Legal navigation">
-        <img className="brand-mark" src="/icon.png" alt="" width="40" height="40" />
+        <BrandMark className="brand-mark" />
         <a className="nav-link" href="/">
           Back to operations
         </a>

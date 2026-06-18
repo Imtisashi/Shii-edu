@@ -4,22 +4,7 @@ import HomeDashboardScreen from '../home/HomeDashboardScreen';
 import { useAuth } from '../../contexts/AuthContext';
 import { useInstitution } from '../../contexts/InstitutionContext';
 import { filterByFeatureAccess, isFeatureEnabled } from '../../constants/featureEntitlements';
-
-const isTargetedToStudent = (notification) => {
-  const targets = notification?.targetRoles || [];
-  return targets.includes('student') || targets.includes('all');
-};
-
-const isBroadcast = (notification) => {
-  const originalType = notification?.data?.originalType;
-  return (
-    notification?.type === 'announcement' ||
-    notification?.relatedType === 'notice' ||
-    notification?.relatedType === 'broadcast' ||
-    originalType === 'admin_notice' ||
-    originalType === 'campus_broadcast'
-  );
-};
+import { isNoticeForBroadcasts } from '../../utils/isNoticeForBroadcasts';
 
 const getAuthorName = (author) => {
   if (!author) return 'Campus';
@@ -92,13 +77,13 @@ export default function StudentHome() {
 
     return notifications.filter((notification) => {
       const alreadyRead = notification.readBy?.includes(userUid) || notification.isRead === true;
-      return !alreadyRead && isTargetedToStudent(notification);
+      return !alreadyRead && isNoticeForBroadcasts(notification);
     }).length;
   }, [notifications, userRole, userUid]);
 
   const notices = useMemo(
     () => (notifications || [])
-      .filter((item) => isTargetedToStudent(item) && isBroadcast(item))
+      .filter(isNoticeForBroadcasts)
       .slice(0, 3)
       .map((item, index) => ({
         id: item.id || `notice-${index}`,

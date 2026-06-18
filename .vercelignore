@@ -4,12 +4,17 @@
 !.env*.example
 .codex-context.md
 codex.md
+.agents/
+Skill.md
 .ai-instructions/
 prompt-history.txt
 node_modules
 .expo
 web-build
 dist
+.gradle-local/
+android-role-shells/.gradle/
+android-role-shells/**/build/
 npm-debug.*
 yarn-debug.*
 yarn-error.*

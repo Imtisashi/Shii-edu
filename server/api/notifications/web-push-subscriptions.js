@@ -100,7 +100,7 @@ const handleRegister = async (req, res, body) => {
     'superadmin',
     'teacher',
   ]);
-  assertRateLimit({ actor, req, scope: 'web-push:register', limit: 24, windowMs: 60 * 1000 });
+  await assertRateLimit({ actor, req, scope: 'web-push:register', limit: 24, windowMs: 60 * 1000 });
 
   const config = getVapidConfig();
   if (!config.configured) {

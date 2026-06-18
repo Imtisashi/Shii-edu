@@ -6,10 +6,8 @@
   "outputDirectory": ".next",
   "functions": {
     "api/[...route].js": {
-      "maxDuration": 60,
-      "regions": [
-        "bom1"
-      ]
+      "maxDuration": 10,
+      "memory": 1024
     }
   },
   "crons": [

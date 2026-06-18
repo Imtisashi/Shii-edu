@@ -29,6 +29,8 @@ import CommunicationHub from '../screens/shared/CommunicationHub';
 import FleetTrackingScreen from '../screens/shared/FleetTrackingScreen';
 import SyllabusTutor from '../screens/shared/SyllabusTutor';
 import AICommandCenter from '../screens/admin/AICommandCenter';
+import AdminAgentScreen from '../screens/admin/AdminAgentScreen';
+import ParentSupportDesk from '../screens/admin/ParentSupportDesk';
 import TeacherPayrollMonitor from '../screens/admin/TeacherPayrollMonitor';
 import TransportControlCenter from '../screens/admin/TransportControlCenter';
 import AccountProfileScreen from '../screens/shared/AccountProfileScreen';
@@ -54,9 +56,11 @@ const adminDrawerLinks = [
   { featureKey: 'pyq', icon: 'document-attach-outline', label: 'PYQ PDFs', routeName: 'AdminDashboard', params: { screen: 'UploadPYQ' } },
   { featureKey: 'reports', icon: 'print-outline', label: 'Reports', routeName: 'AdminDashboard', params: { screen: 'ReportsCenter' } },
   { featureKey: 'messages', icon: 'chatbubbles-outline', label: 'Messages', routeName: 'AdminDashboard', params: { screen: 'CommunicationHub' } },
+  { featureKey: 'parent_support', icon: 'help-buoy-outline', label: 'Parent support', routeName: 'AdminDashboard', params: { screen: 'ParentSupportDesk' } },
   { featureKey: 'transport', icon: 'navigate-outline', label: 'Route control', routeName: 'AdminDashboard', params: { screen: 'TransportControl' } },
   { featureKey: 'transport', icon: 'bus-outline', label: 'Live fleet', routeName: 'AdminDashboard', params: { screen: 'FleetTracking' } },
   { featureKey: 'ai', icon: 'sparkles-outline', label: 'AI command', routeName: 'AdminDashboard', params: { screen: 'AICommandCenter' } },
+  { featureKey: 'ai_agent', icon: 'analytics-outline', label: 'Max AI agent', routeName: 'AdminDashboard', params: { screen: 'AdminAgent' } },
 ];
 
 // --- THE ADMIN BOTTOM BAR ---
@@ -131,6 +135,8 @@ function AdminStackNavigator() {
       {isFeatureEnabled(instituteData, 'transport') ? <Stack.Screen name="FleetTracking" component={FleetTrackingScreen} options={{ title: 'Live Fleet' }} /> : null}
       {isFeatureEnabled(instituteData, 'ai') ? <Stack.Screen name="SyllabusTutor" component={SyllabusTutor} options={{ title: 'Syllabus Tutor' }} /> : null}
       {isFeatureEnabled(instituteData, 'ai') ? <Stack.Screen name="AICommandCenter" component={AICommandCenter} options={{ title: 'AI Command Center' }} /> : null}
+      {isFeatureEnabled(instituteData, 'parent_support') ? <Stack.Screen name="ParentSupportDesk" component={ParentSupportDesk} options={{ title: 'Parent Support' }} /> : null}
+      {isFeatureEnabled(instituteData, 'ai_agent') ? <Stack.Screen name="AdminAgent" component={AdminAgentScreen} options={{ title: 'Max AI Agent' }} /> : null}
     </Stack.Navigator>
   );
 }

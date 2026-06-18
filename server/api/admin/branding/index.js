@@ -92,7 +92,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const actor = await authenticateUserProfile(req, ['admin', 'superadmin']);
-    assertRateLimit({ actor, req, scope: 'admin:branding', limit: 12, windowMs: 60 * 1000 });
+    await assertRateLimit({ actor, req, scope: 'admin:branding', limit: 12, windowMs: 60 * 1000 });
     const { firestore } = getAdminServices();
     const body = parseRequest(await getBody(req));
     const actorInstituteId = String(actor.profile?.instituteId || '').trim();

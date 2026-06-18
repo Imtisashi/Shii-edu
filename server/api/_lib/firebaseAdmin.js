@@ -57,6 +57,31 @@ const CLOUDINARY_ENV_HINT = [
   'CLOUDINARY_API_KEY',
   'CLOUDINARY_API_SECRET',
 ];
+const FIREBASE_ID_TOKEN_MAX_AGE_SECONDS = 24 * 60 * 60;
+const FIREBASE_ID_TOKEN_PATTERN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+
+const makeAuthError = (message) => {
+  const error = new Error(message);
+  error.statusCode = 401;
+  return error;
+};
+
+const assertBearerTokenFormat = (token) => {
+  if (!FIREBASE_ID_TOKEN_PATTERN.test(String(token || '').trim())) {
+    throw makeAuthError('Invalid Firebase ID token format.');
+  }
+};
+
+const assertDecodedTokenFresh = (decodedToken, nowSeconds = Math.floor(Date.now() / 1000)) => {
+  const authTime = Number(decodedToken?.auth_time || decodedToken?.iat || 0);
+  if (!Number.isFinite(authTime) || authTime <= 0) {
+    throw makeAuthError('Invalid Firebase ID token timestamp.');
+  }
+
+  if (nowSeconds - authTime > FIREBASE_ID_TOKEN_MAX_AGE_SECONDS) {
+    throw makeAuthError('Firebase ID token is too old. Sign in again.');
+  }
+};
 
 const getFirebaseAdminConfigStatus = () => {
   const hasServiceAccountJson = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
@@ -190,7 +215,10 @@ const authenticateUserProfile = async (req, allowedRoles = []) => {
   const { admin: firebaseAdmin, firestore } = getAdminServices();
   let decodedToken;
   try {
-    decodedToken = await firebaseAdmin.auth().verifyIdToken(match[1]);
+    const firebaseToken = match[1].trim();
+    assertBearerTokenFormat(firebaseToken);
+    decodedToken = await firebaseAdmin.auth().verifyIdToken(firebaseToken, true);
+    assertDecodedTokenFresh(decodedToken);
   } catch (_error) {
     const error = new Error('Invalid or expired Firebase ID token.');
     error.statusCode = 401;
@@ -224,8 +252,15 @@ const authenticateUserProfile = async (req, allowedRoles = []) => {
 const authenticateSuperAdmin = async (req) => authenticateUserProfile(req, ['superadmin']);
 
 const assertPassword = (password) => {
-  if (typeof password !== 'string' || password.length < 8) {
-    const error = new Error('Password must be at least 8 characters.');
+  const value = typeof password === 'string' ? password : '';
+  const isStrong = value.length >= 10 &&
+    /[a-z]/.test(value) &&
+    /[A-Z]/.test(value) &&
+    /\d/.test(value) &&
+    /[^A-Za-z0-9]/.test(value);
+
+  if (!isStrong) {
+    const error = new Error('Use at least 10 characters with uppercase and lowercase letters, a number, and a symbol.');
     error.statusCode = 400;
     throw error;
   }
@@ -331,6 +366,8 @@ const sendError = (res, error, fallbackMessage = 'Request failed.', requestId = 
 
 module.exports = {
   admin,
+  assertBearerTokenFormat,
+  assertDecodedTokenFresh,
   assertPassword,
   authenticateUserProfile,
   authenticateSuperAdmin,

@@ -116,9 +116,9 @@ export const INSTITUTION_BRANDING_PALETTES: InstitutionBrandingPalette[] = [
 ];
 
 export const DEFAULT_PALETTE_BY_TYPE: Record<BrandInstitutionType, string> = {
-  COLLEGE: 'royal-campus',
-  PLATFORM: 'graphite-signal',
-  SCHOOL: 'verdant-campus',
+  COLLEGE: 'ivory-academy',
+  PLATFORM: 'porcelain-sky',
+  SCHOOL: 'mint-paper',
 };
 
 export const normalizeBrandInstitutionType = (value: unknown): BrandInstitutionType => {

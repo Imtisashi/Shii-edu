@@ -33,6 +33,7 @@ export default function ManageTeachers() {
     teacher?.id ||
     'ID pending'
   );
+  const normalizeAssignment = (value) => String(value || '').trim().toLowerCase();
 
   // 1. Fetch Live Faculty Data
   useEffect(() => {
@@ -80,6 +81,27 @@ export default function ManageTeachers() {
         Alert.alert("Incomplete", msg);
       }
       return;
+    }
+
+    if (isClassTeacher) {
+      const primary = normalizeAssignment(primaryTag);
+      const secondary = normalizeAssignment(secondaryTag);
+      const duplicateTeacher = teachers.find((teacher) => {
+        if (teacher.id === selectedTeacher.id || teacher.isClassTeacher !== true) return false;
+        const teacherPrimary = normalizeAssignment(isSchool ? teacher.assignedClass : teacher.assignedDept);
+        const teacherSecondary = normalizeAssignment(isSchool ? teacher.assignedSection : teacher.assignedSem);
+        return teacherPrimary === primary && teacherSecondary === secondary;
+      });
+
+      if (duplicateTeacher) {
+        const msg = `${duplicateTeacher.name || 'Another teacher'} is already assigned to ${isSchool ? 'Class' : 'Department'} ${primaryTag.trim()} - ${isSchool ? 'Section' : 'Semester'} ${secondaryTag.trim()}. Remove that assignment before adding a new in-charge.`;
+        if (Platform.OS === 'web') {
+          window.alert(msg);
+        } else {
+          Alert.alert('Duplicate Assignment', msg);
+        }
+        return;
+      }
     }
 
     setIsSaving(true);

@@ -13,8 +13,8 @@ const { assertUserId, toIdentifierKey } = require('../_lib/loginIdentifiers');
 const { sendExpoPushToUsers } = require('../_lib/expoPush');
 const { generateStructured, getGeminiConfig } = require('../_lib/gemini');
 const { assertNoPromptInjection } = require('../_lib/promptSafety');
-const { assertFeatureEnabled } = require('../_lib/featureEntitlements');
 const { assertRateLimit } = require('../_lib/rateLimit');
+const { assertAiDailyUsage } = require('../_lib/subscriptionEntitlements');
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const RequestSchema = z.object({
@@ -103,7 +103,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const actor = await authenticateUserProfile(req, ['admin']);
-    assertRateLimit({ actor, req, scope: 'ai:substitute-schedule', limit: 12, windowMs: 60 * 1000 });
+    await assertRateLimit({ actor, req, scope: 'ai:substitute-schedule', limit: 12, windowMs: 60 * 1000 });
     const instituteId = actor.profile?.instituteId;
     if (!instituteId) {
       const error = new Error('Your profile is not linked to an institute.');
@@ -113,7 +113,7 @@ module.exports = async function handler(req, res) {
     const body = parseBody(await getBody(req));
     assertNoPromptInjection(body.reason, 'Substitute scheduling reason');
     const { firestore } = getAdminServices();
-    await assertFeatureEnabled({ firestore, instituteId, featureKey: 'ai' });
+    await assertAiDailyUsage({ actor, firestore, instituteId, featureKey: 'ai_tools' });
     const teacherSnapshot = await firestore
       .collection('users')
       .where('instituteId', '==', instituteId)

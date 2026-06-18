@@ -6,13 +6,13 @@
     {
       "purpose": "any maskable",
       "sizes": "192x192",
-      "src": "/icon-institute.png",
+      "src": "/icon-institute-192.png",
       "type": "image/png"
     },
     {
       "purpose": "any maskable",
       "sizes": "512x512",
-      "src": "/icon-institute.png",
+      "src": "/icon-institute-512.png",
       "type": "image/png"
     }
   ],

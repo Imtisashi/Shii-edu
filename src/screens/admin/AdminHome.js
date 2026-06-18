@@ -6,6 +6,21 @@ import { useInstitution } from '../../contexts/InstitutionContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
 import { filterByFeatureAccess, isFeatureEnabled } from '../../constants/featureEntitlements';
 import { openNearestDrawer } from '../../navigation/openNearestDrawer';
+import { isNoticeForBroadcasts } from '../../utils/isNoticeForBroadcasts';
+
+const getAuthorName = (author) => {
+  if (!author) return 'Campus';
+  if (typeof author === 'string') return author;
+  return author.name || author.email || 'Campus';
+};
+
+const formatNotificationDate = (createdAt) => {
+  if (!createdAt) return 'Just now';
+  if (typeof createdAt.toDate === 'function') return createdAt.toDate().toLocaleDateString();
+  if (createdAt.seconds) return new Date(createdAt.seconds * 1000).toLocaleDateString();
+  const parsed = new Date(createdAt);
+  return Number.isNaN(parsed.getTime()) ? 'Just now' : parsed.toLocaleDateString();
+};
 
 export default function AdminHome() {
   const navigation = useNavigation();
@@ -59,6 +74,26 @@ export default function AdminHome() {
       softColor: colors.violetSoft,
       subtitle: 'Monitor teacher salary status and monthly payroll controls.',
       title: 'Payroll',
+    },
+    {
+      color: '#0F766E',
+      featureKey: 'parent_support',
+      icon: 'help-buoy',
+      key: 'parent-support',
+      onPress: () => navigation.navigate('ParentSupportDesk'),
+      softColor: colors.deepBlueSoft,
+      subtitle: 'Check parent links, assisted rollout, and office support status.',
+      title: 'Parent Support',
+    },
+    {
+      color: '#111827',
+      featureKey: 'ai_agent',
+      icon: 'analytics',
+      key: 'admin-agent',
+      onPress: () => navigation.navigate('AdminAgent'),
+      softColor: colors.pageElevated,
+      subtitle: 'Run bounded attendance and fee reports with exports.',
+      title: 'Max AI Agent',
     },
     {
       color: '#0F766E',
@@ -207,12 +242,15 @@ export default function AdminHome() {
   );
 
   const notices = useMemo(
-    () => (notifications || []).slice(0, 3).map((item, index) => ({
-      id: item.id || `notice-${index}`,
-      meta: item.type || 'Institute update',
-      onPress: () => navigation.navigate('Broadcasts'),
-      title: item.title || 'Campus update',
-    })),
+    () => (notifications || [])
+      .filter(isNoticeForBroadcasts)
+      .slice(0, 3)
+      .map((item, index) => ({
+        id: item.id || `notice-${index}`,
+        meta: `${getAuthorName(item.author)} - ${formatNotificationDate(item.createdAt)}`,
+        onPress: () => navigation.navigate('Broadcasts'),
+        title: item.title || 'Campus broadcast',
+      })),
     [navigation, notifications]
   );
 
@@ -235,7 +273,10 @@ export default function AdminHome() {
       ]}
       secondaryActions={visibleActions.slice(4)}
       title="Dashboard"
-      unreadCount={(notifications || []).length}
+      unreadCount={(notifications || []).filter(isNoticeForBroadcasts).filter((notification) => {
+        const alreadyRead = notification.readBy?.includes(userData?.uid) || notification.isRead === true;
+        return !alreadyRead;
+      }).length}
     />
   );
 }

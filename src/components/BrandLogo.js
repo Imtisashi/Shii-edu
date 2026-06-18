@@ -1,5 +1,6 @@
 import React from 'react';
-import { Image, Platform, View } from 'react-native';
+import { Platform, View } from 'react-native';
+import { OptimizedImage } from '../OptimizedImage';
 
 const logoSource = require('../../assets/images/icon.png');
 
@@ -9,11 +10,11 @@ export default function BrandLogo({ size = 48, variant = 'default', style }) {
   const radius = iconSize * 0.24;
   const webImageStyle = Platform.OS === 'web'
     ? {
-      backgroundImage: 'url(/icon.png)',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat',
-      backgroundSize: 'cover',
-    }
+        backgroundImage: 'url(/icon.png)',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundSize: 'cover',
+      }
     : undefined;
 
   return (
@@ -31,9 +32,9 @@ export default function BrandLogo({ size = 48, variant = 'default', style }) {
       ]}
     >
       {Platform.OS === 'web' ? null : (
-        <Image
+        <OptimizedImage
           source={logoSource}
-          resizeMode="cover"
+          contentFit="cover"
           style={{
             width: iconSize,
             height: iconSize,

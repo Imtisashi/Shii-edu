@@ -15,11 +15,11 @@ const SHIMMER_TIMING = {
 };
 
 const SKELETON_COLORS = {
-  accent: '#635BFF',
-  accentSoft: '#F2F0FF',
-  background: '#F8FAFC',
-  border: '#CBD5E1',
-  block: '#E2E8F0',
+  accent: '#334155',
+  accentSoft: '#F1F5F9',
+  background: '#FFFFFF',
+  border: '#D7DEE8',
+  block: '#E6EBF2',
   shimmer: '#FBFCFF',
   surface: '#FFFFFF',
 };
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
   dashboardContent: {
     alignSelf: 'center',
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     minHeight: 620,
     width: '100%',
   },
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
   rosterContent: {
     alignSelf: 'center',
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     minHeight: 620,
     width: '100%',
   },

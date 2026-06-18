@@ -6,15 +6,17 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useRootLayout } from '../contexts/RootLayoutContext';
-import { useUnifiedNotifications } from '../services/unifiedNotificationService';
+import { submitNotificationResponse, useUnifiedNotifications } from '../services/unifiedNotificationService';
 import { RosterSkeleton } from './ui/LoadingState';
 import StudentScreenScaffold, { EnterprisePanel, ScreenIntro } from './student/StudentScreenScaffold';
+import { showNativeError, showNativeMessage } from '../utils/userFeedback';
 
 const createdAtToMillis = (createdAt) => {
   if (!createdAt) return 0;
@@ -54,6 +56,8 @@ export default function UnifiedNotificationCenter() {
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
+  const [responseDraft, setResponseDraft] = useState('');
+  const [submittingResponse, setSubmittingResponse] = useState(false);
 
   const sortedNotifications = useMemo(
     () => [...(notifications || [])].sort((a, b) => createdAtToMillis(b.createdAt) - createdAtToMillis(a.createdAt)),
@@ -89,6 +93,7 @@ export default function UnifiedNotificationCenter() {
 
   const handleNotificationPress = (notification) => {
     setSelectedNotification(notification);
+    setResponseDraft('');
     setModalVisible(true);
   };
 
@@ -98,6 +103,103 @@ export default function UnifiedNotificationCenter() {
 
   const handleDelete = (id) => {
     deleteNotification(id);
+  };
+
+  const handleSubmitResponse = async () => {
+    const request = selectedNotification?.data?.responseRequest;
+    if (!request) return;
+
+    setSubmittingResponse(true);
+    try {
+      await submitNotificationResponse({
+        answer: responseDraft,
+        currentUser,
+        instituteId: selectedNotification.instituteId || userData?.instituteId,
+        notificationId: selectedNotification.id,
+        prompt: request.prompt,
+        responseType: request.kind,
+      });
+      showNativeMessage('Response Sent', 'Your response has been saved for the institute.');
+      setModalVisible(false);
+      setResponseDraft('');
+    } catch (error) {
+      showNativeError('Response Not Sent', error, 'Your response could not be saved. Try again.');
+    } finally {
+      setSubmittingResponse(false);
+    }
+  };
+
+  const renderResponseRequest = () => {
+    const request = selectedNotification?.data?.responseRequest;
+    if (!request) return null;
+    const options = Array.isArray(request.options) ? request.options.filter(Boolean) : [];
+    const kind = request.kind || 'opinion';
+    const isChoiceInput = kind === 'mcq' || kind === 'vote';
+
+    return (
+      <View style={styles.modalSection}>
+        <Text style={[styles.modalSectionTitle, { color: colors.text }]}>
+          {kind === 'vote' ? 'Vote' : kind === 'mcq' ? 'Choose an answer' : 'Share your opinion'}
+        </Text>
+        <Text style={[styles.modalText, { color: colors.textSoft }]}>
+          {request.prompt || selectedNotification.title || 'Response requested'}
+        </Text>
+        {isChoiceInput ? (
+          <View style={styles.responseOptionGrid}>
+            {options.map((option) => {
+              const selected = responseDraft === option;
+              return (
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  key={option}
+                  onPress={() => setResponseDraft(option)}
+                  style={[
+                    styles.responseOption,
+                    {
+                      backgroundColor: selected ? colors.accentSoft : colors.card,
+                      borderColor: selected ? colors.accent : colors.hairline,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={selected ? 'radio-button-on' : 'radio-button-off'}
+                    size={17}
+                    color={selected ? colors.accent : colors.muted}
+                  />
+                  <Text style={[styles.responseOptionText, { color: selected ? colors.text : colors.textSoft }]}>
+                    {option}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ) : (
+          <TextInput
+            multiline
+            onChangeText={setResponseDraft}
+            placeholder="Type your response..."
+            placeholderTextColor={colors.muted}
+            style={[
+              styles.responseInput,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.hairline,
+                color: colors.text,
+              },
+            ]}
+            textAlignVertical="top"
+            value={responseDraft}
+          />
+        )}
+        <TouchableOpacity
+          disabled={submittingResponse}
+          onPress={handleSubmitResponse}
+          style={[styles.responseSubmitButton, { backgroundColor: colors.accent }, submittingResponse && styles.responseSubmitDisabled]}
+        >
+          <Text style={styles.responseSubmitText}>{submittingResponse ? 'Saving response...' : 'Send response'}</Text>
+        </TouchableOpacity>
+      </View>
+    );
   };
 
   const renderHeader = () => (
@@ -295,6 +397,8 @@ export default function UnifiedNotificationCenter() {
                       {selectedNotification.message || 'No message content.'}
                     </Text>
                   </View>
+
+                  {renderResponseRequest()}
 
                   {selectedNotification.data && (
                     <View style={styles.modalSection}>
@@ -575,6 +679,51 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     minWidth: 0,
+  },
+  responseInput: {
+    borderRadius: 8,
+    borderWidth: 1,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+    marginTop: 12,
+    minHeight: 96,
+    outlineStyle: 'none',
+    padding: 12,
+  },
+  responseOption: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 9,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  responseOptionGrid: {
+    gap: 8,
+    marginTop: 12,
+  },
+  responseOptionText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  responseSubmitButton: {
+    alignItems: 'center',
+    borderRadius: 8,
+    justifyContent: 'center',
+    marginTop: 12,
+    minHeight: 46,
+  },
+  responseSubmitDisabled: {
+    opacity: 0.68,
+  },
+  responseSubmitText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
   },
   scaffoldContent: {
     flex: 1,

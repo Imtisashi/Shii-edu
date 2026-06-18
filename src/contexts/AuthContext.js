@@ -22,7 +22,10 @@ import {
   authenticateInstituteSession,
   getBiometricCapability,
 } from '../services/biometricAuthService';
-import { listSupabaseNotifications } from '../services/supabaseTenantDataService';
+import {
+  buildVisibleNotificationQueries,
+  mergeNotificationSnapshots,
+} from '../services/notificationVisibility';
 
 const AuthContext = createContext();
 const INSTITUTE_APP_MODE = 'institute';
@@ -727,37 +730,48 @@ export function AuthProvider({ children, appMode = 'combined' }) {
     cleanupNotifications();
 
     let cancelled = false;
-    const loadNotifications = async () => {
-      try {
-        const result = await listSupabaseNotifications(currentUser, 50);
-        if (cancelled) return;
-        const nextNotifications = Array.isArray(result?.notifications)
-          ? result.notifications
-          : [];
-        setNotifications(nextNotifications);
-        setNotificationsLoading(false);
-        setNotificationsError(null);
-      } catch (_error) {
-        if (cancelled) return;
-        setNotifications([]);
-        setNotificationsError(null);
-        setNotificationsLoading(false);
-      }
-    };
+    const visibleQueries = buildVisibleNotificationQueries({ currentUser, db, userData });
+    const snapshots = new Array(visibleQueries.length);
 
-    loadNotifications();
-    const intervalId = setInterval(loadNotifications, 45000);
+    if (visibleQueries.length === 0) {
+      setNotifications([]);
+      setNotificationsLoading(false);
+      setNotificationsError(null);
+      return undefined;
+    }
+
+    const unsubscribeFns = visibleQueries.map((visibleQuery, index) => (
+      onSnapshot(
+        visibleQuery,
+        (snapshot) => {
+          if (cancelled) return;
+          snapshots[index] = snapshot;
+          if (snapshots.some((item) => !item)) return;
+          setNotifications(mergeNotificationSnapshots(snapshots, currentUser, userData, 50));
+          setNotificationsLoading(false);
+          setNotificationsError(null);
+        },
+        (error) => {
+          if (cancelled) return;
+          if (typeof __DEV__ !== 'undefined' && __DEV__) {
+            console.warn('Notification stream unavailable, showing an empty notification tray:', error);
+          }
+          setNotifications([]);
+          setNotificationsError(null);
+          setNotificationsLoading(false);
+        }
+      )
+    ));
+
     notificationsUnsubscribeRef.current = () => {
       cancelled = true;
-      clearInterval(intervalId);
+      unsubscribeFns.forEach((unsubscribe) => unsubscribe());
     };
 
     return () => {
       cancelled = true;
-      clearInterval(intervalId);
-      if (notificationsUnsubscribeRef.current) {
-        notificationsUnsubscribeRef.current = null;
-      }
+      unsubscribeFns.forEach((unsubscribe) => unsubscribe());
+      notificationsUnsubscribeRef.current = null;
     };
   }, [currentUser, userData]);
 

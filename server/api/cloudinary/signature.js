@@ -495,7 +495,7 @@ module.exports = async function handler(req, res) {
   try {
     const body = parseCloudinaryRequest(await getBody(req));
     const actor = await authenticateUserProfile(req);
-    assertRateLimit({ actor, req, scope: `cloudinary:${body.action}`, limit: 36, windowMs: 60 * 1000 });
+    await assertRateLimit({ actor, req, scope: `cloudinary:${body.action}`, limit: 36, windowMs: 60 * 1000 });
     const config = getCloudinaryConfig();
 
     if (body.action === 'upload') {

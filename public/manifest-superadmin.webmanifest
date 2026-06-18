@@ -1,0 +1,25 @@
+{
+  "background_color": "#FFFFFF",
+  "description": "Shii-Edu Superadmin console for institute operations, administrator accounts, and platform support.",
+  "display": "standalone",
+  "icons": [
+    {
+      "purpose": "any maskable",
+      "sizes": "192x192",
+      "src": "/icon-192.png",
+      "type": "image/png"
+    },
+    {
+      "purpose": "any maskable",
+      "sizes": "512x512",
+      "src": "/icon-512.png",
+      "type": "image/png"
+    }
+  ],
+  "id": "/pwa/superadmin",
+  "name": "Shii-Edu Superadmin",
+  "scope": "/app/superadmin",
+  "short_name": "Superadmin",
+  "start_url": "/app/superadmin",
+  "theme_color": "#010110"
+}

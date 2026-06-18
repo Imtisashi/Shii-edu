@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { collection, query, where, getDocs, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
@@ -13,6 +13,10 @@ import { createUnifiedNotification } from '../../services/unifiedNotificationSer
 import ScreenErrorBoundary from '../../components/errors/ScreenErrorBoundary';
 import { createSupabaseAttendanceRecords, listSupabaseUsers } from '../../services/supabaseTenantDataService';
 import DynamicHeader from '../../components/DynamicHeader';
+import {
+  filterStudentsForAttendanceAssignment,
+  getAttendanceAssignment,
+} from '../../utils/attendanceAssignment';
 
 const resolveStudentUid = (student = {}) => student.uid || student.authUid || student.id;
 const toDisplayText = (value, fallback = '') => (
@@ -41,6 +45,11 @@ function TakeAttendanceContent({ navigation }) {
   const [selectedSubject, setSelectedSubject] = useState('');
 
   const instType = String(userData?.instituteData?.institutionType || userData?.instituteData?.type || 'school').toLowerCase().includes('college') ? 'college' : 'school';
+  const isSchool = instType === 'school';
+  const attendanceAssignment = useMemo(
+    () => getAttendanceAssignment(userData, isSchool),
+    [isSchool, userData]
+  );
   const safeStudents = Array.isArray(students) ? students : [];
   const safeAttendance = attendance && typeof attendance === 'object' ? attendance : {};
   const returnToTeacherHome = useCallback(() => {
@@ -75,16 +84,27 @@ function TakeAttendanceContent({ navigation }) {
             }));
 
           if (supabaseStudents.length > 0) {
+            if (!attendanceAssignment.assigned) {
+              if (!didCancel) {
+                setStudents([]);
+                setAttendance({});
+                setErrorMessage(attendanceAssignment.message);
+              }
+              return;
+            }
+            const assignedStudents = filterStudentsForAttendanceAssignment(supabaseStudents, attendanceAssignment, isSchool);
             const status = {};
-            supabaseStudents.forEach((student) => {
+            assignedStudents.forEach((student) => {
               const studentKey = String(student.id || resolveStudentUid(student) || '');
               if (studentKey) status[studentKey] = true;
             });
-            supabaseStudents.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+            assignedStudents.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
             if (!didCancel) {
-              setStudents(supabaseStudents);
+              setStudents(assignedStudents);
               setAttendance(status);
-              setErrorMessage('');
+              setErrorMessage(assignedStudents.length === 0
+                ? `No students found for assigned ${isSchool ? 'Class' : 'Department'} ${attendanceAssignment.primary} - ${isSchool ? 'Section' : 'Semester'} ${attendanceAssignment.secondary}.`
+                : '');
             }
             return;
           }
@@ -108,11 +128,23 @@ function TakeAttendanceContent({ navigation }) {
           list.push(student);
           if (studentKey) status[studentKey] = true;
         });
-        list.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+        const assignedList = attendanceAssignment.assigned
+          ? filterStudentsForAttendanceAssignment(list, attendanceAssignment, isSchool)
+          : [];
+        assignedList.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
         if (!didCancel) {
-          setStudents(list);
-          setAttendance(status);
-          setErrorMessage('');
+          const assignedStatus = {};
+          assignedList.forEach((student) => {
+            const studentKey = String(student.id || resolveStudentUid(student) || '');
+            if (studentKey) assignedStatus[studentKey] = status[studentKey] !== false;
+          });
+          setStudents(assignedList);
+          setAttendance(assignedStatus);
+          setErrorMessage(!attendanceAssignment.assigned
+            ? attendanceAssignment.message
+            : assignedList.length === 0
+              ? `No students found for assigned ${isSchool ? 'Class' : 'Department'} ${attendanceAssignment.primary} - ${isSchool ? 'Section' : 'Semester'} ${attendanceAssignment.secondary}.`
+              : '');
         }
       } catch (error) {
         console.error('TakeAttendance student fetch failed:', error);
@@ -126,7 +158,7 @@ function TakeAttendanceContent({ navigation }) {
     return () => {
       didCancel = true;
     };
-  }, [currentUser, userData?.instituteId]);
+  }, [attendanceAssignment, currentUser, isSchool, userData?.instituteId]);
 
   const submitAttendance = async () => {
     if (instType === 'college' && !selectedSubject) {

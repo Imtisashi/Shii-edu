@@ -57,7 +57,7 @@ function RoleCard({ option }: { option: AuthRoleOption }) {
       </View>
       <View style={[styles.roleCardMeta, { borderColor: option.border, backgroundColor: '#FFFFFF' }]}>
         <Ionicons name="phone-portrait-outline" size={16} color={option.accent} />
-        <Text style={styles.roleCardMetaText}>Installable PWA with a dedicated start screen</Text>
+        <Text style={styles.roleCardMetaText}>Opens only the tools meant for this role</Text>
       </View>
       <Pressable
         accessibilityRole="button"
@@ -125,8 +125,8 @@ export default function RoleSelectionScreen() {
               Choose your role.
             </Text>
             <Text style={styles.subtitle}>
-              Institute, Parents, and Driver access open different auth paths, app names, manifests, and notification
-              contexts so each user lands in the right workspace.
+              Institute, Parents, and Driver access are separated so each user lands in the right workspace without extra
+              role clutter.
             </Text>
             <View style={styles.heroMetaRow}>
               {AUTH_ROLE_OPTIONS.map((option) => (

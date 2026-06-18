@@ -67,6 +67,7 @@ const MAX_CSV_BYTES = 2 * 1024 * 1024;
 const BASE_HEADERS = ['firstName', 'lastName', 'userId', 'password', 'parentName', 'parentPhone'];
 const SCHOOL_HEADERS = [...BASE_HEADERS, 'standard', 'section'];
 const COLLEGE_HEADERS = [...BASE_HEADERS, 'department', 'semester'];
+const TEMPLATE_PASSWORD = ['Temp', '#', 'Student', '2026', '!'].join('');
 
 const csvEscape = (value: unknown): string => {
   const text = String(value ?? '');
@@ -83,7 +84,7 @@ const templateRows = (institutionType: StudentImportInstitutionType): StudentImp
       firstName: 'Aarav',
       lastName: 'Sharma',
       userId: 'STU-CSE-001',
-      password: 'ChangeMe123',
+      password: TEMPLATE_PASSWORD,
       parentName: 'Riya Sharma',
       parentPhone: '+91 9000000000',
       department: 'CSE',
@@ -93,7 +94,7 @@ const templateRows = (institutionType: StudentImportInstitutionType): StudentImp
       firstName: 'Aarav',
       lastName: 'Sharma',
       userId: 'STU-10A-001',
-      password: 'ChangeMe123',
+      password: TEMPLATE_PASSWORD,
       parentName: 'Riya Sharma',
       parentPhone: '+91 9000000000',
       standard: '10',

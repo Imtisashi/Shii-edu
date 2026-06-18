@@ -17,11 +17,10 @@ const {
 const {
   isInternalTaskExecution,
 } = require('../../_lib/backgroundTasks');
-const { mirrorProfilesToSupabase } = require('../../_lib/supabaseProfileMirror');
 const {
-  callSupabaseTenantBridge,
-  stripInstituteIdForTenantActor,
-} = require('../../_lib/supabaseTenantBridge');
+  syncProfilesToSupabaseResilient,
+  toResponseState,
+} = require('../../_lib/supabaseUserSync');
 const { assertFeatureEnabled } = require('../../_lib/featureEntitlements');
 const { assertRateLimit } = require('../../_lib/rateLimit');
 
@@ -76,8 +75,14 @@ const normalizeRow = (row, index, isSchool) => {
     throw validationError(`Row ${rowNumber}: firstName is required.`);
   }
 
-  if (password.length < 8) {
-    throw validationError(`Row ${rowNumber}: password must be at least 8 characters.`);
+  if (
+    password.length < 10 ||
+    !/[a-z]/.test(password) ||
+    !/[A-Z]/.test(password) ||
+    !/\d/.test(password) ||
+    !/[^A-Za-z0-9]/.test(password)
+  ) {
+    throw validationError(`Row ${rowNumber}: use at least 10 characters with uppercase and lowercase letters, a number, and a symbol.`);
   }
 
   if (!primaryTag || !secondaryTag) {
@@ -157,7 +162,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const actor = await authenticateUserProfile(req, ['admin', 'superadmin']);
-    assertRateLimit({ actor, req, scope: 'admin:user-bulk-import', limit: 6, windowMs: 5 * 60 * 1000 });
+    await assertRateLimit({ actor, req, scope: 'admin:user-bulk-import', limit: 6, windowMs: 5 * 60 * 1000 });
     const { firestore } = getAdminServices();
     const body = await getBody(req);
     const instituteId = assertInstituteId(body.instituteId || actor.profile.instituteId);
@@ -319,22 +324,19 @@ module.exports = async function handler(req, res) {
     }
 
     const createdProfiles = profiles.map(({ profile }) => profile);
-    if (req.headers.authorization && !isInternalTaskExecution(req)) {
-      await callSupabaseTenantBridge({
-        action: 'createProfiles',
-        authorization: req.headers.authorization,
-        payload: {
-          profiles: createdProfiles.map((profile) => (
-            actor.role === 'superadmin' ? profile : stripInstituteIdForTenantActor(profile)
-          )),
-        },
-      });
-    } else {
-      await mirrorProfilesToSupabase({
-        actor,
-        profiles: createdProfiles,
-      });
-    }
+    const instituteProfile = {
+      id: instituteSnap.id,
+      instituteId,
+      ...instituteData,
+    };
+    const supabaseSync = await syncProfilesToSupabaseResilient({
+      action: 'createProfiles',
+      actor,
+      authorization: isInternalTaskExecution(req) ? '' : (req.headers.authorization || ''),
+      institute: instituteProfile,
+      profiles: createdProfiles,
+      requestId,
+    });
 
     await importRef.set({
       instituteId,
@@ -342,6 +344,7 @@ module.exports = async function handler(req, res) {
       requestedRows: rows.length,
       createdStudents: profiles.length,
       skippedRows: rowErrors.length,
+      supabaseSync: toResponseState(supabaseSync),
       errors: rowErrors.slice(0, 100),
       createdAt: now,
       createdBy: actor.uid,
@@ -353,6 +356,7 @@ module.exports = async function handler(req, res) {
       importJobId: importRef.id,
       createdStudents: profiles.length,
       skippedRows: rowErrors.length,
+      supabaseSync: toResponseState(supabaseSync),
       errors: rowErrors,
       requestId,
     });

@@ -26,6 +26,7 @@ export const createInstituteAndAdmin = async ({
   adminPassword,
   adminName,
   institutionType = 'SCHOOL',
+  payoutBankAccount,
 }, currentUser = auth.currentUser) => {
   try {
     return await authenticatedFetch('/api/super-admin/institutes', currentUser, {
@@ -36,6 +37,7 @@ export const createInstituteAndAdmin = async ({
         adminPassword,
         adminName,
         institutionType,
+        payoutBankAccount,
       },
     });
   } catch (error) {
@@ -65,11 +67,15 @@ export const deleteInstituteAsSuperAdmin = async (instituteId) => {
   }
 };
 
-export const updateInstituteFeatureSettings = async (instituteId, features) => {
+export const updateInstituteFeatureSettings = async (instituteId, settings) => {
+  const body = settings?.features || settings?.rateLimits
+    ? settings
+    : { features: settings };
+
   try {
     return await authenticatedFetch(`/api/super-admin/institutes/${encodeURIComponent(instituteId)}`, auth.currentUser, {
       method: 'PATCH',
-      body: { features },
+      body,
     });
   } catch (error) {
     console.error('Error updating institute feature settings:', error);

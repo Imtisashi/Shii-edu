@@ -14,19 +14,174 @@ const {
   assertUserId,
   toIdentifierKey,
   toInstituteAuthEmail,
+  toLegacyAuthEmail,
 } = require('../../_lib/loginIdentifiers');
 const {
-  callSupabaseTenantBridge,
-  stripInstituteIdForTenantActor,
-} = require('../../_lib/supabaseTenantBridge');
+  syncProfilesToSupabaseResilient,
+  toFirestoreSyncState,
+  toResponseState,
+} = require('../../_lib/supabaseUserSync');
 const { assertFeatureEnabled } = require('../../_lib/featureEntitlements');
 const { assertRateLimit } = require('../../_lib/rateLimit');
 
 const normalizeText = (value) => String(value || '').trim().replace(/\s+/g, ' ');
 const normalizeRole = (value) => String(value || '').trim().toLowerCase();
 const VALID_ROLES = new Set(['student', 'teacher', 'parent', 'driver']);
+const STUDENT_ID_FIELDS = ['loginId', 'uniqueId', 'userId', 'studentId'];
+const MAX_LINKED_STUDENTS_PER_PARENT = 8;
 
-module.exports = async (req, res) => {
+const hasMatchingStudentIdentifier = (profile, linkedStudentKey, linkedStudentId = '') => {
+  if (!profile || normalizeRole(profile.role) !== 'student') return false;
+  if (profile.uid === linkedStudentId || profile.id === linkedStudentId) return true;
+  if (toIdentifierKey(profile.loginIdKey) === linkedStudentKey) return true;
+  return STUDENT_ID_FIELDS.some((field) => (
+    profile[field] && toIdentifierKey(profile[field]) === linkedStudentKey
+  ));
+};
+
+const findLinkedStudentProfile = async ({ firestore, instituteId, linkedStudentId }) => {
+  const usersRef = firestore.collection('users');
+  const linkedStudentKey = toIdentifierKey(linkedStudentId);
+  const exactStudentIds = [...new Set([linkedStudentId, linkedStudentKey])];
+  const snapshots = await Promise.all([
+    usersRef
+      .where('instituteId', '==', instituteId)
+      .where('loginIdKey', '==', linkedStudentKey)
+      .limit(1)
+      .get(),
+    ...STUDENT_ID_FIELDS.flatMap((field) => exactStudentIds.map((candidate) => (
+      usersRef
+        .where('instituteId', '==', instituteId)
+        .where(field, '==', candidate)
+        .limit(1)
+        .get()
+    ))),
+  ]);
+
+  const directMatch = snapshots
+    .flatMap((snapshot) => snapshot.docs)
+    .map((document) => ({ id: document.id, uid: document.id, ...document.data() }))
+    .find((profile) => (
+      profile.instituteId === instituteId &&
+      hasMatchingStudentIdentifier(profile, linkedStudentKey, linkedStudentId)
+    ));
+  if (directMatch) return directMatch;
+
+  const uidSnap = await usersRef.doc(linkedStudentId).get();
+  if (uidSnap.exists) {
+    const profile = { id: uidSnap.id, uid: uidSnap.id, ...uidSnap.data() };
+    if (
+      profile.instituteId === instituteId &&
+      hasMatchingStudentIdentifier(profile, linkedStudentKey, linkedStudentId)
+    ) {
+      return profile;
+    }
+  }
+
+  const authEmails = [toInstituteAuthEmail(instituteId, linkedStudentId), toLegacyAuthEmail(linkedStudentId)];
+  for (const email of [...new Set(authEmails)]) {
+    try {
+      const userRecord = await admin.auth().getUserByEmail(email);
+      const userSnap = await usersRef.doc(userRecord.uid).get();
+      if (!userSnap.exists) continue;
+
+      const profile = { id: userSnap.id, uid: userSnap.id, ...userSnap.data() };
+      if (
+        profile.instituteId === instituteId &&
+        hasMatchingStudentIdentifier(profile, linkedStudentKey, linkedStudentId)
+      ) {
+        return profile;
+      }
+    } catch (error) {
+      if (error.code !== 'auth/user-not-found') throw error;
+    }
+  }
+
+  const instituteUsersSnapshot = await usersRef
+    .where('instituteId', '==', instituteId)
+    .get();
+  const normalizedLegacyMatch = instituteUsersSnapshot.docs
+    .map((document) => ({ id: document.id, uid: document.id, ...document.data() }))
+    .find((profile) => (
+      profile.instituteId === instituteId &&
+      hasMatchingStudentIdentifier(profile, linkedStudentKey, linkedStudentId)
+    ));
+  if (normalizedLegacyMatch) return normalizedLegacyMatch;
+
+  return null;
+};
+
+const parseLinkedStudentIds = (body = {}) => {
+  const rawValues = [
+    body.primaryTag,
+    body.linkedStudentId,
+    ...(Array.isArray(body.linkedStudentIds) ? body.linkedStudentIds : []),
+  ];
+  const ids = rawValues
+    .flatMap((value) => String(value || '').split(/[,\n\r;|]+/))
+    .map((value) => normalizeText(value))
+    .filter(Boolean);
+
+  return [...new Set(ids)].slice(0, MAX_LINKED_STUDENTS_PER_PARENT);
+};
+
+const getStudentVisibleId = (student = {}) => (
+  student.loginId ||
+  student.uniqueId ||
+  student.studentId ||
+  student.userId ||
+  student.uid ||
+  student.id ||
+  ''
+);
+
+const buildParentLinkFields = (linkedStudents = [], relationship = '') => {
+  const students = linkedStudents
+    .filter(Boolean)
+    .map((student) => ({
+      name: student.name || null,
+      uid: student.uid || student.id,
+      userId: getStudentVisibleId(student),
+    }))
+    .filter((student) => student.uid);
+  const firstStudent = students[0] || {};
+
+  return {
+    childUids: students.map((student) => student.uid),
+    linkedStudentName: firstStudent.name || null,
+    linkedStudentUid: firstStudent.uid || null,
+    linkedStudentUserId: firstStudent.userId || null,
+    linkedStudents: students,
+    relationship: relationship || 'Parent / Guardian',
+  };
+};
+
+const findLinkedStudentProfiles = async ({ firestore, instituteId, linkedStudentIds }) => {
+  const linkedStudents = [];
+
+  for (const linkedStudentId of linkedStudentIds) {
+    const normalizedLinkedStudentId = assertUserId(linkedStudentId, 'Linked Student User ID');
+    const linkedStudent = await findLinkedStudentProfile({
+      firestore,
+      instituteId,
+      linkedStudentId: normalizedLinkedStudentId,
+    });
+
+    if (!linkedStudent) {
+      const error = new Error(`Linked Student User ID ${normalizedLinkedStudentId} was not found in this institute.`);
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (!linkedStudents.some((student) => (student.uid || student.id) === (linkedStudent.uid || linkedStudent.id))) {
+      linkedStudents.push(linkedStudent);
+    }
+  }
+
+  return linkedStudents;
+};
+
+async function handler(req, res) {
   const requestId = createRequestId();
   if (handleOptions(req, res)) return;
   setCorsHeaders(req, res);
@@ -43,7 +198,7 @@ module.exports = async (req, res) => {
 
   try {
     const authContext = await authenticateUserProfile(req, ['admin', 'superadmin']);
-    assertRateLimit({ actor: authContext, req, scope: 'admin:user-create', limit: 24, windowMs: 60 * 1000 });
+    await assertRateLimit({ actor: authContext, req, scope: 'admin:user-create', limit: 24, windowMs: 60 * 1000 });
     const { firestore } = getAdminServices();
     const body = await getBody(req);
 
@@ -54,6 +209,7 @@ module.exports = async (req, res) => {
     const role = normalizeRole(body.role);
     const primaryTag = normalizeText(body.primaryTag);
     const secondaryTag = normalizeText(body.secondaryTag);
+    const linkedStudentIds = role === 'parent' ? parseLinkedStudentIds(body) : [];
     const instituteId = assertInstituteId(body.instituteId || authContext.profile.instituteId);
 
     if (!VALID_ROLES.has(role)) {
@@ -70,8 +226,8 @@ module.exports = async (req, res) => {
       res.status(400).json({ success: false, error: 'Student class/section or department/semester is required.', requestId });
       return;
     }
-    if (role === 'parent' && !primaryTag) {
-      res.status(400).json({ success: false, error: 'A linked Student User ID is required for parent accounts.', requestId });
+    if (role === 'parent' && linkedStudentIds.length === 0) {
+      res.status(400).json({ success: false, error: 'At least one linked Student User ID is required for parent accounts.', requestId });
       return;
     }
     if (role === 'driver' && !primaryTag) {
@@ -94,6 +250,11 @@ module.exports = async (req, res) => {
     await assertFeatureEnabled({ firestore, instituteId, featureKey: 'people' });
 
     const instituteData = instituteSnap.data() || {};
+    const instituteProfile = {
+      id: instituteSnap.id,
+      instituteId,
+      ...instituteData,
+    };
     const rawInstitutionType = normalizeText(instituteData.institutionType || instituteData.type || 'SCHOOL').toUpperCase();
     const isSchoolInstitute = !rawInstitutionType.includes('COLLEGE');
 
@@ -116,22 +277,9 @@ module.exports = async (req, res) => {
       return;
     }
 
-    let linkedStudent = null;
+    let linkedStudents = [];
     if (role === 'parent') {
-      const linkedStudentKey = toIdentifierKey(assertUserId(primaryTag, 'Linked Student User ID'));
-      const linkedStudentSnapshot = await usersRef
-        .where('instituteId', '==', instituteId)
-        .where('loginIdKey', '==', linkedStudentKey)
-        .limit(1)
-        .get();
-      if (linkedStudentSnapshot.empty || normalizeRole(linkedStudentSnapshot.docs[0].data()?.role) !== 'student') {
-        res.status(404).json({ success: false, error: 'Linked Student User ID was not found in this institute.', requestId });
-        return;
-      }
-      linkedStudent = {
-        uid: linkedStudentSnapshot.docs[0].id,
-        ...linkedStudentSnapshot.docs[0].data(),
-      };
+      linkedStudents = await findLinkedStudentProfiles({ firestore, instituteId, linkedStudentIds });
     }
 
     if (role === 'driver') {
@@ -200,10 +348,7 @@ module.exports = async (req, res) => {
       };
       profile.assignmentStatus = 'unassigned';
     } else if (role === 'parent') {
-      profile.linkedStudentUid = linkedStudent.uid;
-      profile.linkedStudentUserId = linkedStudent.loginId || linkedStudent.uniqueId || primaryTag;
-      profile.linkedStudentName = linkedStudent.name || null;
-      profile.relationship = secondaryTag || 'Parent / Guardian';
+      Object.assign(profile, buildParentLinkFields(linkedStudents, secondaryTag));
     } else if (role === 'driver') {
       profile.vehicleId = primaryTag;
       profile.routeName = secondaryTag || null;
@@ -216,16 +361,32 @@ module.exports = async (req, res) => {
       profile.sem = secondaryTag;
     }
 
-    await firestore.collection('users').doc(createdUser.uid).set(profile);
+    const userRef = firestore.collection('users').doc(createdUser.uid);
+    await userRef.set(profile);
     createdFirestoreProfile = true;
-    await callSupabaseTenantBridge({
+
+    const supabaseSync = await syncProfilesToSupabaseResilient({
       action: 'createProfile',
+      actor: authContext,
       authorization: req.headers.authorization || '',
-      payload: authContext.role === 'superadmin' ? profile : stripInstituteIdForTenantActor(profile),
+      institute: instituteProfile,
+      profiles: [profile],
+      requestId,
+    });
+    await userRef.update({
+      supabaseSync: toFirestoreSyncState(supabaseSync),
+    }).catch((error) => {
+      console.warn(JSON.stringify({
+        level: 'warn',
+        requestId,
+        message: error.message,
+        syncStateWriteFailed: true,
+      }));
     });
 
     res.status(201).json({
       success: true,
+      supabaseSync: toResponseState(supabaseSync),
       uid: createdUser.uid,
       user: {
         uid: createdUser.uid,
@@ -251,4 +412,10 @@ module.exports = async (req, res) => {
 
     sendError(res, error, 'Failed to create user.', requestId);
   }
+}
+
+module.exports = handler;
+module.exports.__test = {
+  buildParentLinkFields,
+  parseLinkedStudentIds,
 };

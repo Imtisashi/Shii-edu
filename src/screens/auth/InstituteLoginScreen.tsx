@@ -11,6 +11,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  type ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -97,6 +98,8 @@ const openPublicWebPath = (path: string) => {
   return false;
 };
 
+const getRegistrationPath = (role: AuthRoleId) => `/register?role=${encodeURIComponent(role)}`;
+
 const getResetTicketStorageKey = (role: AuthRoleId, instituteId: string, userId: string) => (
   `${PASSWORD_RESET_STORAGE_PREFIX}:${role}:${instituteId.trim().toLowerCase()}:${userId.trim().toLowerCase()}`
 );
@@ -125,7 +128,7 @@ const readSavedResetTicket = (role: AuthRoleId, instituteId: string, userId: str
       status: parsed.status || 'pending',
       token: parsed.token,
     };
-  } catch (_error) {
+  } catch {
     return null;
   }
 };
@@ -142,6 +145,31 @@ const writeSavedResetTicket = (
     JSON.stringify(ticket)
   );
 };
+
+type AuthFormShellProps = {
+  children: React.ReactNode;
+  onSubmit: () => void;
+  style: ViewStyle;
+};
+
+function AuthFormShell({ children, onSubmit, style }: AuthFormShellProps) {
+  if (Platform.OS !== 'web') {
+    return <View style={style}>{children}</View>;
+  }
+
+  return React.createElement(
+    'form',
+    {
+      noValidate: true,
+      onSubmit: (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        onSubmit();
+      },
+      style: StyleSheet.flatten(style) as unknown as React.CSSProperties,
+    },
+    children
+  );
+}
 
 export default function InstituteLoginScreen() {
   const layout = useResponsiveLayout();
@@ -243,9 +271,22 @@ export default function InstituteLoginScreen() {
   const visibleRoleOptions = lockedRole
     ? [getAuthRoleOption(lockedRole)]
     : AUTH_ROLE_OPTIONS;
-  const installedRolePath = Platform.OS === 'web' && typeof window !== 'undefined'
+  const isWebSurface = Platform.OS === 'web' && typeof window !== 'undefined';
+  const installedRolePath = isWebSurface
     ? isInstalledRolePath(window.location.pathname, activeRoleConfig.appPath)
     : false;
+  const publicWebAuthSurface = isWebSurface && !installedRolePath;
+
+  const openRegistration = () => {
+    const registerPath = getRegistrationPath(activeRole);
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.assign(registerPath);
+      return;
+    }
+
+    navigation.navigate('Register', { role: activeRole });
+  };
 
   const openPasswordReset = () => {
     const nextInstituteId = instituteId.trim();
@@ -449,15 +490,25 @@ export default function InstituteLoginScreen() {
   const returningInstituteName = cachedInstituteIdentity?.instituteName || 'Shii-Edu';
   const returningLogoUrl = cachedInstituteIdentity?.logoUrl || null;
   const hasReturningInstitute = Boolean(cachedInstituteIdentity?.instituteName);
+  const webAuthDocumentStyle: ViewStyle | null = Platform.OS === 'web'
+    ? { minHeight: layout.height }
+    : null;
+  const syncWebDocumentHeight = useCallback(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const webWindow = window as typeof window & { __shiiEduSyncDocumentHeight?: () => void };
+    webWindow.__shiiEduSyncDocumentHeight?.();
+    webWindow.requestAnimationFrame(() => webWindow.__shiiEduSyncDocumentHeight?.());
+    webWindow.setTimeout(() => webWindow.__shiiEduSyncDocumentHeight?.(), 80);
+  }, []);
 
   return (
     <EnterpriseAuthBackground backgroundColor="#FFFFFF">
       <KeyboardAvoidingView
-        style={styles.keyboardRoot}
+        style={[styles.keyboardRoot, webAuthDocumentStyle]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          style={styles.scrollView}
+          style={[styles.scrollView, webAuthDocumentStyle]}
           contentContainerStyle={[
             styles.container,
             {
@@ -469,6 +520,8 @@ export default function InstituteLoginScreen() {
             layout.isCompact && styles.containerCompact,
           ]}
           keyboardShouldPersistTaps="handled"
+          onContentSizeChange={syncWebDocumentHeight}
+          onLayout={syncWebDocumentHeight}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.authSector}>
@@ -489,9 +542,9 @@ export default function InstituteLoginScreen() {
                 </Text>
               </View>
               {installedRolePath ? (
-                <View style={[styles.homeButton, styles.lockedAppButton]}>
-                  <Ionicons color={activeRoleConfig.accent} name="shield-checkmark-outline" size={16} />
-                  <Text style={[styles.homeButtonText, { color: activeRoleConfig.accent }]}>Locked app</Text>
+                <View style={[styles.homeButton, styles.roleScopeButton, { borderColor: activeRoleConfig.border }]}>
+                  <Ionicons color={activeRoleConfig.accent} name={activeRoleConfig.icon} size={16} />
+                  <Text style={[styles.homeButtonText, { color: '#252639' }]}>App sign in</Text>
                 </View>
               ) : (
                 <TouchableOpacity
@@ -567,15 +620,6 @@ export default function InstituteLoginScreen() {
               </View>
             ) : null}
 
-            {lockedRole ? (
-              <View style={[styles.lockedRoleNotice, { borderColor: activeRoleConfig.border, backgroundColor: activeRoleConfig.soft }]}>
-                <Ionicons color={activeRoleConfig.accent} name="phone-portrait-outline" size={18} />
-                <Text style={styles.lockedRoleNoticeText}>
-                  This installed app is locked to {activeRoleConfig.label} access.
-                </Text>
-              </View>
-            ) : null}
-
             <View style={[styles.rolePanel, { backgroundColor: activeRoleConfig.soft, borderColor: activeRoleConfig.border }]}>
               <View style={[styles.roleIcon, { backgroundColor: '#FFFFFF', borderColor: activeRoleConfig.border }]}>
                 <Ionicons color={activeRoleConfig.accent} name={activeRoleConfig.icon} size={20} />
@@ -588,7 +632,7 @@ export default function InstituteLoginScreen() {
               </View>
             </View>
 
-            <View style={styles.form}>
+            <AuthFormShell onSubmit={handleLogin} style={styles.form}>
               {biometricReturnAvailable ? (
                 <TouchableOpacity
                   accessibilityLabel={`Sign in with ${biometricLabel}`}
@@ -629,6 +673,7 @@ export default function InstituteLoginScreen() {
               <View style={[styles.inputContainer, styles.criticalInput, fieldAlert.instituteId && styles.inputContainerError]}>
                 <Ionicons name="business-outline" size={20} color={fieldAlert.instituteId ? '#DC2626' : '#B91C1C'} style={styles.icon} />
                 <TextInput
+                  autoComplete="organization"
                   style={styles.input}
                   placeholder="Institute ID"
                   value={instituteId}
@@ -644,6 +689,7 @@ export default function InstituteLoginScreen() {
               <View style={[styles.inputContainer, styles.criticalInput, fieldAlert.userId && styles.inputContainerError]}>
                 <Ionicons name="id-card-outline" size={20} color={fieldAlert.userId ? '#DC2626' : '#B91C1C'} style={styles.icon} />
                 <TextInput
+                  autoComplete="username"
                   style={styles.input}
                   placeholder={activeRoleConfig.placeholder}
                   value={userId}
@@ -659,6 +705,7 @@ export default function InstituteLoginScreen() {
               <View style={[styles.inputContainer, styles.criticalInput, fieldAlert.password && styles.inputContainerError]}>
                 <Ionicons name="lock-closed-outline" size={20} color={fieldAlert.password ? '#DC2626' : '#B91C1C'} style={styles.icon} />
                 <TextInput
+                  autoComplete="current-password"
                   style={styles.input}
                   placeholder="Password"
                   value={password}
@@ -750,29 +797,51 @@ export default function InstituteLoginScreen() {
                 )}
               </TouchableOpacity>
 
-              <Text style={styles.roleHelper}>{activeRoleConfig.helper}</Text>
-              <DownloadAppAction
-                accentColor={activeRoleConfig.accent}
-                appName={`Shii-Edu ${activeRoleConfig.shortName}`}
-                borderColor={activeRoleConfig.border}
-                manifestHref={activeRoleConfig.manifestHref}
-                softColor={activeRoleConfig.soft}
-                startUrl={activeRoleConfig.appPath}
-                style={styles.downloadAction}
-              />
-              <PwaNotificationPrompt
-                accentColor={activeRoleConfig.accent}
-                borderColor={activeRoleConfig.border}
-                roleLabel={activeRoleConfig.shortName}
-                softColor={activeRoleConfig.soft}
-                style={styles.notificationPrompt}
-              />
-            </View>
+              <Text style={styles.roleHelper}>
+                {installedRolePath
+                  ? `Use your ${activeRoleConfig.shortName.toLowerCase()} credentials for this app.`
+                  : activeRoleConfig.helper}
+              </Text>
+              {publicWebAuthSurface ? (
+                <>
+                  <DownloadAppAction
+                    accentColor={activeRoleConfig.accent}
+                    appName={`Shii-Edu ${activeRoleConfig.shortName}`}
+                    borderColor={activeRoleConfig.border}
+                    manifestHref={activeRoleConfig.manifestHref}
+                    softColor={activeRoleConfig.soft}
+                    startUrl={activeRoleConfig.appPath}
+                    style={styles.downloadAction}
+                  />
+                  <PwaNotificationPrompt
+                    accentColor={activeRoleConfig.accent}
+                    borderColor={activeRoleConfig.border}
+                    roleLabel={activeRoleConfig.shortName}
+                    softColor={activeRoleConfig.soft}
+                    style={styles.notificationPrompt}
+                  />
+                </>
+              ) : null}
+            </AuthFormShell>
 
             <View style={styles.footer}>
-              <Ionicons name="lock-closed-outline" size={15} color="#635BFF" />
-              <Text style={styles.footerText}>Every session opens only the {activeRoleConfig.shortName} workspace</Text>
+              <Ionicons name="checkmark-circle-outline" size={15} color="#635BFF" />
+              <Text style={styles.footerText}>Session scope: {activeRoleConfig.shortName} workspace</Text>
             </View>
+            <TouchableOpacity
+              accessibilityLabel={`Create ${activeRoleConfig.shortName} account with an invitation`}
+              accessibilityRole="button"
+              activeOpacity={0.82}
+              onPress={openRegistration}
+              style={[styles.createAccountLink, { borderColor: activeRoleConfig.border, backgroundColor: activeRoleConfig.soft }]}
+            >
+              <Ionicons color={activeRoleConfig.accent} name="person-add-outline" size={16} />
+              <View style={styles.createAccountCopy}>
+                <Text style={styles.createAccountTitle}>Have an invite?</Text>
+                <Text style={styles.createAccountText}>Create your {activeRoleConfig.shortName} account</Text>
+              </View>
+              <Ionicons color={activeRoleConfig.accent} name="arrow-forward" size={16} />
+            </TouchableOpacity>
             {authStage === 'biometric-required' ? (
               <Text style={styles.supportText}>Your password remains available if biometric access is unavailable.</Text>
             ) : null}
@@ -1080,8 +1149,8 @@ const styles = StyleSheet.create({
     minHeight: 36,
     paddingHorizontal: 10,
   },
-  lockedAppButton: {
-    backgroundColor: '#F7F8FC',
+  roleScopeButton: {
+    backgroundColor: '#FAFAFC',
   },
   homeButtonText: {
     color: '#343548',
@@ -1208,6 +1277,33 @@ const styles = StyleSheet.create({
   notificationPrompt: { marginTop: 8 },
   footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#E7E6F1' },
   footerText: { flexShrink: 1, fontSize: 12, color: '#353548', marginLeft: 6, fontWeight: '700', textAlign: 'center' },
+  createAccountCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  createAccountLink: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+    minHeight: 58,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  createAccountText: {
+    color: '#353548',
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 17,
+    marginTop: 2,
+  },
+  createAccountTitle: {
+    color: '#010110',
+    fontSize: 13,
+    fontWeight: '900',
+  },
   roleHelper: { color: '#4B4B5F', fontSize: 11, fontWeight: '700', lineHeight: 16, marginTop: 10, textAlign: 'center' },
   roleIcon: { alignItems: 'center', borderRadius: 8, borderWidth: 1, height: 40, justifyContent: 'center', width: 40 },
   rolePanel: { alignItems: 'center', borderRadius: 8, borderWidth: 1, flexDirection: 'row', marginBottom: 18, padding: 12 },
@@ -1217,24 +1313,6 @@ const styles = StyleSheet.create({
   roleTab: { alignItems: 'center', borderRadius: 8, borderWidth: 1, flex: 1, flexDirection: 'row', justifyContent: 'center', minHeight: 42, paddingHorizontal: 7 },
   roleTabText: { fontSize: 12, fontWeight: '900', marginLeft: 6 },
   roleTabs: { flexDirection: 'row', gap: 7, marginBottom: 12 },
-  lockedRoleNotice: {
-    alignItems: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-    minHeight: 42,
-    paddingHorizontal: 11,
-    paddingVertical: 8,
-  },
-  lockedRoleNoticeText: {
-    color: '#252639',
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '800',
-    lineHeight: 17,
-  },
   roleSelectionLink: {
     alignItems: 'center',
     alignSelf: 'center',

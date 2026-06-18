@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { OptimizedImage } from '../OptimizedImage';
 import { SmoothSpinner } from './ui/LoadingState';
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
@@ -57,9 +58,10 @@ export default function ImageUploader() {
   return (
     <View style={styles.container}>
       <View style={styles.avatarWrapper}>
-        <Image 
-          source={{ uri: userData?.profilePic || 'https://via.placeholder.com/150' }} 
-          style={styles.avatar} 
+        <OptimizedImage
+          source={{ uri: userData?.profilePic || 'https://via.placeholder.com/150' }}
+          style={styles.avatar}
+          contentFit="cover"
         />
         <TouchableOpacity style={styles.editBtn} onPress={pickImage} disabled={uploading}>
           {uploading ? (

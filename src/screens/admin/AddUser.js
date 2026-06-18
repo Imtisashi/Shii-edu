@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Platform, Alert, KeyboardAvoidingView } from 'react-native';
-import { SmoothSpinner } from '../../components/ui/LoadingState';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import DynamicHeader from '../../components/DynamicHeader';
@@ -12,15 +11,18 @@ import {
   parseStudentImportCsv,
 } from '../../services/studentImportService';
 import { pickSingleDocument } from '../../services/nativePickerService';
-import { showNativeMessage } from '../../utils/userFeedback';
+import { showNativeError, showNativeMessage } from '../../utils/userFeedback';
 
 const showPlatformAlert = (title, message) => {
-  if (Platform.OS === 'web') {
-    window.alert(message || title);
-  } else {
-    Alert.alert(title, message);
-  }
+  showNativeMessage(title, message || title);
 };
+
+const parseLinkedStudentIds = (value) => (
+  String(value || '')
+    .split(/[,\n\r;|]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+);
 
 export default function AddUser({ navigation }) {
   const { currentUser, userData } = useAuth();
@@ -50,7 +52,7 @@ export default function AddUser({ navigation }) {
   const isParentRole = role === 'parent';
   const isDriverRole = role === 'driver';
   const primaryLabel = isParentRole
-    ? 'Linked Student User ID'
+    ? 'Linked Student User IDs'
     : isDriverRole
       ? 'Vehicle ID'
       : isSchool ? 'Class' : 'Department';
@@ -91,6 +93,7 @@ export default function AddUser({ navigation }) {
       method: 'POST',
       body: {
         instituteId: userData?.instituteId,
+        linkedStudentIds: userRole === 'parent' ? parseLinkedStudentIds(primary) : undefined,
         name: fullName,
         identifier: userIdentifier,
         password: userPassword,
@@ -126,8 +129,14 @@ export default function AddUser({ navigation }) {
       return;
     }
 
-    if (password.length < 8) {
-      showPlatformAlert("Weak Password", "Initial password must be at least 8 characters.");
+    if (
+      password.length < 10 ||
+      !/[a-z]/.test(password) ||
+      !/[A-Z]/.test(password) ||
+      !/\d/.test(password) ||
+      !/[^A-Za-z0-9]/.test(password)
+    ) {
+      showPlatformAlert("Weak Password", "Use at least 10 characters with uppercase and lowercase letters, a number, and a symbol.");
       return;
     }
 
@@ -149,7 +158,7 @@ export default function AddUser({ navigation }) {
     } catch (error) {
       console.error(error);
       const err = error.message || "Failed to create user. ID might already exist.";
-      showPlatformAlert("Error", err);
+      showNativeError("Account Creation Failed", error, err);
     } finally {
       setIsCreating(false);
     }
@@ -178,7 +187,7 @@ export default function AddUser({ navigation }) {
       setParsedData([]);
       setMappingReview(null);
       setImportErrors([]);
-      showPlatformAlert('CSV Validation Failed', error.message || 'The selected CSV file is invalid.');
+      showNativeError('CSV Validation Failed', error, error.message || 'The selected CSV file is invalid.');
     }
   };
 
@@ -187,7 +196,7 @@ export default function AddUser({ navigation }) {
       await downloadStudentImportTemplate(isSchool ? 'SCHOOL' : 'COLLEGE');
     } catch (error) {
       console.error(error);
-      showPlatformAlert('Template Download Failed', error.message || 'The CSV template could not be prepared.');
+      showNativeError('Template Download Failed', error, error.message || 'The CSV template could not be prepared.');
     }
   };
 
@@ -224,7 +233,7 @@ export default function AddUser({ navigation }) {
       }
     } catch (error) {
       console.error(error);
-      showPlatformAlert('Bulk Import Failed', error.message || 'Bulk import failed.');
+      showNativeError('Bulk Import Failed', error, error.message || 'Bulk import failed.');
     } finally {
       setIsUploading(false);
     }
@@ -308,7 +317,7 @@ export default function AddUser({ navigation }) {
                   onChangeText={setPrimaryTag}
                   placeholder={
                     isTeacherRole ? `Optional ${primaryLabel.toLowerCase()}`
-                      : isParentRole ? 'e.g. STU-2026-001'
+                      : isParentRole ? 'e.g. STU-001, STU-002'
                         : isDriverRole ? 'e.g. BUS-04'
                           : isSchool ? 'e.g. 10' : 'e.g. CSE'
                   }
@@ -339,7 +348,7 @@ export default function AddUser({ navigation }) {
             )}
             {isParentRole && (
               <Text style={[styles.helperText, { color: colors.textSoft }]}>
-                Parent access is securely linked to one existing student by User ID. Billing and alerts use that student relationship.
+                Parent access can link to multiple existing students. Enter Student User IDs separated by commas or new lines; billing, attendance, notices, and alerts will follow the selected child profile.
               </Text>
             )}
             {isDriverRole && (
@@ -350,7 +359,7 @@ export default function AddUser({ navigation }) {
           </View>
 
           <TouchableOpacity style={[styles.submitBtn, { backgroundColor: colors.deepBlue, borderColor: colors.deepBlue }]} onPress={handleManualCreate} disabled={isCreating}>
-            {isCreating ? <SmoothSpinner color="#fff" /> : <Text style={styles.submitBtnText}>Create Account</Text>}
+            <Text style={styles.submitBtnText}>{isCreating ? 'Creating account...' : 'Create Account'}</Text>
           </TouchableOpacity>
         </ScrollView>
       )}
@@ -430,7 +439,7 @@ export default function AddUser({ navigation }) {
             onPress={handleBulkUpload} 
             disabled={isUploading || parsedData.length === 0}
           >
-            {isUploading ? <SmoothSpinner color="#fff" /> : <Text style={styles.submitBtnText}>Start Bulk Upload</Text>}
+            <Text style={styles.submitBtnText}>{isUploading ? 'Uploading accounts...' : 'Start Bulk Upload'}</Text>
           </TouchableOpacity>
         </ScrollView>
       )}

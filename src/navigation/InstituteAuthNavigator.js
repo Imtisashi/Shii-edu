@@ -3,6 +3,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { sharedStackScreenOptions } from './animatedScreenOptions';
 import { getAuthRoleOption } from '../constants/authRoles';
 import InstituteLoginScreen from '../screens/auth/InstituteLoginScreen';
+import RegisterScreen from '../screens/auth/RegisterScreen';
 import RoleSelectionScreen from '../screens/auth/RoleSelectionScreen';
 
 const Stack = createStackNavigator();
@@ -40,6 +41,7 @@ export default function InstituteAuthNavigator({ lockedRole = null }) {
         component={InstituteLoginScreen}
         initialParams={{ initialRole: 'driver', ...lockedParams }}
       />
+      <Stack.Screen name="Register" component={RegisterScreen} initialParams={lockedParams} />
     </Stack.Navigator>
   );
 }

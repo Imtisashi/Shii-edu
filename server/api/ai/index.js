@@ -15,8 +15,8 @@ const {
   getGeminiConfig,
 } = require('../_lib/gemini');
 const { assertNoPromptInjection } = require('../_lib/promptSafety');
-const { assertFeatureEnabled } = require('../_lib/featureEntitlements');
 const { assertRateLimit } = require('../_lib/rateLimit');
+const { assertAiDailyUsage } = require('../_lib/subscriptionEntitlements');
 
 const SYLLABUS_FALLBACK = 'This is not in your syllabus.';
 const FACULTY_ROLES = new Set(['teacher', 'professor', 'admin', 'superadmin']);
@@ -433,11 +433,11 @@ module.exports = async function handler(req, res) {
     const body = parseAIRequest(await getBody(req));
     assertSafeAIRequest(body);
     const actor = await authenticateUserProfile(req);
-    assertRateLimit({ actor, req, scope: `ai:${body.action}`, limit: 24, windowMs: 60 * 1000 });
+    await assertRateLimit({ actor, req, scope: `ai:${body.action}`, limit: 24, windowMs: 60 * 1000 });
     assertAllowedAction(body.action, actor.role);
     const { firestore } = getAdminServices();
     const instituteId = actorInstituteId(actor, body);
-    await assertFeatureEnabled({ firestore, instituteId, featureKey: 'ai' });
+    await assertAiDailyUsage({ actor, firestore, instituteId, featureKey: 'ai_tools' });
     const config = getGeminiConfig();
     const prompt = await buildPrompt({ action: body.action, body, actor, firestore, instituteId, config });
 

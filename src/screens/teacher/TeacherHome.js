@@ -6,6 +6,21 @@ import { useInstitution } from '../../contexts/InstitutionContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
 import { filterByFeatureAccess, isFeatureEnabled } from '../../constants/featureEntitlements';
 import { openNearestDrawer } from '../../navigation/openNearestDrawer';
+import { isNoticeForBroadcasts } from '../../utils/isNoticeForBroadcasts';
+
+const getAuthorName = (author) => {
+  if (!author) return 'Campus';
+  if (typeof author === 'string') return author;
+  return author.name || author.email || 'Campus';
+};
+
+const formatNotificationDate = (createdAt) => {
+  if (!createdAt) return 'Just now';
+  if (typeof createdAt.toDate === 'function') return createdAt.toDate().toLocaleDateString();
+  if (createdAt.seconds) return new Date(createdAt.seconds * 1000).toLocaleDateString();
+  const parsed = new Date(createdAt);
+  return Number.isNaN(parsed.getTime()) ? 'Just now' : parsed.toLocaleDateString();
+};
 
 export default function TeacherHome() {
   const navigation = useNavigation();
@@ -141,13 +156,16 @@ export default function TeacherHome() {
   );
 
   const notices = useMemo(
-    () => (notifications || []).slice(0, 3).map((item, index) => ({
-      id: item.id || `teacher-notice-${index}`,
-      meta: item.type || 'Faculty update',
-      onPress: () => navigation.navigate('TeacherNotifs'),
-      title: item.title || 'Faculty update',
-    })),
-    [navigation, notifications]
+    () => (notifications || [])
+      .filter(isNoticeForBroadcasts)
+      .slice(0, 3)
+      .map((item, index) => ({
+        id: item.id || `notice-${index}`,
+        meta: `${getAuthorName(item.author)} - ${formatNotificationDate(item.createdAt)}`,
+        onPress: () => navigation.navigate('TeacherNotifs'),
+        title: item.title || 'Campus broadcast',
+      })),
+    [notifications, navigation]
   );
 
   return (
@@ -169,7 +187,10 @@ export default function TeacherHome() {
       ]}
       secondaryActions={visibleActions.slice(4)}
       title="Faculty"
-      unreadCount={(notifications || []).length}
+      unreadCount={(notifications || []).filter(isNoticeForBroadcasts).filter((notification) => {
+        const alreadyRead = notification.readBy?.includes(userData?.uid) || notification.isRead === true;
+        return !alreadyRead;
+      }).length}
     />
   );
 }

@@ -1,5 +1,7 @@
 import { routeMetadata } from '../lib/site';
+import StudyDoodleField from '../components/StudyDoodleField';
 import RoleAppShowcase from './RoleAppShowcase';
+import Image from 'next/image';
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
@@ -8,11 +10,13 @@ const onboardingMailto = 'mailto:sashimiofficials@gmail.com?subject=Institute%20
 
 export function generateMetadata() {
   return routeMetadata({
-    description: 'Choose the Shii-Edu role app for Institute, Parents, or Driver access.',
+    description: 'Choose the right Shii-Edu entrance for Institute, Parents, or Driver access.',
     path: '/roles',
     title: 'Choose your role',
   });
 }
+
+
 
 function ShiiEduWordmark() {
   return (
@@ -28,12 +32,12 @@ function ShiiEduWordmark() {
 export default function RoleChoicePage() {
   return (
     <main id="main" className="role-choice-page">
+      <StudyDoodleField className="role-doodle-field" />
       <nav className="role-choice-topbar" aria-label="Role page">
         <a className="role-choice-brand" href="/" aria-label="Shii-Edu home">
-          <img src="/icon.png" alt="" width="44" height="44" />
-          <span>
-            <ShiiEduWordmark />
-            <span>Three role apps</span>
+          <Image src="/shii-edu-logo.png" alt="Shii-Edu" width={160} height={50} style={{ objectFit: 'contain' }} />
+          <span style={{ marginLeft: '1rem', borderLeft: '1px solid #ccc', paddingLeft: '1rem', display: 'flex', alignItems: 'center' }}>
+            Choose your entrance
           </span>
         </a>
         <div className="role-choice-toplinks">
@@ -42,13 +46,11 @@ export default function RoleChoicePage() {
         </div>
       </nav>
 
-      <section className="role-choice-shell">
-        <div className="role-choice-intro">
-          <span>Three separate apps</span>
-          <h1>Choose your role.</h1>
+      <section className="role-choice-shell role-choice-shell-simplified">
+        <div className="role-choice-intro-modern">
+          <h1>Welcome to Shii-Edu.</h1>
           <p>
-            Pick the workspace that matches your account. Each path opens a different login surface, app identity,
-            and installed PWA.
+            Choose your entrance to securely sign in or download the mobile app.
           </p>
         </div>
 

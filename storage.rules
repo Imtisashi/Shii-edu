@@ -3,6 +3,9 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
+      // Firebase Storage is intentionally disabled.
+      // All media uploads (gallery, profile images, PYQs, etc.) use Cloudinary or Supabase Storage.
+      // This rule denies all access to prevent accidental usage.
       allow read, write: if false;
     }
   }

@@ -9,7 +9,7 @@ import {
 } from '../constants/institutionBrandingPalettes';
 import { useInstitution } from './InstitutionContext';
 
-export const EDGE_BACKGROUND = '#09090B';
+export const EDGE_BACKGROUND = '#F8FAFC';
 
 type UnknownRecord = Record<string, unknown>;
 

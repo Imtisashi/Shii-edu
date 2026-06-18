@@ -7,6 +7,9 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const Razorpay = require('razorpay');
 const admin = require('firebase-admin');
+const mongoSanitize = require('express-mongo-sanitize');
+const hpp = require('hpp');
+const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const PORT = Number(process.env.PORT || 5000);
@@ -66,26 +69,147 @@ const razorpay = new Razorpay({
   key_secret: razorpayKeySecret,
 });
 
-app.disable('x-powered-by');
-app.use(helmet());
-app.use(express.json({ limit: '32kb' }));
-app.use(cors({
-  origin(origin, callback) {
-    const allowedOrigins = parseAllowedOrigins();
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-      return;
-    }
+// Request ID middleware for traceability
+app.use((req, res, next) => {
+  req.id = uuidv4();
+  next();
+});
 
-    callback(new Error('Origin not allowed by CORS'));
+// Security middleware
+app.disable('x-powered-by');
+
+// Enhanced Helmet configuration with stricter policies
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'none'"],
+        // Additional security for workers and frame ancestors
+        workerSrc: ["'self'", "blob:"],
+        frameAncestors: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+      },
+    },
+    crossOriginEmbedderPolicy: true,
+    crossOriginOpenerPolicy: { policy: 'same-origin' },
+    crossOriginResourcePolicy: { policy: 'same-origin' },
+    dnsPrefetchControl: true,
+    expectCt: { maxAge: 86400, enforce: true },
+    frameguard: { action: 'deny' },
+    hidePoweredBy: true,
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true,
+      // Apply HSTS to subdomains as well
+    },
+    ieNoOpen: true,
+    noSniff: true,
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    xssFilter: true,
+    // Prevent clickjacking
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  })
+);
+
+// Additional security headers
+app.use((req, res, next) => {
+  // Prevent MIME type sniffing
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+
+  // Enable XSS protection
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+
+  // Prevent clickjacking
+  res.setHeader('X-Frame-Options', 'DENY');
+
+  // Hide server header (already done by helmet.hidePoweredBy, but extra sure)
+  res.setHeader('Server', '');
+
+  // Permissions Policy (formerly Feature Policy)
+  res.setHeader(
+    'Permissions-Policy',
+    'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()'
+  );
+
+  next();
+});
+
+// Data sanitization middleware
+app.use(express.json({ limit: '10kb' })); // Reduced limit for JSON bodies
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(mongoSanitize()); // Prevent MongoDB injection
+app.use(hpp()); // Prevent HTTP parameter pollution
+
+// CORS configuration with stricter settings
+app.use(cors({
+  origin: (origin, callback) => {
+    const allowedOrigins = parseAllowedOrigins();
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
+    return callback(new Error(msg), false);
   },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
+  maxAge: 86400, // 24 hours
 }));
-app.use('/api/', rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: Number(process.env.API_RATE_LIMIT || 120),
+
+// Rate limiting with different tiers and stricter limits
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: Number(process.env.API_RATE_LIMIT || 60), // Further reduced default limit
   standardHeaders: true,
   legacyHeaders: false,
-}));
+  message: { error: 'Too many requests from this IP, please try again later.' },
+  skipSuccessfulRequests: false, // Count all requests, not just failed ones
+  skipFailedRequests: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: Number(process.env.AUTH_RATE_LIMIT || 10), // Even stricter for auth endpoints
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many authentication attempts, please try again later.' },
+  skipSuccessfulRequests: false,
+  skipFailedRequests: false,
+});
+
+const paymentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: Number(process.env.PAYMENT_RATE_LIMIT || 5), // Very strict for payments
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many payment requests, please try again later.' },
+  skipSuccessfulRequests: false,
+  skipFailedRequests: false,
+});
+
+// Apply rate limiting to all API routes
+app.use('/api/v1/', apiLimiter);
+// Specific limiters will be applied to individual routes below (auth and payment routes already have their limiters)
+
+// Request timeout middleware
+app.use((req, res, next) => {
+  req.setTimeout(30000, () => {
+    res.status(408).json({ error: 'Request timeout' });
+  });
+  next();
+});
 
 const normalizeRole = (role) => String(role || '').trim().toLowerCase();
 
@@ -98,25 +222,68 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ error: 'Missing Firebase ID token.' });
     }
 
-    const decodedToken = await admin.auth().verifyIdToken(match[1]);
+    const idToken = match[1];
+
+    // Additional token validation
+    if (!idToken || idToken.length < 10) {
+      return res.status(401).json({ error: 'Invalid token format.' });
+    }
+
+    // Verify the ID token with revocation check
+    const decodedToken = await admin.auth().verifyIdToken(idToken, true); // true = checkRevoked
+
+    // Additional payload validation
+    if (!decodedToken.uid) {
+      return res.status(401).json({ error: 'Invalid token payload.' });
+    }
+
+    // Optional: Check token age (not older than 24 hours for example)
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    if (decodedToken.auth_time && (nowSeconds - decodedToken.auth_time) > 86400) {
+      return res.status(401).json({ error: 'Token is too old. Please re-authenticate.' });
+    }
+
     const userSnap = await firestore.collection('users').doc(decodedToken.uid).get();
 
     if (!userSnap.exists) {
       return res.status(403).json({ error: 'Authenticated user profile was not found.' });
     }
 
+    const userData = userSnap.data();
+
+    // Optional: Check if account is disabled/locked
+    if (userData.accountLocked === true) {
+      return res.status(403).json({ error: 'Account is locked. Contact administrator.' });
+    }
+
+    // Optional: Check if email is verified (if using email/password)
+    // if (decodedToken.email && !decodedToken.email_verified) {
+    //   return res.status(403).json({ error: 'Please verify your email address.' );
+    // }
+
     req.auth = {
       uid: decodedToken.uid,
       token: decodedToken,
       profile: {
         id: userSnap.id,
-        ...userSnap.data(),
+        ...userData,
       },
+      requestId: req.id, // Add request ID for tracing
     };
 
     next();
   } catch (error) {
     console.error('Authentication failed:', error.message);
+    // Distinguish between different error types for better security
+    if (error.code === 'auth/id-token-revoked') {
+      return res.status(401).json({ error: 'Token has been revoked. Please re-authenticate.' });
+    }
+    if (error.code === 'auth/user-disabled') {
+      return res.status(401).json({ error: 'User account has been disabled.' });
+    }
+    if (error.code === 'auth/argument-error') {
+      return res.status(401).json({ error: 'Invalid authentication token.' });
+    }
     res.status(401).json({ error: 'Invalid or expired authentication token.' });
   }
 };
@@ -135,8 +302,26 @@ const normalizeAuthEmail = (identifier) => {
 };
 
 const assertPassword = (password) => {
-  if (typeof password !== 'string' || password.length < 8) {
+  if (typeof password !== 'string') {
+    throw new Error('Password must be a string.');
+  }
+
+  if (password.length < 8) {
     throw new Error('Password must be at least 8 characters.');
+  }
+
+  if (password.length > 128) {
+    throw new Error('Password must not exceed 128 characters.');
+  }
+
+  // Require complexity for stronger security
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasNumbers = /[0-9]/.test(password);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+  if (!(hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar)) {
+    throw new Error('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.');
   }
 };
 
@@ -226,7 +411,13 @@ app.get('/health', (_req, res) => {
   res.json({ ok: true });
 });
 
-app.post('/api/super-admin/institutes', authenticate, requireRole('superadmin'), async (req, res) => {
+// Health check without rate limiting for monitoring
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true, timestamp: new Date().toISOString() });
+});
+
+// API routes with versioning
+app.post('/api/v1/super-admin/institutes', authenticate, requireRole('superadmin'), authLimiter, async (req, res) => {
   let adminUser = null;
 
   try {
@@ -283,7 +474,7 @@ app.post('/api/super-admin/institutes', authenticate, requireRole('superadmin'),
   }
 });
 
-app.delete('/api/super-admin/institutes/:instituteId', authenticate, requireRole('superadmin'), async (req, res) => {
+app.delete('/api/v1/super-admin/institutes/:instituteId', authenticate, requireRole('superadmin'), authLimiter, async (req, res) => {
   try {
     const requestedInstituteId = String(req.params.instituteId || '').trim();
     if (!requestedInstituteId) {
@@ -335,7 +526,7 @@ app.delete('/api/super-admin/institutes/:instituteId', authenticate, requireRole
   }
 });
 
-app.post('/api/admin/users', authenticate, requireRole('admin'), async (req, res) => {
+app.post('/api/v1/admin/users', authenticate, requireRole('admin'), authLimiter, async (req, res) => {
   let newUser = null;
 
   try {
@@ -402,7 +593,7 @@ app.post('/api/admin/users', authenticate, requireRole('admin'), async (req, res
   }
 });
 
-app.post('/api/payments/create-order', authenticate, requireRole('student'), async (req, res) => {
+app.post('/api/v1/payments/create-order', authenticate, requireRole('student'), paymentLimiter, async (req, res) => {
   try {
     const userRef = firestore.collection('users').doc(req.auth.uid);
     const userSnap = await userRef.get();
@@ -448,7 +639,7 @@ app.post('/api/payments/create-order', authenticate, requireRole('student'), asy
   }
 });
 
-app.post('/api/payments/verify', authenticate, requireRole('student'), async (req, res) => {
+app.post('/api/v1/payments/verify', authenticate, requireRole('student'), async (req, res) => {
   try {
     const orderId = String(req.body.razorpay_order_id || '');
     const paymentId = String(req.body.razorpay_payment_id || '');
@@ -522,11 +713,84 @@ app.post('/api/payments/verify', authenticate, requireRole('student'), async (re
   }
 });
 
+// Centralized error handling middleware
 app.use((error, _req, res, _next) => {
-  console.error('Unhandled API error:', error.message);
-  res.status(500).json({ error: 'Internal server error.' });
+  // Log the error for internal monitoring (in production, use a proper logging service)
+  console.error({
+    error: error.message,
+    stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+    requestId: _req.id,
+    url: _req.originalUrl,
+    method: _req.method,
+    timestamp: new Date().toISOString(),
+  });
+
+  // Never leak stack traces or internal error details to the client
+  res.status(500).json({
+    error: 'Internal server error.',
+    // In development, you might want to include more details
+    ...(process.env.NODE_ENV === 'development' && { message: error.message })
+  });
 });
 
-app.listen(PORT, () => {
+// Handle 404 errors
+app.use((_req, res) => {
+  res.status(404).json({
+    error: 'Not found',
+    message: 'The requested resource could not be found.'
+  });
+});
+
+// Handle uncaught exceptions and unhandled rejections with graceful shutdown
+const handleError = (error, type) => {
+  console.error(`${type}:`, error);
+  // In production, you might want to send this to an error tracking service
+  // Like Sentry, Datadog, etc.
+
+  // Only exit in certain situations to allow for graceful shutdown
+  if (type === 'Uncaught Exception') {
+    // Give some time to finish ongoing requests
+    setTimeout(() => {
+      process.exit(1);
+    }, 5000);
+  }
+};
+
+process.on('uncaughtException', (err) => {
+  handleError(err, 'Uncaught Exception');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  handleError(reason, 'Unhandled Rejection');
+});
+
+// Graceful shutdown
+const shutdown = (signal) => {
+  console.log(`Received ${signal}. Shutting down gracefully...`);
+  // Close server connections
+  if (server) {
+    server.close(() => {
+      console.log('Process terminated');
+      process.exit(0);
+    });
+  } else {
+    process.exit(0);
+  }
+
+  // Force shutdown after 10 seconds
+  setTimeout(() => {
+    console.log('Force closing connections');
+    process.exit(1);
+  }, 10000);
+};
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
+
+// Store server reference for graceful shutdown
+let server;
+
+// Start the server and keep reference for graceful shutdown
+server = app.listen(PORT, () => {
   console.log(`Shii-Edu backend running on port ${PORT}`);
 });

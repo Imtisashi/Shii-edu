@@ -4,17 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
 import DynamicHeader from '../../components/DynamicHeader';
-
-const isNotice = (notification) => {
-  const originalType = notification?.data?.originalType;
-  return (
-    notification?.type === 'announcement' ||
-    notification?.relatedType === 'notice' ||
-    notification?.relatedType === 'broadcast' ||
-    originalType === 'admin_notice' ||
-    originalType === 'campus_broadcast'
-  );
-};
+import { isNoticeForBroadcasts } from '../../utils/isNoticeForBroadcasts';
 
 const getAuthorName = (author) => {
   if (!author) return 'Campus';
@@ -113,7 +103,7 @@ export default function Notices() {
 
   const notices = useMemo(
     () => (notifications || [])
-      .filter(isNotice)
+      .filter(isNoticeForBroadcasts)
       .sort((a, b) => createdAtToMillis(b.createdAt) - createdAtToMillis(a.createdAt)),
     [notifications]
   );

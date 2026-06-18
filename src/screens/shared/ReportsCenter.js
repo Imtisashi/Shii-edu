@@ -444,7 +444,6 @@ const styles = StyleSheet.create({
   },
   screen: {
     flex: 1,
-    overflow: 'hidden',
   },
   searchBox: {
     alignItems: 'center',

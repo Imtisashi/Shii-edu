@@ -54,7 +54,7 @@ const renderDocument = ({
     <meta property="og:title" content="${escapeHtml(title)} | ${SITE_NAME}" />
     <meta property="og:description" content="${escapeHtml(description)}" />
     <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
-    <meta property="og:image" content="${escapeHtml(`${origin}/assets/icon.png`)}" />
+    <meta property="og:image" content="${escapeHtml(`${origin}/icon.png`)}" />
     <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
     <style>
       :root {

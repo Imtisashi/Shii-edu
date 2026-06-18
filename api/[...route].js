@@ -1,7 +1,10 @@
 const routes = new Map([
   ['admin/branding', require('../server/api/admin/branding')],
+  ['admin/agent', require('../server/api/admin/agent')],
   ['admin/fees/assign', require('../server/api/admin/fees/assign')],
   ['admin/fees/record-payment', require('../server/api/admin/fees/record-payment')],
+  ['admin/custom-subdomain', require('../server/api/admin/custom-subdomain')],
+  ['admin/payroll/run', require('../server/api/admin/payroll/run')],
   ['admin/users', require('../server/api/admin/users')],
   ['admin/users/bulk', require('../server/api/admin/users/bulk')],
   ['ai', require('../server/api/ai')],

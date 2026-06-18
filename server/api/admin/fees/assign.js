@@ -19,7 +19,7 @@ const {
 const { assertFeatureEnabled } = require('../../_lib/featureEntitlements');
 const { assertRateLimit } = require('../../_lib/rateLimit');
 
-const TargetScopeSchema = z.enum(['all', 'class', 'department', 'section', 'semester']);
+const TargetScopeSchema = z.enum(['all', 'class', 'section', 'classSection', 'department', 'semester', 'departmentSemester']);
 const AssignFeeSchema = z.object({
   amount: z.coerce.number().positive().max(10000000),
   currency: z.string().trim().length(3).optional().default('INR'),
@@ -58,8 +58,16 @@ const studentMatchesTarget = (student, targetScope, targetValue) => {
 
   if (targetScope === 'class') return normalize(student.class || student.standard) === target;
   if (targetScope === 'section') return normalize(student.section) === target;
+  if (targetScope === 'classSection') {
+    const [classValue, sectionValue] = target.split('|');
+    return normalize(student.class || student.standard) === classValue && normalize(student.section) === sectionValue;
+  }
   if (targetScope === 'department') return normalize(student.dept || student.department) === target;
   if (targetScope === 'semester') return normalize(student.sem || student.semester) === target;
+  if (targetScope === 'departmentSemester') {
+    const [departmentValue, semesterValue] = target.split('|');
+    return normalize(student.dept || student.department) === departmentValue && normalize(student.sem || student.semester) === semesterValue;
+  }
   return false;
 };
 
@@ -77,7 +85,7 @@ module.exports = async function handler(req, res) {
   try {
     const actor = await authenticateUserProfile(req, ['admin', 'superadmin']);
     if (!isInternalTaskExecution(req)) {
-      assertRateLimit({ actor, req, scope: 'admin:fee-assignment', limit: 12, windowMs: 60 * 1000 });
+      await assertRateLimit({ actor, req, scope: 'admin:fee-assignment', limit: 12, windowMs: 60 * 1000 });
     }
     const { firestore } = getAdminServices();
     const body = parseBody(await getBody(req));

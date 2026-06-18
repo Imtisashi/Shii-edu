@@ -1,5 +1,6 @@
 import React from 'react';
-import { Alert, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { OptimizedImage } from '../OptimizedImage';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
@@ -138,14 +139,14 @@ export default function DynamicHeader({ title, showBack = false }) {
           ) : null}
 
           {logoUrl ? (
-            <Image
+            <OptimizedImage
               source={{ uri: logoUrl }}
               style={[
                 styles.logo,
                 layout.isCompact && styles.logoCompact,
                 { height: logoSize, width: logoSize },
               ]}
-              resizeMode="contain"
+              contentFit="contain"
             />
           ) : (
             <View

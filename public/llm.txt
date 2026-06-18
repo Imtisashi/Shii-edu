@@ -1,0 +1,61 @@
+# Shii-Edu
+
+> Shii-Edu is a premium institute operations platform for academics, fees, communication, files, transport, and role-aware administration.
+
+## About
+
+Shii-Edu coordinates daily campus work inside role-specific apps for admins, teachers, students, parents, and drivers. Each role sees only the surfaces and data relevant to their responsibilities. Institutes register through a superadmin-verified onboarding flow and receive a scoped workspace with configurable feature tiers (Basic, Pro, Max).
+
+## Core Capabilities
+
+- **Academic Workflow** — Routines, attendance, assignments, grades, reports, courses, and learning files scoped by class, section, department, and semester.
+- **Finance Workflow** — Bulk fee allocation by cohort, offline payment marking, payroll, receipts, ledgers, and Stripe-based payment processing with signed webhooks.
+- **Map Transport** — Origin/destination coordinates, driver assignment, parent route visibility, and fallback device-preview when live GPS is unavailable. Default map region: Nagaland.
+- **Parent Support** — Simple parent app with linked-student context, Today/My Child/Fees/Help actions, and an office-help fallback for families needing assisted rollout.
+- **AI Reports** — Bounded Max admin agent for approved reports and exports with daily usage limits, audit logs, and rate-limit enforcement. Not open-ended database access.
+- **Role Apps** — Admin, Teacher, Student, Parent, and Driver interfaces stay focused on their own work. PWA manifests use separate IDs, scopes, and icons for installable role isolation.
+
+## Technology
+
+- **Frontend Web**: Next.js App Router with server-side rendering and edge runtime
+- **Frontend Mobile**: Expo / React Native
+- **Backend**: Supabase (PostgreSQL with Row-Level Security), Firebase Auth, Firebase Realtime Database (fleet), Cloudinary (media)
+- **Payments**: Stripe (server-side calls, signed webhooks, idempotency)
+- **AI**: Gemini API with daily usage enforcement
+
+## Pricing
+
+| Plan  | Monthly   | Yearly     |
+|-------|-----------|------------|
+| Basic | Rs. 3,000 | Rs. 30,000 |
+| Pro   | Rs. 8,000 | Rs. 80,000 |
+| Max   | Rs. 15,000| Rs. 1,50,000|
+
+Yearly billing includes two months at no additional cost.
+
+## Key Pages
+
+- [Home](https://shiiedu.dpdns.org/) — Landing page with platform overview, features, pricing, and role explorer.
+- [Roles](https://shiiedu.dpdns.org/roles) — Choose login role: Institute, Parents, or Driver.
+- [Privacy Policy](https://shiiedu.dpdns.org/privacy) — Data handling, India DPDP Act alignment, child-data minimization, and liability limits.
+- [Terms of Service](https://shiiedu.dpdns.org/terms) — Workspace access, uploads, payments, AI assistance, transport, indemnity, and limitation of liability.
+- [Sitemap](https://shiiedu.dpdns.org/sitemap.xml) — XML sitemap for crawlers.
+
+## Security Model
+
+- Firebase Auth with token format validation, revocation checks, and session age limits
+- Supabase PostgreSQL Row-Level Security for institute workspace isolation
+- Zod schema validation on all mutation routes
+- Rate-limiting on API mutation routes with institute-scoped tier enforcement
+- Signed upload URLs for Cloudinary media
+- CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy headers
+
+## Legal
+
+- **Privacy Policy**: Covers scope, data collected, children/minors, India DPDP Act, payments, security, third-party processors, liability, and contact.
+- **Terms of Service**: Covers acceptance, workspace access, responsibilities, payments, uploads, AI assistance, transport, indemnity, limitation of liability, and governing law.
+
+## Contact
+
+- Email: sashimiofficials@gmail.com
+- Subject line for onboarding: "Institute onboarding request"

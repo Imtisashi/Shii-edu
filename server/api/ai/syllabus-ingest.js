@@ -1,3 +1,4 @@
+const { Buffer } = require('node:buffer');
 const pdfParse = require('pdf-parse');
 const { z } = require('zod');
 const {
@@ -12,13 +13,13 @@ const {
 } = require('../_lib/firebaseAdmin');
 const { batchEmbedContents, getGeminiConfig } = require('../_lib/gemini');
 const { assertNoPromptInjection } = require('../_lib/promptSafety');
-const { assertFeatureEnabled } = require('../_lib/featureEntitlements');
 const {
   enqueueBackgroundTask,
   isInternalTaskExecution,
   startBackgroundTask,
 } = require('../_lib/backgroundTasks');
 const { assertRateLimit } = require('../_lib/rateLimit');
+const { assertAiDailyUsage, requireFeature } = require('../_lib/subscriptionEntitlements');
 
 const MAX_PDF_BYTES = 12 * 1024 * 1024;
 const MAX_CHUNKS = 160;
@@ -132,7 +133,7 @@ module.exports = async function handler(req, res) {
   try {
     const actor = await authenticateUserProfile(req, ['admin', 'teacher', 'professor']);
     if (!isInternalTaskExecution(req)) {
-      assertRateLimit({ actor, req, scope: 'ai:syllabus-ingest', limit: 10, windowMs: 60 * 1000 });
+      await assertRateLimit({ actor, req, scope: 'ai:syllabus-ingest', limit: 10, windowMs: 60 * 1000 });
     }
     const instituteId = actor.profile?.instituteId;
     if (!instituteId) {
@@ -143,7 +144,7 @@ module.exports = async function handler(req, res) {
     const body = parseBody(await getBody(req));
     assertApprovedSyllabusUpload({ ...body, instituteId });
     const { firestore } = getAdminServices();
-    await assertFeatureEnabled({ firestore, instituteId, featureKey: 'ai' });
+    await requireFeature({ firestore, instituteId, featureKey: 'ai_tools' });
 
     if (!isInternalTaskExecution(req)) {
       const task = await enqueueBackgroundTask({
@@ -181,6 +182,7 @@ module.exports = async function handler(req, res) {
     }
 
     const config = getGeminiConfig();
+    await assertAiDailyUsage({ actor, firestore, instituteId, featureKey: 'ai_tools' });
     const embeddings = [];
     for (const batch of chunkArray(chunks, EMBEDDING_BATCH_SIZE)) {
       const batchEmbeddings = await batchEmbedContents({

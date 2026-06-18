@@ -54,8 +54,9 @@ const formatDate = (value) => {
 };
 
 export default function PasswordResetRequests() {
-  const { currentUser } = useAuth();
+  const { currentUser, userData } = useAuth();
   const { colors, maxContentWidth, radii, spacing } = useRootLayout();
+  const isSuperadmin = String(userData?.role || '').toLowerCase() === 'superadmin';
   const [actionId, setActionId] = useState('');
   const [filter, setFilter] = useState('pending');
   const [loading, setLoading] = useState(true);
@@ -177,6 +178,14 @@ export default function PasswordResetRequests() {
               {request.contact || 'No contact detail'}
             </Text>
           </View>
+          {isSuperadmin ? (
+            <View style={styles.detailCell}>
+              <Text style={[styles.detailLabel, { color: colors.muted }]}>Approval</Text>
+              <Text numberOfLines={1} style={[styles.detailValue, { color: colors.text }]}>
+                {request.approvalRole === 'superadmin' ? 'Superadmin verification' : 'Institute admin'}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {request.note ? (
@@ -248,9 +257,13 @@ export default function PasswordResetRequests() {
           <View style={styles.summaryHeader}>
             <View style={styles.summaryCopy}>
               <Text style={[styles.eyebrow, { color: colors.muted }]}>Credential recovery</Text>
-              <Text style={[styles.title, { color: colors.text }]}>Admin-approved password resets</Text>
+              <Text style={[styles.title, { color: colors.text }]}>
+                {isSuperadmin ? 'Superadmin password reset approvals' : 'Admin-approved password resets'}
+              </Text>
               <Text style={[styles.subtitle, { color: colors.textSoft }]}>
-                Review requests from Institute, Parents, and Driver login screens before a reset link is released.
+                {isSuperadmin
+                  ? 'Review administrator reset requests after institute ID and user ID verification.'
+                  : 'Review requests from Institute, Parents, and Driver login screens before a reset link is released.'}
               </Text>
             </View>
             <TouchableOpacity

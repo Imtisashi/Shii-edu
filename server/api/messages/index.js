@@ -410,7 +410,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const actor = await authenticateUserProfile(req, ['admin', 'teacher', 'professor', 'student', 'parent']);
-    assertRateLimit({ actor, req, scope: 'messages', limit: 60, windowMs: 60 * 1000 });
+    await assertRateLimit({ actor, req, scope: 'messages', limit: 60, windowMs: 60 * 1000 });
     if (!actor.profile.instituteId) {
       const error = new Error('Your profile is not linked to an institute.');
       error.statusCode = 403;

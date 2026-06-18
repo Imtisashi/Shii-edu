@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Animated,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -11,7 +10,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { EASING, DURATION } from '../../utils/animations';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -44,10 +42,16 @@ const initialForm = {
   adminName: '',
   adminUserId: '',
   adminPassword: '',
+  bankAccountHolderName: '',
+  bankAccountNumber: '',
+  bankIfsc: '',
+  bankName: '',
   institutionType: 'SCHOOL',
 };
 
 const normalizeUserId = (value) => String(value || '').trim();
+const normalizeBankAccountNumber = (value) => String(value || '').replace(/\D/g, '');
+const normalizeIfsc = (value) => String(value || '').trim().toUpperCase();
 
 const validateForm = (form) => {
   const errors = {};
@@ -60,8 +64,23 @@ const validateForm = (form) => {
     errors.adminUserId = 'Use only letters, numbers, dots, underscores, or hyphens.';
   }
   if (!form.adminPassword) errors.adminPassword = 'A temporary password is required.';
-  else if (form.adminPassword.length < 8) errors.adminPassword = 'Use at least 8 characters.';
+  else if (
+    form.adminPassword.length < 10 ||
+    !/[a-z]/.test(form.adminPassword) ||
+    !/[A-Z]/.test(form.adminPassword) ||
+    !/\d/.test(form.adminPassword) ||
+    !/[^A-Za-z0-9]/.test(form.adminPassword)
+  ) errors.adminPassword = 'Use 10+ characters with uppercase, lowercase, a number, and a symbol.';
   if (!INSTITUTION_TYPES[form.institutionType]) errors.institutionType = 'Choose School or College.';
+
+  const bankAccountNumber = normalizeBankAccountNumber(form.bankAccountNumber);
+  const bankIfsc = normalizeIfsc(form.bankIfsc);
+  if (!form.bankAccountHolderName.trim()) errors.bankAccountHolderName = 'Bank details are required for institute payout setup.';
+  if (!form.bankName.trim()) errors.bankName = 'Bank name is required for institute payout setup.';
+  if (!bankAccountNumber) errors.bankAccountNumber = 'Bank account number is required.';
+  else if (!/^\d{9,18}$/.test(bankAccountNumber)) errors.bankAccountNumber = 'Use a 9 to 18 digit bank account number.';
+  if (!bankIfsc) errors.bankIfsc = 'IFSC is required for institute payout setup.';
+  else if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(bankIfsc)) errors.bankIfsc = 'Enter a valid IFSC code, e.g. SBIN0123456.';
 
   return errors;
 };
@@ -76,52 +95,24 @@ const showToast = (message) => {
 };
 
 function InstitutionTypeToggle({ value, onChange, disabled }) {
-  const [width, setWidth] = useState(0);
-  const position = useRef(new Animated.Value(value === 'COLLEGE' ? 1 : 0)).current;
-  const indicatorWidth = width > 8 ? (width - 8) / 2 : 0;
-
-  useEffect(() => {
-    Animated.timing(position, {
-      toValue: value === 'COLLEGE' ? 1 : 0,
-      duration: DURATION.standard,
-      easing: EASING.strongEaseOut,
-      useNativeDriver: true,
-    }).start();
-  }, [position, value]);
-
   const select = (nextValue) => {
     if (disabled || nextValue === value) return;
     onChange(nextValue);
   };
 
-  const translateX = position.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, indicatorWidth],
-  });
-
   return (
-    <View
-      style={styles.toggleShell}
-      onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
-    >
-      {indicatorWidth > 0 ? (
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.toggleIndicator,
-            { width: indicatorWidth, transform: [{ translateX }] },
-            value === 'COLLEGE' && styles.toggleIndicatorCollege,
-          ]}
-        />
-      ) : null}
-
+    <View style={styles.toggleShell}>
       {Object.values(INSTITUTION_TYPES).map((option) => {
         const selected = value === option.value;
 
         return (
           <TouchableOpacity
             key={option.value}
-            style={styles.toggleOption}
+            style={[
+              styles.toggleOption,
+              selected && styles.toggleOptionSelected,
+              selected && option.value === 'COLLEGE' && styles.toggleOptionSelectedCollege,
+            ]}
             activeOpacity={0.78}
             onPress={() => select(option.value)}
             disabled={disabled}
@@ -158,26 +149,7 @@ export default function SuperadminMasterDashboard() {
   const [successMessage, setSuccessMessage] = useState('');
   const [createdInstitute, setCreatedInstitute] = useState(null);
   const [copied, setCopied] = useState(false);
-  const introOpacity = useRef(new Animated.Value(0)).current;
-  const introY = useRef(new Animated.Value(18)).current;
   const copyResetTimer = useRef(null);
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(introOpacity, {
-        toValue: 1,
-        duration: DURATION.deliberate,
-        easing: EASING.strongEaseOut,
-        useNativeDriver: true,
-      }),
-      Animated.timing(introY, {
-        toValue: 0,
-        duration: DURATION.quick,
-        easing: EASING.strongEaseOut,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [introOpacity, introY]);
 
   useEffect(() => () => {
     if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
@@ -186,7 +158,17 @@ export default function SuperadminMasterDashboard() {
   const loadInstitutes = useCallback(async ({ showLoader = true } = {}) => {
     if (showLoader) setLoading(true);
     try {
-      const snapshot = await getDocs(collection(db, 'institutes'));
+      // Create a timeout promise (10 seconds)
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timed out. Please check your connection and try again.')), 10000);
+      });
+
+      // Race the Firestore query against the timeout
+      const snapshot = await Promise.race([
+        getDocs(collection(db, 'institutes')),
+        timeoutPromise
+      ]);
+
       const rows = snapshot.docs.map((document) => {
         const data = document.data();
         const institutionType = String(data.institutionType || data.type || 'SCHOOL').toUpperCase();
@@ -249,6 +231,10 @@ export default function SuperadminMasterDashboard() {
       adminName: true,
       adminUserId: true,
       adminPassword: true,
+      bankAccountHolderName: true,
+      bankAccountNumber: true,
+      bankIfsc: true,
+      bankName: true,
       institutionType: true,
     };
     setTouched(allTouched);
@@ -266,6 +252,12 @@ export default function SuperadminMasterDashboard() {
         adminName: form.adminName.trim(),
         adminUserId: normalizeUserId(form.adminUserId),
         adminPassword: form.adminPassword,
+        payoutBankAccount: {
+          accountHolderName: form.bankAccountHolderName.trim(),
+          accountNumber: normalizeBankAccountNumber(form.bankAccountNumber),
+          bankName: form.bankName.trim(),
+          ifsc: normalizeIfsc(form.bankIfsc),
+        },
         institutionType: form.institutionType,
       }, currentUser);
 
@@ -280,6 +272,7 @@ export default function SuperadminMasterDashboard() {
         instituteId: result.instituteId || result.institute?.instituteId,
         institutionType: createdType,
         name: result.institute?.name || form.instituteName.trim(),
+        payoutBankAccount: result.institute?.payoutBankAccount || null,
       };
       setCreatedInstitute(handoff);
       setCopied(false);
@@ -318,12 +311,7 @@ export default function SuperadminMasterDashboard() {
   };
 
   const header = (
-    <Animated.View
-      style={[
-        styles.headerStack,
-        { opacity: introOpacity, transform: [{ translateY: introY }] },
-      ]}
-    >
+    <View style={styles.headerStack}>
       <View style={styles.hero}>
         <View style={styles.heroContent}>
           <Text style={styles.eyebrow}>Shii-Edu / Superadmin</Text>
@@ -454,6 +442,94 @@ export default function SuperadminMasterDashboard() {
           </View>
         </View>
 
+        <View style={styles.financeSection}>
+          <View style={styles.financeHeader}>
+            <Ionicons name="card-outline" size={18} color="#67E8F9" />
+            <View style={styles.financeHeaderCopy}>
+              <Text style={styles.financeTitle}>Institute payout bank account</Text>
+              <Text style={styles.financeHelp}>
+                Required for fee reconciliation and payout setup. Do not enter card numbers, CVV, UPI PINs, banking passwords, or OTPs.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.inputGrid}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Account Holder Name</Text>
+              <View style={[styles.inputShell, touched.bankAccountHolderName && errors.bankAccountHolderName && styles.inputShellError]}>
+                <Ionicons name="person-circle-outline" size={18} color="#94A3B8" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Registered institute account name"
+                  placeholderTextColor="#64748B"
+                  value={form.bankAccountHolderName}
+                  onChangeText={(value) => setField('bankAccountHolderName', value)}
+                  onBlur={() => setTouched((current) => ({ ...current, bankAccountHolderName: true }))}
+                  editable={!submitting}
+                  autoCapitalize="words"
+                />
+              </View>
+              {renderError('bankAccountHolderName')}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Bank Name</Text>
+              <View style={[styles.inputShell, touched.bankName && errors.bankName && styles.inputShellError]}>
+                <Ionicons name="business-outline" size={18} color="#94A3B8" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. State Bank"
+                  placeholderTextColor="#64748B"
+                  value={form.bankName}
+                  onChangeText={(value) => setField('bankName', value)}
+                  onBlur={() => setTouched((current) => ({ ...current, bankName: true }))}
+                  editable={!submitting}
+                  autoCapitalize="words"
+                />
+              </View>
+              {renderError('bankName')}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Account Number</Text>
+              <View style={[styles.inputShell, touched.bankAccountNumber && errors.bankAccountNumber && styles.inputShellError]}>
+                <Ionicons name="keypad-outline" size={18} color="#94A3B8" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Digits only"
+                  placeholderTextColor="#64748B"
+                  value={form.bankAccountNumber}
+                  onChangeText={(value) => setField('bankAccountNumber', value)}
+                  onBlur={() => setTouched((current) => ({ ...current, bankAccountNumber: true }))}
+                  editable={!submitting}
+                  keyboardType="number-pad"
+                  autoCorrect={false}
+                />
+              </View>
+              {renderError('bankAccountNumber')}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>IFSC</Text>
+              <View style={[styles.inputShell, touched.bankIfsc && errors.bankIfsc && styles.inputShellError]}>
+                <Ionicons name="shield-checkmark-outline" size={18} color="#94A3B8" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. SBIN0123456"
+                  placeholderTextColor="#64748B"
+                  value={form.bankIfsc}
+                  onChangeText={(value) => setField('bankIfsc', normalizeIfsc(value))}
+                  onBlur={() => setTouched((current) => ({ ...current, bankIfsc: true }))}
+                  editable={!submitting}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                />
+              </View>
+              {renderError('bankIfsc')}
+            </View>
+          </View>
+        </View>
+
         {serverError ? (
           <View style={styles.errorBox}>
             <Ionicons name="alert-circle-outline" size={18} color="#FCA5A5" />
@@ -494,6 +570,14 @@ export default function SuperadminMasterDashboard() {
                 <Text style={styles.handoffMetaLabel}>Admin User ID</Text>
                 <Text selectable style={styles.handoffMetaValue}>{createdInstitute.adminUserId}</Text>
               </View>
+              {createdInstitute.payoutBankAccount ? (
+                <View style={styles.handoffMetaPill}>
+                  <Text style={styles.handoffMetaLabel}>Payout Bank</Text>
+                  <Text selectable style={styles.handoffMetaValue}>
+                    {createdInstitute.payoutBankAccount.bankName} ending {createdInstitute.payoutBankAccount.accountNumberLast4}
+                  </Text>
+                </View>
+              ) : null}
             </View>
 
             <TouchableOpacity
@@ -533,6 +617,12 @@ export default function SuperadminMasterDashboard() {
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.secondaryButton}
+            onPress={() => navigation.navigate('PasswordResetRequests')}
+          >
+            <Text style={styles.secondaryButtonText}>Resets</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.secondaryButton}
             onPress={() => navigation.navigate('ManageInstitutes')}
           >
             <Text style={styles.secondaryButtonText}>Manage</Text>
@@ -547,7 +637,7 @@ export default function SuperadminMasterDashboard() {
           </TouchableOpacity>
         </View>
       </View>
-    </Animated.View>
+    </View>
   );
 
   if (loading) {
@@ -559,6 +649,12 @@ export default function SuperadminMasterDashboard() {
       style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      {serverError && (
+        <View style={styles.errorBox}>
+          <Ionicons name="alert-circle-outline" size={18} color="#FCA5A5" />
+          <Text style={styles.errorText}>{serverError}</Text>
+        </View>
+      )}
       <FlatList
         data={institutes}
         keyExtractor={(item) => item.id}
@@ -727,6 +823,36 @@ const styles = StyleSheet.create({
     marginLeft: 6,
     textTransform: 'uppercase',
   },
+  financeSection: {
+    backgroundColor: '#020617',
+    borderColor: '#164E63',
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 18,
+    padding: 14,
+  },
+  financeHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 14,
+  },
+  financeHeaderCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  financeTitle: {
+    color: '#F8FAFC',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  financeHelp: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 18,
+    marginTop: 4,
+  },
   label: {
     color: '#E2E8F0',
     fontSize: 12,
@@ -741,29 +867,29 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     flexDirection: 'row',
+    gap: 8,
     marginBottom: 16,
     minHeight: 104,
-    overflow: 'hidden',
     padding: 4,
-  },
-  toggleIndicator: {
-    backgroundColor: '#2563EB',
-    borderRadius: 8,
-    bottom: 4,
-    left: 4,
-    position: 'absolute',
-    top: 4,
-  },
-  toggleIndicatorCollege: {
-    backgroundColor: '#7C3AED',
   },
   toggleOption: {
     alignItems: 'center',
+    borderColor: 'transparent',
+    borderRadius: 8,
+    borderWidth: 1,
     flex: 1,
     justifyContent: 'center',
     minWidth: 0,
     paddingHorizontal: 10,
     paddingVertical: 12,
+  },
+  toggleOptionSelected: {
+    backgroundColor: '#2563EB',
+    borderColor: '#60A5FA',
+  },
+  toggleOptionSelectedCollege: {
+    backgroundColor: '#7C3AED',
+    borderColor: '#A78BFA',
   },
   toggleTitle: {
     color: '#CBD5E1',

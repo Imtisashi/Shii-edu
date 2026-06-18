@@ -17,6 +17,8 @@ import DynamicHeader from '../../components/DynamicHeader';
 import { RosterSkeleton, SmoothSpinner } from '../../components/ui/LoadingState';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRootLayout } from '../../contexts/RootLayoutContext';
+import { authenticatedFetch } from '../../services/apiClient';
+import { createIdempotencyKey } from '../../utils/idempotencyKey';
 import { showNativeError, showNativeMessage } from '../../utils/userFeedback';
 
 const PAYROLL_STATUSES = [
@@ -34,8 +36,10 @@ const normalizePayrollStatus = (status) => {
 const getPayrollStatus = (teacher) => normalizePayrollStatus(teacher?.payrollStatus || teacher?.payroll?.status);
 const getSalary = (teacher) => Number(teacher?.payrollMonthlySalary || teacher?.payroll?.monthlySalary || 0);
 const getTeacherId = (teacher) => teacher?.loginId || teacher?.uniqueId || teacher?.teacherCode || teacher?.id || 'ID pending';
+const getStripeAccountId = (teacher) => String(teacher?.stripeConnectedAccountId || teacher?.payrollStripeConnectedAccountId || teacher?.payroll?.stripeConnectedAccountId || '');
 
 const formatCurrency = (amount) => `Rs. ${Number(amount || 0).toLocaleString()}`;
+const currentPayrollMonth = () => new Date().toISOString().slice(0, 7);
 
 export default function TeacherPayrollMonitor() {
   const { currentUser, userData } = useAuth();
@@ -46,7 +50,10 @@ export default function TeacherPayrollMonitor() {
   const [salaryAmount, setSalaryAmount] = useState('');
   const [payrollStatus, setPayrollStatus] = useState('pending');
   const [payrollNote, setPayrollNote] = useState('');
+  const [payrollMonth, setPayrollMonth] = useState(currentPayrollMonth());
+  const [stripeAccountId, setStripeAccountId] = useState('');
   const [saving, setSaving] = useState(false);
+  const [runningPayroll, setRunningPayroll] = useState(false);
 
   useEffect(() => {
     if (!userData?.instituteId) {
@@ -99,6 +106,7 @@ export default function TeacherPayrollMonitor() {
     setSalaryAmount(getSalary(teacher) ? String(getSalary(teacher)) : '');
     setPayrollStatus(getPayrollStatus(teacher));
     setPayrollNote(String(teacher?.payrollNotes || teacher?.payroll?.note || ''));
+    setStripeAccountId(getStripeAccountId(teacher));
   };
 
   const handleSavePayroll = async () => {
@@ -123,11 +131,14 @@ export default function TeacherPayrollMonitor() {
           monthlySalary,
           note: payrollNote.trim(),
           reviewedBy: currentUser?.uid || userData?.uid || null,
+          stripeConnectedAccountId: stripeAccountId.trim() || null,
           status: payrollStatus,
         },
         payrollMonthlySalary: monthlySalary,
         payrollNotes: payrollNote.trim(),
+        payrollStripeConnectedAccountId: stripeAccountId.trim() || null,
         payrollStatus,
+        stripeConnectedAccountId: stripeAccountId.trim() || null,
         payrollUpdatedAt: serverTimestamp(),
         payrollUpdatedBy: currentUser?.uid || userData?.uid || null,
       });
@@ -135,11 +146,50 @@ export default function TeacherPayrollMonitor() {
       setSelectedTeacher(null);
       setSalaryAmount('');
       setPayrollNote('');
+      setStripeAccountId('');
       setPayrollStatus('pending');
     } catch (error) {
       showNativeError('Payroll Update Failed', error, 'The payroll record could not be saved.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRunStripePayroll = async ({ selectedOnly = false } = {}) => {
+    Keyboard.dismiss();
+    if (!/^\d{4}-\d{2}$/.test(payrollMonth.trim())) {
+      showNativeMessage('Check Month', 'Use the YYYY-MM format, for example 2026-07.');
+      return;
+    }
+    if (selectedOnly && !selectedTeacher) {
+      showNativeMessage('Select Teacher', 'Choose a teacher before submitting a single payroll transfer.');
+      return;
+    }
+
+    setRunningPayroll(true);
+    try {
+      const result = await authenticatedFetch('/api/admin/payroll/run', currentUser, {
+        method: 'POST',
+        retryCount: 0,
+        timeoutMs: 60000,
+        body: {
+          currency: 'INR',
+          idempotencyKey: createIdempotencyKey('teacher-payroll'),
+          month: payrollMonth.trim(),
+          teacherUids: selectedOnly && selectedTeacher ? [selectedTeacher.id] : [],
+        },
+      });
+      const submitted = Number(result.submitted || 0);
+      const needsSetup = Number(result.needsSetup || 0);
+      const failed = Number(result.failed || 0);
+      showNativeMessage(
+        'Payroll Run Checked',
+        `${submitted} transfer${submitted === 1 ? '' : 's'} submitted. ${needsSetup} teacher${needsSetup === 1 ? '' : 's'} need Stripe setup. ${failed} failed.`
+      );
+    } catch (error) {
+      showNativeError('Payroll Run Failed', error, 'Teacher payroll could not be submitted. Check Stripe setup and try again.');
+    } finally {
+      setRunningPayroll(false);
     }
   };
 
@@ -160,6 +210,7 @@ export default function TeacherPayrollMonitor() {
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
       >
         <View style={[styles.summaryPanel, { backgroundColor: colors.cardStrong, borderColor: colors.hairline, borderRadius: radii.card }]}>
           <View style={styles.summaryHeader}>
@@ -239,6 +290,20 @@ export default function TeacherPayrollMonitor() {
             </View>
           </View>
 
+          <Text style={[styles.fieldLabel, { color: colors.textSoft }]}>Stripe connected account</Text>
+          <TextInput
+            autoCapitalize="none"
+            autoCorrect={false}
+            onChangeText={setStripeAccountId}
+            placeholder="acct_..."
+            placeholderTextColor={colors.muted}
+            style={[styles.input, { backgroundColor: colors.pageElevated, borderColor: colors.hairline, color: colors.text }]}
+            value={stripeAccountId}
+          />
+          <Text style={[styles.helperText, { color: colors.textSoft }]}>
+            Stripe transfers run only for teachers with a connected account ID. Shii-Edu does not store bank details.
+          </Text>
+
           <Text style={[styles.fieldLabel, { color: colors.textSoft }]}>Status</Text>
           <View style={styles.statusRow}>
             {PAYROLL_STATUSES.map((status) => {
@@ -273,6 +338,45 @@ export default function TeacherPayrollMonitor() {
           </TouchableOpacity>
         </View>
 
+        <View style={[styles.formCard, { backgroundColor: colors.cardStrong, borderColor: colors.hairline, borderRadius: radii.card }]}>
+          <View style={styles.payrollRunHeader}>
+            <View>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Stripe payroll run</Text>
+              <Text style={[styles.subtitle, { color: colors.textSoft }]}>Submit salary transfers from the platform Stripe balance to teacher connected accounts.</Text>
+            </View>
+            <Ionicons color={colors.emerald} name="shield-checkmark-outline" size={24} />
+          </View>
+
+          <Text style={[styles.fieldLabel, { color: colors.textSoft }]}>Payroll month</Text>
+          <TextInput
+            autoCapitalize="none"
+            autoCorrect={false}
+            onChangeText={setPayrollMonth}
+            placeholder="YYYY-MM"
+            placeholderTextColor={colors.muted}
+            style={[styles.input, { backgroundColor: colors.pageElevated, borderColor: colors.hairline, color: colors.text }]}
+            value={payrollMonth}
+          />
+
+          <View style={styles.payrollRunActions}>
+            <TouchableOpacity
+              disabled={runningPayroll}
+              onPress={() => handleRunStripePayroll({ selectedOnly: true })}
+              style={[styles.secondaryRunButton, { borderColor: colors.hairline, backgroundColor: colors.card }, runningPayroll && styles.disabled]}
+            >
+              <Text style={[styles.secondaryRunButtonText, { color: colors.text }]}>Pay selected teacher</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              disabled={runningPayroll}
+              onPress={() => handleRunStripePayroll({ selectedOnly: false })}
+              style={[styles.runButton, { backgroundColor: colors.emerald }, runningPayroll && styles.disabled]}
+            >
+              {runningPayroll ? <SmoothSpinner color="#FFFFFF" /> : <Ionicons color="#FFFFFF" name="send-outline" size={18} />}
+              <Text style={styles.runButtonText}>Run monthly payroll</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {loading ? (
           <RosterSkeleton rowCount={5} showFilters={false} />
         ) : (
@@ -298,7 +402,8 @@ export default function TeacherPayrollMonitor() {
                   <View style={styles.rowCopy}>
                     <Text numberOfLines={1} style={[styles.rowTitle, { color: colors.text }]}>{teacher.name || 'Unnamed teacher'}</Text>
                     <Text numberOfLines={1} style={[styles.rowMeta, { color: colors.textSoft }]}>
-                      {getTeacherId(teacher)} • {formatCurrency(getSalary(teacher))}
+                      {getTeacherId(teacher)} - {formatCurrency(getSalary(teacher))}
+                      {getStripeAccountId(teacher) ? ' - Stripe ready' : ' - Stripe setup needed'}
                     </Text>
                   </View>
                   <View style={[styles.statusPill, { backgroundColor: colors.pageElevated, borderColor: colors.hairline }]}>
@@ -328,6 +433,7 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: 12, fontWeight: '900', marginBottom: 8, textTransform: 'uppercase' },
   fieldRow: { flexDirection: 'row', gap: 10 },
   formCard: { borderWidth: 1, marginBottom: 14, padding: 16 },
+  helperText: { fontSize: 12, fontWeight: '700', lineHeight: 18, marginBottom: 14, marginTop: -8 },
   input: { borderRadius: 8, borderWidth: 1, fontSize: 15, marginBottom: 14, minHeight: 48, outlineStyle: 'none', paddingHorizontal: 13 },
   list: { gap: 9 },
   metricCell: { borderRadius: 8, borderWidth: 1, flex: 1, minWidth: 120, padding: 12 },
@@ -338,10 +444,17 @@ const styles = StyleSheet.create({
   rowCopy: { flex: 1, minWidth: 0 },
   rowMeta: { fontSize: 12, fontWeight: '700', marginTop: 3 },
   rowTitle: { fontSize: 15, fontWeight: '900' },
+  payrollRunActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  payrollRunHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 14 },
+  runButton: { alignItems: 'center', borderRadius: 8, flexDirection: 'row', flexGrow: 1, justifyContent: 'center', minHeight: 50, minWidth: 210, paddingHorizontal: 14 },
+  runButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900', marginLeft: 8 },
   saveButton: { alignItems: 'center', borderRadius: 8, flexDirection: 'row', justifyContent: 'center', minHeight: 52, marginTop: 4 },
   saveButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900', marginLeft: 8 },
   screen: { flex: 1, overflow: 'hidden' },
+  scrollView: { flex: 1, minHeight: 0 },
   sectionTitle: { fontSize: 18, fontWeight: '900', marginBottom: 14 },
+  secondaryRunButton: { alignItems: 'center', borderRadius: 8, borderWidth: 1, flexGrow: 1, justifyContent: 'center', minHeight: 50, minWidth: 180, paddingHorizontal: 14 },
+  secondaryRunButtonText: { fontSize: 14, fontWeight: '900' },
   statusButton: { alignItems: 'center', borderRadius: 8, borderWidth: 1, flexGrow: 1, paddingHorizontal: 10, paddingVertical: 10 },
   statusButtonText: { fontSize: 12, fontWeight: '900' },
   statusDot: { borderRadius: 4, height: 7, marginRight: 6, width: 7 },

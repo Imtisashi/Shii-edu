@@ -21,8 +21,15 @@ import * as Haptics from 'expo-haptics';
 import { aiSmartCompose } from '../../services/aiService';
 import { useSingleFlightAction } from '../../hooks/useSingleFlightAction';
 import { useInstituteTheme } from '../../hooks/useInstituteTheme';
+import { isNoticeForBroadcasts } from '../../utils/isNoticeForBroadcasts';
 
 const TARGET_LEVELS = ['Overall', 'Specific Dept', 'Specific Semester'];
+const RESPONSE_MODES = [
+  { id: 'none', label: 'Notice only' },
+  { id: 'mcq', label: 'MCQ' },
+  { id: 'vote', label: 'Vote' },
+  { id: 'opinion', label: 'Opinion' },
+];
 const NoticeSchema = z.object({
   message: z.string().trim().min(8, 'Enter a complete notice message.').max(1200, 'Keep the notice under 1,200 characters.'),
   title: z.string().trim().min(3, 'Enter a clear notice title.').max(120, 'Keep the title under 120 characters.'),
@@ -44,6 +51,12 @@ const getValidationMessage = (result, fallback) => (
   result.success ? fallback : result.error.issues?.[0]?.message || fallback
 );
 
+const parseOptions = (value) => String(value || '')
+  .split('\n')
+  .map((line) => line.trim())
+  .filter(Boolean)
+  .slice(0, 8);
+
 export default function TeacherNotifs() {
   const { currentUser, userData } = useAuth();
   const { colors, styles } = useInstituteTheme(baseStyles);
@@ -55,7 +68,10 @@ export default function TeacherNotifs() {
   const [message, setMessage] = useState('');
   const [roughThought, setRoughThought] = useState('');
   const [targetLevel, setTargetLevel] = useState('Overall');
-  const safeNotifications = Array.isArray(notifications) ? notifications : [];
+  const [responseMode, setResponseMode] = useState('none');
+  const [responseOptions, setResponseOptions] = useState('');
+  const [responsePrompt, setResponsePrompt] = useState('');
+  const safeNotifications = Array.isArray(notifications) ? notifications.filter(isNoticeForBroadcasts) : [];
 
   const formatDate = (createdAt) => {
     if (!createdAt) return 'Just now';
@@ -126,6 +142,18 @@ export default function TeacherNotifs() {
       return false;
     }
 
+    const responseRequest = responseMode === 'none' ? null : {
+      kind: responseMode,
+      options: responseMode === 'mcq' || responseMode === 'vote' ? parseOptions(responseOptions) : [],
+      prompt: responsePrompt.trim() || validation.data.title,
+    };
+
+    if (responseRequest && (responseRequest.kind === 'mcq' || responseRequest.kind === 'vote') && responseRequest.options.length < 2) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      showMessage('Add Response Options', 'Add at least two short options, one per line.');
+      return false;
+    }
+
     try {
       await createUnifiedNotification({
         title: validation.data.title,
@@ -141,6 +169,7 @@ export default function TeacherNotifs() {
         data: {
           targetLevel,
           originalType: 'teacher_notice',
+          responseRequest,
         },
       });
 
@@ -152,6 +181,9 @@ export default function TeacherNotifs() {
       setMessage('');
       setRoughThought('');
       setTargetLevel('Overall');
+      setResponseMode('none');
+      setResponseOptions('');
+      setResponsePrompt('');
       setActiveTab('read');
       return true;
     } catch (sendError) {
@@ -337,6 +369,59 @@ export default function TeacherNotifs() {
                 ))}
               </View>
 
+              <View style={styles.responsePanel}>
+                <Text style={styles.label}>Collect Student Input</Text>
+                <View style={styles.responseModeRow}>
+                  {RESPONSE_MODES.map((mode) => {
+                    const active = responseMode === mode.id;
+                    return (
+                      <TouchableOpacity
+                        accessibilityLabel={`Response mode ${mode.label}`}
+                        accessibilityRole="button"
+                        key={mode.id}
+                        onPress={() => setResponseMode(mode.id)}
+                        style={[styles.responseModeChip, active && styles.responseModeChipActive]}
+                      >
+                        <Text style={[styles.responseModeText, active && styles.responseModeTextActive]}>{mode.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {responseMode !== 'none' ? (
+                  <>
+                    <Text style={styles.label}>Question or Prompt</Text>
+                    <TextInput
+                      accessibilityLabel="Student response prompt"
+                      maxLength={180}
+                      onChangeText={setResponsePrompt}
+                      placeholder="e.g., Which lab slot works best for you?"
+                      placeholderTextColor={colors.muted}
+                      style={styles.input}
+                      value={responsePrompt}
+                    />
+
+                    {(responseMode === 'mcq' || responseMode === 'vote') ? (
+                      <>
+                        <Text style={styles.label}>Options</Text>
+                        <TextInput
+                          accessibilityLabel="Student response options"
+                          maxLength={360}
+                          multiline
+                          numberOfLines={4}
+                          onChangeText={setResponseOptions}
+                          placeholder={'One option per line\nMorning\nAfternoon'}
+                          placeholderTextColor={colors.muted}
+                          style={[styles.input, styles.optionArea]}
+                          textAlignVertical="top"
+                          value={responseOptions}
+                        />
+                      </>
+                    ) : null}
+                  </>
+                ) : null}
+              </View>
+
               <TouchableOpacity
                 accessibilityLabel="Broadcast notification to students"
                 accessibilityRole="button"
@@ -355,7 +440,7 @@ export default function TeacherNotifs() {
 }
 
 const baseStyles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#02030A', overflow: 'hidden' },
+  container: { flex: 1, backgroundColor: '#02030A' },
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   flex: { flex: 1 },
   tabContainer: { flexDirection: 'row', backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: 8, borderWidth: 1, padding: 8, marginHorizontal: 16, marginTop: 16 },
@@ -399,6 +484,13 @@ const baseStyles = StyleSheet.create({
   activeChip: { backgroundColor: '#8E24AA', borderColor: '#8E24AA' },
   chipText: { color: '#B9C6DD', fontSize: 14, fontWeight: '800' },
   activeChipText: { color: '#FFFFFF', fontWeight: 'bold' },
+  optionArea: { minHeight: 94 },
+  responseModeChip: { backgroundColor: '#111827', borderColor: '#334155', borderRadius: 8, borderWidth: 1, marginBottom: 8, marginRight: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  responseModeChipActive: { backgroundColor: '#3B0764', borderColor: '#8E24AA' },
+  responseModeRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 },
+  responseModeText: { color: '#B9C6DD', fontSize: 13, fontWeight: '900' },
+  responseModeTextActive: { color: '#F5D0FE' },
+  responsePanel: { backgroundColor: '#020617', borderColor: '#334155', borderRadius: 8, borderWidth: 1, marginBottom: 18, padding: 13 },
   submitBtn: { backgroundColor: '#8E24AA', borderColor: '#334155', borderRadius: 8, borderWidth: 1, paddingVertical: 16, alignItems: 'center'},
   submitBtnText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
   refreshButtonWeb: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', backgroundColor: '#082F49', padding: 8, borderRadius: 8, marginBottom: 12 },

@@ -228,6 +228,56 @@ const SecondaryActionButton = memo(function SecondaryActionButton({
   );
 });
 
+function CommandStrip({
+  items,
+}: {
+  items: {
+    color: string;
+    icon: IoniconName;
+    label: string;
+    onPress?: () => void;
+    value: string;
+  }[];
+}) {
+  const { colors, radii } = useRootLayout();
+
+  return (
+    <View style={styles.commandStrip}>
+      {items.map((item) => (
+        <Pressable
+          accessibilityLabel={`${item.label}: ${item.value}`}
+          accessibilityRole="button"
+          disabled={!item.onPress}
+          key={item.label}
+          onPress={item.onPress}
+          style={({ pressed }) => [
+            styles.commandItem,
+            {
+              backgroundColor: colors.cardStrong,
+              borderColor: colors.hairline,
+              borderRadius: radii.card,
+              opacity: item.onPress ? 1 : 0.72,
+            },
+            pressed && styles.commandItemPressed,
+          ]}
+        >
+          <View style={[styles.commandIcon, { backgroundColor: colors.pageElevated, borderColor: colors.hairline }]}>
+            <Ionicons name={item.icon} size={18} color={item.color} />
+          </View>
+          <View style={styles.commandCopy}>
+            <Text numberOfLines={1} style={[styles.commandLabel, { color: colors.muted }]}>
+              {item.label}
+            </Text>
+            <Text numberOfLines={1} style={[styles.commandValue, { color: colors.text }]}>
+              {item.value}
+            </Text>
+          </View>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 export default function HomeDashboardScreen({
   displayName,
   greetingLabel = 'Welcome back',
@@ -249,6 +299,8 @@ export default function HomeDashboardScreen({
   const safeProfileMeta = profileMeta.filter(Boolean).slice(0, 3);
   const safeNotices = notices.slice(0, 3);
   const singleColumn = viewport.width < 520;
+  const firstAction = dashboardActions[0];
+  const secondAction = dashboardActions[1];
   const instituteInitials = getInitials(instituteName);
   const headerTop = Math.max(insets.top, Platform.OS === 'web' ? 8 : 10);
   const headerHeight = headerTop + 60;
@@ -257,10 +309,10 @@ export default function HomeDashboardScreen({
     ? { maxWidth: Math.min(maxContentWidth, viewport.width - spacing.pageX * 2), width: '100%' as const }
     : { width: '100%' as const };
   const webScreenStyle = Platform.OS === 'web'
-    ? { height: viewport.height, minHeight: viewport.height }
+    ? { minHeight: viewport.height }
     : undefined;
   const webScrollStyle = Platform.OS === 'web'
-    ? { height: viewport.height, maxHeight: viewport.height, minHeight: 0 }
+    ? { flex: 1, minHeight: 0 }
     : undefined;
   const webScrollContentStyle = Platform.OS === 'web'
     ? { minHeight: viewport.height + 1 }
@@ -335,8 +387,7 @@ export default function HomeDashboardScreen({
           webScrollContentStyle,
         ]}
         keyboardShouldPersistTaps="handled"
-        nestedScrollEnabled
-        scrollEventThrottle={16}
+        scrollEventThrottle={50}
         showsVerticalScrollIndicator
         style={[styles.scrollView, webScrollStyle]}
       >
@@ -405,6 +456,32 @@ export default function HomeDashboardScreen({
               </View>
             </View>
           </View>
+
+          <CommandStrip
+            items={[
+              {
+                color: firstAction?.color || colors.accent,
+                icon: firstAction?.icon || 'flash-outline',
+                label: 'Next action',
+                onPress: firstAction?.onPress,
+                value: firstAction?.title || 'Open dashboard',
+              },
+              {
+                color: secondAction?.color || colors.deepBlue,
+                icon: secondAction?.icon || 'apps-outline',
+                label: 'Priority',
+                onPress: secondAction?.onPress,
+                value: secondAction?.title || 'Review workspace',
+              },
+              {
+                color: unreadCount > 0 ? colors.warning : colors.success,
+                icon: unreadCount > 0 ? 'notifications-outline' : 'checkmark-circle-outline',
+                label: 'Broadcasts',
+                onPress: onOpenNotifications,
+                value: unreadCount > 0 ? `${unreadCount} unread` : 'Clear',
+              },
+            ]}
+          />
 
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: typography.title }]}>
@@ -532,6 +609,48 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '800',
     letterSpacing: 0,
+  },
+  commandCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  commandIcon: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
+  commandItem: {
+    alignItems: 'center',
+    borderWidth: 1,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 10,
+    minHeight: 74,
+    minWidth: 150,
+    padding: 12,
+  },
+  commandItemPressed: {
+    transform: [{ scale: 0.985 }],
+  },
+  commandLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0,
+  },
+  commandStrip: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 20,
+  },
+  commandValue: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0,
+    marginTop: 3,
   },
   contentFrame: {
     alignSelf: 'center',

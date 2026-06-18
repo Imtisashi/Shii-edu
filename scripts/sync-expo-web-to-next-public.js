@@ -1,3 +1,5 @@
+/* global __dirname */
+
 const fs = require('fs');
 const path = require('path');
 
@@ -31,13 +33,43 @@ for (const fileName of ['favicon.ico', 'metadata.json']) {
 }
 
 let expoIndexHtml = fs.readFileSync(path.join(webBuild, 'index.html'), 'utf8');
+const scrollFriendlyExpoReset = [
+  '<style id="expo-reset">',
+  '  html,',
+  '  body {',
+  '    min-height: 100dvh;',
+  '    height: 100%;',
+  '  }',
+  '',
+  '  body {',
+  '    margin: 0;',
+  '    overflow-x: hidden;',
+  '    overflow-y: auto;',
+  '    -webkit-overflow-scrolling: touch;',
+  '  }',
+  '',
+  '  #root {',
+  '    display: flex;',
+  '    flex-direction: column;',
+  '    min-height: 100dvh;',
+  '    height: 100%;',
+  '  }',
+  '',
+  '  #root > div {',
+  '    flex: 1 1 auto;',
+  '    min-height: 100dvh;',
+  '    height: 100%;',
+  '  }',
+  '</style>',
+].join('\n');
 const pwaHead = [
   '<script>',
   '(function () {',
   '  var roleManifests = [',
   "    { prefix: '/app/institute', auth: '/auth/institute', manifest: '/manifest-institute.webmanifest', title: 'Shii-Edu Institute' },",
   "    { prefix: '/app/parents', auth: '/auth/parents', manifest: '/manifest-parents.webmanifest', title: 'Shii-Edu Parents' },",
-  "    { prefix: '/app/driver', auth: '/auth/driver', manifest: '/manifest-driver.webmanifest', title: 'Shii-Edu Driver' }",
+  "    { prefix: '/app/driver', auth: '/auth/driver', manifest: '/manifest-driver.webmanifest', title: 'Shii-Edu Driver' },",
+  "    { prefix: '/app/superadmin', auth: '/app/superadmin', manifest: '/manifest-superadmin.webmanifest', title: 'Shii-Edu Superadmin' }",
   '  ];',
   "  var path = window.location.pathname.replace(/\\/$/, '') || '/';",
   '  var role = roleManifests.find(function (item) { return path === item.prefix || path.indexOf(item.prefix + "/") === 0 || path === item.auth; });',
@@ -57,18 +89,36 @@ const serviceWorkerScript = [
   '<script>',
   "if ('serviceWorker' in navigator) {",
   "  window.addEventListener('load', function () {",
-  "    navigator.serviceWorker.register('/sw.js').catch(function () {});",
+  "    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function (registration) {",
+  "      registration.update().catch(function () {});",
+  "    }).catch(function () {});",
   '  });',
   '}',
   '</script>',
 ].join('\n');
+
+expoIndexHtml = expoIndexHtml.replace(
+  /<style id="expo-reset">[\s\S]*?<\/style>/,
+  scrollFriendlyExpoReset
+);
 
 if (!expoIndexHtml.includes('roleManifests')) {
   expoIndexHtml = expoIndexHtml.replace(/<link\s+rel=["']manifest["']\s+href=["'][^"']+["']\s*\/?>/g, '');
   expoIndexHtml = expoIndexHtml.replace('</head>', `${pwaHead}\n</head>`);
 }
 
-if (!expoIndexHtml.includes("navigator.serviceWorker.register('/sw.js')")) {
+if (expoIndexHtml.includes("navigator.serviceWorker.register('/sw.js').catch(function () {});")) {
+  expoIndexHtml = expoIndexHtml.replace(
+    "navigator.serviceWorker.register('/sw.js').catch(function () {});",
+    [
+      "navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function (registration) {",
+      '      registration.update().catch(function () {});',
+      '    }).catch(function () {});',
+    ].join('\n')
+  );
+}
+
+if (!expoIndexHtml.includes("navigator.serviceWorker.register('/sw.js'")) {
   expoIndexHtml = expoIndexHtml.includes('</body>')
     ? expoIndexHtml.replace('</body>', `${serviceWorkerScript}\n</body>`)
     : `${expoIndexHtml}\n${serviceWorkerScript}`;
@@ -84,13 +134,13 @@ const manifest = {
     {
       purpose: 'any maskable',
       sizes: '192x192',
-      src: '/icon.png',
+      src: '/icon-192.png',
       type: 'image/png',
     },
     {
       purpose: 'any maskable',
       sizes: '512x512',
-      src: '/icon.png',
+      src: '/icon-512.png',
       type: 'image/png',
     },
   ],
@@ -102,20 +152,24 @@ const manifest = {
   theme_color: '#FFFFFF',
 };
 
-const roleIcons = (iconHref) => [
-  {
-    purpose: 'any maskable',
-    sizes: '192x192',
-    src: iconHref,
-    type: 'image/png',
-  },
-  {
-    purpose: 'any maskable',
-    sizes: '512x512',
-    src: iconHref,
-    type: 'image/png',
-  },
-];
+const roleIcons = (iconHref) => {
+  const iconBase = iconHref.replace(/\.png$/, '');
+
+  return [
+    {
+      purpose: 'any maskable',
+      sizes: '192x192',
+      src: `${iconBase}-192.png`,
+      type: 'image/png',
+    },
+    {
+      purpose: 'any maskable',
+      sizes: '512x512',
+      src: `${iconBase}-512.png`,
+      type: 'image/png',
+    },
+  ];
+};
 
 const createRoleManifest = ({
   backgroundColor = '#FFFFFF',
@@ -171,6 +225,16 @@ const roleManifests = {
     startUrl: '/app/driver',
     themeColor: '#B45309',
   }),
+  'manifest-superadmin.webmanifest': createRoleManifest({
+    description: 'Shii-Edu Superadmin console for institute operations, administrator accounts, and platform support.',
+    iconHref: '/icon.png',
+    id: '/pwa/superadmin',
+    name: 'Shii-Edu Superadmin',
+    scope: '/app/superadmin',
+    shortName: 'Superadmin',
+    startUrl: '/app/superadmin',
+    themeColor: '#010110',
+  }),
 };
 
 fs.writeFileSync(path.join(publicDir, 'manifest.webmanifest'), `${JSON.stringify(manifest, null, 2)}\n`);
@@ -178,7 +242,7 @@ Object.entries(roleManifests).forEach(([fileName, data]) => {
   fs.writeFileSync(path.join(publicDir, fileName), `${JSON.stringify(data, null, 2)}\n`);
 });
 fs.writeFileSync(path.join(publicDir, 'sw.js'), [
-  "const CACHE_NAME = 'shii-edu-pwa-shell-v6';",
+  "const CACHE_NAME = 'shii-edu-pwa-shell-v9';",
   "const SHELL_URLS = [",
   "  '/',",
   "  '/roles',",
@@ -186,6 +250,7 @@ fs.writeFileSync(path.join(publicDir, 'sw.js'), [
   "  '/app/institute',",
   "  '/app/parents',",
   "  '/app/driver',",
+  "  '/app/superadmin',",
   "  '/auth/institute',",
   "  '/auth/parents',",
   "  '/auth/driver',",
@@ -194,15 +259,25 @@ fs.writeFileSync(path.join(publicDir, 'sw.js'), [
   "  '/manifest-institute.webmanifest',",
   "  '/manifest-parents.webmanifest',",
   "  '/manifest-driver.webmanifest',",
+  "  '/manifest-superadmin.webmanifest',",
   "  '/icon.png',",
+  "  '/icon-192.png',",
+  "  '/icon-512.png',",
   "  '/icon-institute.png',",
+  "  '/icon-institute-192.png',",
+  "  '/icon-institute-512.png',",
   "  '/icon-parents.png',",
-  "  '/icon-driver.png'",
+  "  '/icon-parents-192.png',",
+  "  '/icon-parents-512.png',",
+  "  '/icon-driver.png',",
+  "  '/icon-driver-192.png',",
+  "  '/icon-driver-512.png'",
   '];',
   "const ROLE_SCOPE_FALLBACKS = [",
   "  { scope: '/app/institute', fallback: '/app/institute' },",
   "  { scope: '/app/parents', fallback: '/app/parents' },",
-  "  { scope: '/app/driver', fallback: '/app/driver' }",
+  "  { scope: '/app/driver', fallback: '/app/driver' },",
+  "  { scope: '/app/superadmin', fallback: '/app/superadmin' }",
   '];',
   '',
   "self.addEventListener('install', function (event) {",
@@ -252,10 +327,9 @@ fs.writeFileSync(path.join(publicDir, 'sw.js'), [
   '',
   "  if (url.pathname.startsWith('/_expo/') || url.pathname.startsWith('/assets/') || url.pathname.endsWith('.webmanifest') || url.pathname === '/sw.js') {",
   '    event.respondWith(',
-  '      caches.match(request).then(function (cached) {',
-  '        const network = fetch(request).then(function (response) { return cacheAndReturn(request, response); }).catch(function () { return cached; });',
-  '        return cached || network;',
-  '      })',
+  '      fetch(request)',
+  '        .then(function (response) { return cacheAndReturn(request, response); })',
+  '        .catch(function () { return caches.match(request); })',
   '    );',
   '  }',
   '});',

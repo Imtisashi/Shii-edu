@@ -94,7 +94,7 @@ export default function AdminNotifs({ navigation }) {
 }
 
 const baseStyles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Colors.background, overflow: 'hidden' },
+  screen: { flex: 1, backgroundColor: Colors.background },
   container: { flex: 1, padding: 20, backgroundColor: Colors.background },
   headerTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 20, color: Colors.textPrimary },
   input: { borderWidth: 1, borderColor: Colors.border, padding: 15, borderRadius: Radius.md, marginBottom: 15 },

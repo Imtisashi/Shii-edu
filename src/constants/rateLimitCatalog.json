@@ -1,0 +1,107 @@
+{
+  "defaultTier": "basic",
+  "aliases": {
+    "essential": "basic",
+    "priority": "max",
+    "standard": "pro"
+  },
+  "tiers": {
+    "basic": {
+      "description": "Lowest traffic allowance for Basic subscription institutes.",
+      "label": "Basic",
+      "multiplier": 0.6
+    },
+    "pro": {
+      "description": "Medium allowance for Pro institutes using AI and bus tracking.",
+      "label": "Pro",
+      "multiplier": 1.2
+    },
+    "max": {
+      "description": "Highest allowance for Max institutes with heavier AI and API workflows.",
+      "label": "Max",
+      "multiplier": 3
+    }
+  },
+  "scopes": [
+    {
+      "description": "Creating single users from the admin panel.",
+      "key": "admin:user-create",
+      "label": "User creation",
+      "max": 180,
+      "min": 4,
+      "windowMs": 60000
+    },
+    {
+      "description": "CSV or spreadsheet account imports.",
+      "key": "admin:user-bulk-import",
+      "label": "Bulk imports",
+      "max": 36,
+      "min": 1,
+      "windowMs": 300000
+    },
+    {
+      "description": "Fee allocation and offline reconciliation.",
+      "key": "admin:*",
+      "label": "Admin operations",
+      "max": 180,
+      "min": 4,
+      "windowMs": 60000
+    },
+    {
+      "description": "AI review, compose, mapping, tutor, and schedule tools.",
+      "key": "ai:*",
+      "label": "AI actions",
+      "max": 240,
+      "min": 1,
+      "windowMs": 60000
+    },
+    {
+      "description": "Upload signatures for media, documents, gallery, and course files.",
+      "key": "media:*",
+      "label": "Uploads",
+      "max": 180,
+      "min": 4,
+      "windowMs": 60000
+    },
+    {
+      "description": "Cloud media signing and delivery operations.",
+      "key": "cloudinary:*",
+      "label": "Cloud media",
+      "max": 180,
+      "min": 4,
+      "windowMs": 60000
+    },
+    {
+      "description": "Checkout, fee payment, and Stripe payroll actions.",
+      "key": "payments:*",
+      "label": "Payments",
+      "max": 90,
+      "min": 2,
+      "windowMs": 60000
+    },
+    {
+      "description": "Password reset tickets and approval actions.",
+      "key": "auth:password-reset-request",
+      "label": "Password reset requests",
+      "max": 45,
+      "min": 2,
+      "windowMs": 600000
+    },
+    {
+      "description": "In-app direct messages.",
+      "key": "messages",
+      "label": "Messages",
+      "max": 240,
+      "min": 12,
+      "windowMs": 60000
+    },
+    {
+      "description": "Web push subscription registration.",
+      "key": "web-push:*",
+      "label": "OS alert registration",
+      "max": 120,
+      "min": 6,
+      "windowMs": 60000
+    }
+  ]
+}

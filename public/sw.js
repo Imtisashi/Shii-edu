@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shii-edu-pwa-shell-v6';
+const CACHE_NAME = 'shii-edu-pwa-shell-v9';
 const SHELL_URLS = [
   '/',
   '/roles',
@@ -6,6 +6,7 @@ const SHELL_URLS = [
   '/app/institute',
   '/app/parents',
   '/app/driver',
+  '/app/superadmin',
   '/auth/institute',
   '/auth/parents',
   '/auth/driver',
@@ -14,15 +15,25 @@ const SHELL_URLS = [
   '/manifest-institute.webmanifest',
   '/manifest-parents.webmanifest',
   '/manifest-driver.webmanifest',
+  '/manifest-superadmin.webmanifest',
   '/icon.png',
+  '/icon-192.png',
+  '/icon-512.png',
   '/icon-institute.png',
+  '/icon-institute-192.png',
+  '/icon-institute-512.png',
   '/icon-parents.png',
-  '/icon-driver.png'
+  '/icon-parents-192.png',
+  '/icon-parents-512.png',
+  '/icon-driver.png',
+  '/icon-driver-192.png',
+  '/icon-driver-512.png'
 ];
 const ROLE_SCOPE_FALLBACKS = [
   { scope: '/app/institute', fallback: '/app/institute' },
   { scope: '/app/parents', fallback: '/app/parents' },
-  { scope: '/app/driver', fallback: '/app/driver' }
+  { scope: '/app/driver', fallback: '/app/driver' },
+  { scope: '/app/superadmin', fallback: '/app/superadmin' }
 ];
 
 self.addEventListener('install', function (event) {
@@ -72,10 +83,9 @@ self.addEventListener('fetch', function (event) {
 
   if (url.pathname.startsWith('/_expo/') || url.pathname.startsWith('/assets/') || url.pathname.endsWith('.webmanifest') || url.pathname === '/sw.js') {
     event.respondWith(
-      caches.match(request).then(function (cached) {
-        const network = fetch(request).then(function (response) { return cacheAndReturn(request, response); }).catch(function () { return cached; });
-        return cached || network;
-      })
+      fetch(request)
+        .then(function (response) { return cacheAndReturn(request, response); })
+        .catch(function () { return caches.match(request); })
     );
   }
 });

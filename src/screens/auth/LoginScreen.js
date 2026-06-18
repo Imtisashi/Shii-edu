@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Modal, Alert, Animated, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Modal, Alert, Animated, ScrollView, Linking } from 'react-native';
 import { SmoothSpinner } from '../../components/ui/LoadingState';
 import { auth } from '../../../firebaseConfig';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
@@ -12,6 +12,7 @@ import EnterpriseAuthBackground from '../../components/auth/EnterpriseAuthBackgr
 import { DURATION, EASING } from '../../utils/animations';
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
+const ONBOARDING_MAILTO = 'mailto:sashimiofficials@gmail.com?subject=Shii-Edu%20registration%20support';
 
 const showLoginAlert = (message) => {
   if (Platform.OS === 'web') {
@@ -146,6 +147,12 @@ export default function Login() {
     setResetMessageType('');
   };
 
+  const contactRegistration = () => {
+    Linking.openURL(ONBOARDING_MAILTO).catch(() => {
+      showLoginAlert('Email sashimiofficials@gmail.com for registration support.');
+    });
+  };
+
   return (
     <EnterpriseAuthBackground>
       <KeyboardAvoidingView
@@ -196,13 +203,19 @@ export default function Login() {
               <View style={styles.inputContainer}>
                 <Ionicons name="person-outline" size={20} color="#CBD5E1" style={styles.icon} />
                 <TextInput
-                  style={styles.input}
-                  placeholder={layout.isMobile ? 'ID or email' : 'e.g. STU-1024 or admin@college.edu'}
-                  value={identifier}
-                  onChangeText={setIdentifier}
+                  accessibilityLabel="User ID or email"
                   autoCapitalize="none"
+                  autoComplete="username"
                   autoCorrect={false}
+                  importantForAutofill="yes"
+                  inputMode="text"
+                  onChangeText={setIdentifier}
+                  style={styles.input}
+                  placeholder={layout.isMobile ? 'ID or email' : 'e.g. STU-1024 or ADM-260603'}
                   placeholderTextColor="#94A3B8"
+                  returnKeyType="next"
+                  textContentType="username"
+                  value={identifier}
                 />
               </View>
 
@@ -210,14 +223,23 @@ export default function Login() {
               <View style={styles.inputContainer}>
                 <Ionicons name="lock-closed-outline" size={20} color="#CBD5E1" style={styles.icon} />
                 <TextInput
-                  style={styles.input}
-                  placeholder="Password"
-                  value={password}
+                  accessibilityLabel="Password"
+                  autoComplete="current-password"
                   onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
+                  placeholder="Password"
                   placeholderTextColor="#94A3B8"
+                  returnKeyType="go"
+                  style={styles.input}
+                  secureTextEntry={!showPassword}
+                  textContentType="password"
+                  value={password}
                 />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                <TouchableOpacity
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                  accessibilityRole="button"
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeIcon}
+                >
                   <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#CBD5E1" />
                 </TouchableOpacity>
               </View>
@@ -225,6 +247,9 @@ export default function Login() {
               {/* REMEMBER ME & FORGOT PASSWORD ROW */}
               <View style={[styles.optionsRow, layout.isMobile && styles.optionsRowMobile, layout.isCompact && styles.optionsRowCompact]}>
                 <TouchableOpacity
+                  accessibilityLabel="Remember me"
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: rememberMe }}
                   style={styles.rememberRow}
                   onPress={() => {
                     setRememberMe(!rememberMe);
@@ -237,14 +262,20 @@ export default function Login() {
                   <Text style={styles.rememberText}>Remember Me</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={() => {
-                  setShowResetModal(true);
-                }}>
+                <TouchableOpacity
+                  accessibilityLabel="Forgot password"
+                  accessibilityRole="button"
+                  onPress={() => {
+                    setShowResetModal(true);
+                  }}
+                >
                   <Text style={styles.forgotText}>Forgot Password?</Text>
                 </TouchableOpacity>
               </View>
 
               <TouchableOpacity
+                accessibilityLabel="Secure login"
+                accessibilityRole="button"
                 style={styles.loginBtn}
                 onPress={handleLogin}
                 disabled={loading}
@@ -260,6 +291,15 @@ export default function Login() {
                 Access is managed by your campus administrator.
               </Text>
             </View>
+            <TouchableOpacity
+              accessibilityLabel="Contact for Registration"
+              accessibilityRole="link"
+              onPress={contactRegistration}
+              style={styles.registrationContactButton}
+            >
+              <Ionicons name="mail-outline" size={16} color="#C4B5FD" />
+              <Text style={styles.registrationContactText}>Contact for Registration</Text>
+            </TouchableOpacity>
           </Animated.View>
         </ScrollView>
 
@@ -283,13 +323,16 @@ export default function Login() {
                 <View style={styles.inputContainer}>
                   <Ionicons name="mail-outline" size={20} color="#CBD5E1" style={styles.icon} />
                   <TextInput
-                    style={styles.input}
-                    placeholder="your@email.com"
-                    value={resetEmail}
-                    onChangeText={setResetEmail}
+                    accessibilityLabel="Password reset email"
                     autoCapitalize="none"
+                    autoComplete="email"
+                    inputMode="email"
                     keyboardType="email-address"
+                    onChangeText={setResetEmail}
+                    placeholder="your@email.com"
                     placeholderTextColor="#94A3B8"
+                    style={styles.input}
+                    value={resetEmail}
                   />
                 </View>
                 {resetMessage && (
@@ -306,6 +349,8 @@ export default function Login() {
                   </View>
                 )}
                 <TouchableOpacity
+                  accessibilityLabel="Send password reset link"
+                  accessibilityRole="button"
                   style={[styles.modalBtn, resetLoading && styles.modalBtnLoading]}
                   onPress={handleSendResetLink}
                   disabled={resetLoading}
@@ -317,6 +362,8 @@ export default function Login() {
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity
+                  accessibilityLabel="Cancel password reset"
+                  accessibilityRole="button"
                   style={styles.modalCancelBtn}
                   onPress={handleResetModalClose}
                 >
@@ -397,6 +444,8 @@ const styles = StyleSheet.create({
 
   footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10, paddingTop: 20, borderTopWidth: 1, borderTopColor: '#334155' },
   footerText: { flex: 1, fontSize: 12, color: '#CBD5E1', marginLeft: 6, fontWeight: '500' },
+  registrationContactButton: { alignItems: 'center', borderColor: '#334155', borderRadius: 8, borderWidth: 1, flexDirection: 'row', gap: 8, justifyContent: 'center', marginTop: 14, minHeight: 44, paddingHorizontal: 12 },
+  registrationContactText: { color: '#C4B5FD', fontSize: 13, fontWeight: '900' },
   modalContainer: { flex: 1, backgroundColor: '#020617', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { width: '100%', maxWidth: 430, backgroundColor: '#0F172A', borderRadius: 8, padding: 24, borderWidth: 1, borderColor: '#334155' },
   modalContentDesktop: { maxWidth: 460 },

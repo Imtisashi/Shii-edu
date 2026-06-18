@@ -205,7 +205,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const actor = await authenticateUserProfile(req);
-    assertRateLimit({ actor, req, scope: 'media:upload-signature', limit: 36, windowMs: 60 * 1000 });
+    await assertRateLimit({ actor, req, scope: 'media:upload-signature', limit: 36, windowMs: 60 * 1000 });
     const body = parseRequest(await getBody(req));
     const role = normalizeRole(actor.role);
     const folderKey = resolveFolderKey(body.folder);

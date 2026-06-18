@@ -12,15 +12,18 @@ const {
 const { buildDefaultAcademicModel } = require('../../_lib/academicModels');
 const { buildFeatureSettings } = require('../../_lib/featureEntitlements');
 const { createBrandingPayload } = require('../../_lib/institutionBranding');
+const { buildRateLimitSettings } = require('../../_lib/rateLimit');
 const {
   assertUserId,
   toIdentifierKey,
   toInstituteAuthEmail,
 } = require('../../_lib/loginIdentifiers');
 const { callSupabaseTenantBridge } = require('../../_lib/supabaseTenantBridge');
+const crypto = require('crypto');
 
 const normalizeName = (value) => String(value || '').trim().replace(/\s+/g, ' ');
 const VALID_INSTITUTION_TYPES = new Set(['SCHOOL', 'COLLEGE']);
+const IFSC_PATTERN = /^[A-Z]{4}0[A-Z0-9]{6}$/;
 
 const normalizeInstitutionType = (value) => {
   const normalized = String(value || '').trim().toUpperCase();
@@ -31,7 +34,52 @@ const normalizeInstitutionType = (value) => {
   throw error;
 };
 
-module.exports = async (req, res) => {
+const makeBankAccountError = (message = 'Valid payout bank account details are required.') => {
+  const error = new Error(message);
+  error.statusCode = 400;
+  return error;
+};
+
+const normalizePayoutBankAccount = (value = {}, instituteId = '', actorUid = null) => {
+  const accountHolderName = normalizeName(value.accountHolderName);
+  const bankName = normalizeName(value.bankName);
+  const accountNumber = String(value.accountNumber || '').replace(/\D/g, '');
+  const ifsc = String(value.ifsc || '').trim().toUpperCase();
+
+  if (!accountHolderName || accountHolderName.length < 2) {
+    throw makeBankAccountError('Valid bank account holder name is required.');
+  }
+  if (!bankName || bankName.length < 2) {
+    throw makeBankAccountError('Valid bank account bank name is required.');
+  }
+  if (!/^\d{9,18}$/.test(accountNumber)) {
+    throw makeBankAccountError('Valid bank account number is required.');
+  }
+  if (!IFSC_PATTERN.test(ifsc)) {
+    throw makeBankAccountError('Valid bank account IFSC is required.');
+  }
+
+  const hashSecret = process.env.BANK_ACCOUNT_HASH_SECRET || process.env.FIREBASE_PROJECT_ID || String(instituteId || 'local');
+  const accountNumberFingerprint = crypto
+    .createHmac('sha256', hashSecret)
+    .update(`${instituteId}:${accountNumber}`)
+    .digest('hex');
+
+  return {
+    accountHolderName,
+    accountNumberFingerprint,
+    accountNumberLast4: accountNumber.slice(-4),
+    bankName,
+    country: 'IN',
+    ifsc,
+    rawAccountStored: false,
+    status: 'needs_processor_setup',
+    updatedAt: new Date().toISOString(),
+    updatedBy: actorUid || null,
+  };
+};
+
+const handler = async (req, res) => {
   const requestId = createRequestId();
   if (handleOptions(req, res)) return;
   setCorsHeaders(req, res);
@@ -59,8 +107,23 @@ module.exports = async (req, res) => {
     const branding = createBrandingPayload({ institutionType });
     const featureSettings = buildFeatureSettings({
       actorUid: authContext.uid,
-      tier: 'complete',
+      tier: 'basic',
     });
+    const rateLimitSettings = buildRateLimitSettings({
+      actorUid: authContext.uid,
+      tier: 'basic',
+    });
+    const subscriptionSettings = {
+      billingCycle: null,
+      endsAt: null,
+      notes: null,
+      planId: featureSettings.tier,
+      planKey: featureSettings.tier,
+      startsAt: new Date().toISOString(),
+      status: 'active',
+      updatedAt: new Date().toISOString(),
+      updatedBy: authContext.uid,
+    };
 
     if (!instituteName || !adminName) {
       res.status(400).json({
@@ -86,6 +149,7 @@ module.exports = async (req, res) => {
     const instituteRef = firestore.collection('institutes').doc();
     const instituteId = instituteRef.id;
     const adminAuthEmail = toInstituteAuthEmail(instituteId, adminUserId);
+    const payoutBankAccount = normalizePayoutBankAccount(body.payoutBankAccount, instituteId, authContext.uid);
 
     await admin.auth().getUserByEmail(adminAuthEmail)
       .then(() => {
@@ -118,8 +182,18 @@ module.exports = async (req, res) => {
       branding,
       configuration: {
         features: featureSettings,
+        finance: {
+          payoutBankAccount,
+        },
+        rateLimits: rateLimitSettings,
+        subscription: subscriptionSettings,
       },
       features: featureSettings,
+      finance: {
+        payoutBankAccount,
+      },
+      rateLimits: rateLimitSettings,
+      subscription: subscriptionSettings,
       schemaVersion: 3,
       academicModel: buildDefaultAcademicModel(institutionType),
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -128,7 +202,12 @@ module.exports = async (req, res) => {
       settings: {
         theme: 'white-label',
         branding,
+        finance: {
+          payoutBankAccount,
+        },
         features: featureSettings,
+        rateLimits: rateLimitSettings,
+        subscription: subscriptionSettings,
         notificationsEnabled: true,
         institutionType,
       },
@@ -175,6 +254,7 @@ module.exports = async (req, res) => {
         type: lowerInstitutionType,
         adminUserId,
         branding,
+        payoutBankAccount,
       },
       requestId,
     });
@@ -190,4 +270,9 @@ module.exports = async (req, res) => {
 
     sendError(res, error, 'Failed to create institute.', requestId);
   }
+};
+
+module.exports = handler;
+module.exports.__test = {
+  normalizePayoutBankAccount,
 };

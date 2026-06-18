@@ -21,26 +21,28 @@ export const privacySections = [
   },
   {
     id: 'children',
-    title: 'Students, Minors, and Guardian Alignment',
+    title: 'Students, Minors, and Guardian Consent',
     body: [
       'Shii-Edu is intended for institute-supervised education workflows. Student access is provisioned by institutes or authorized guardians, and the platform is not intended for unsupervised direct collection from children.',
-      'Where child or minor data is processed, the institute is responsible for obtaining required parental, guardian, school-board, or statutory authorization. Shii-Edu supports COPPA-aligned minimization principles and restricts commercial behavioral advertising within student workflows.',
+      'Where child or minor data is processed, the institute is responsible for obtaining required parental, guardian, school-board, or statutory authorization. Shii-Edu supports verifiable guardian-linking workflows, minimises child data collection, and prohibits commercial behavioural advertising or targeted advertising inside student workflows.',
     ],
   },
   {
     id: 'dpdp',
-    title: 'India DPDP Act Alignment',
+    title: 'India DPDP Act and IT Act Alignment',
     body: [
-      'Shii-Edu is designed to support India Digital Personal Data Protection Act principles including purpose limitation, data minimization, reasonable security safeguards, access control, correction workflows, and deletion assistance where legally permitted.',
-      'Institutes must use the platform only for lawful education administration purposes and must respond to student, parent, staff, or data principal requests according to their statutory obligations.',
+      'Shii-Edu is designed to support the Digital Personal Data Protection Act, 2023 and Digital Personal Data Protection Rules, 2025 principles including clear notice, purpose limitation, data minimization, access control, correction support, grievance handling, breach-response support, and deletion assistance where legally permitted.',
+      'Institutes must use the platform only for lawful education administration purposes, publish an appropriate contact channel for data requests, and respond to student, parent, staff, or data principal requests according to their statutory obligations.',
+      'Until superseded or replaced for a particular processing activity, Indian IT Act and reasonable security practice obligations may also apply to sensitive personal data handled in the platform.',
     ],
   },
   {
     id: 'payments',
-    title: 'Zero-Retention Financial Processing',
+    title: 'Payment and Bank Account Data',
     body: [
       'Shii-Edu does not intentionally store raw card numbers, UPI credentials, CVV values, banking passwords, or payment authentication secrets on Shii-Edu application servers.',
-      'Payment processing is delegated to third-party payment processors such as Stripe or other configured gateways. Shii-Edu may store non-sensitive transaction metadata such as invoice ID, payment status, amount, currency, gateway reference, and timestamps for reconciliation and audit trails.',
+      'Payment processing is delegated to configured payment gateways, banks, or payment processors. Shii-Edu may store reconciliation metadata such as invoice ID, student ID, payment status, amount, currency, gateway reference, timestamps, and institute settlement account metadata entered by an authorized superadmin or institute administrator.',
+      'Institute bank account information must be entered only by an authorized person for settlement or reconciliation, and institutes are responsible for verifying account ownership before accepting live payments.',
     ],
   },
   {
