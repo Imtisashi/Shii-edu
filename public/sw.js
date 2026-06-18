@@ -27,7 +27,10 @@ const SHELL_URLS = [
   '/icon-parents-512.png',
   '/icon-driver.png',
   '/icon-driver-192.png',
-  '/icon-driver-512.png'
+  '/icon-driver-512.png',
+  '/icon-superadmin.png',
+  '/icon-superadmin-192.png',
+  '/icon-superadmin-512.png'
 ];
 const ROLE_SCOPE_FALLBACKS = [
   { scope: '/app/institute', fallback: '/app/institute' },

@@ -206,8 +206,8 @@ export default function RoleAppShowcase() {
                   style={{ width: 80, height: 80, objectFit: 'contain' }}
                 />
              </div>
-              <h3 className="role-panel-title-modern">{activeRole.title</h3>
-              <p className="role-panel-body-modern">{activeRole.body</p>
+              <h3 className="role-panel-title-modern">{activeRole.title}</h3>
+              <p className="role-panel-body-modern">{activeRole.body}</p>
 
               <div className="role-panel-actions-modern">
                 <Button
