@@ -166,7 +166,7 @@ export default function RoleAppShowcase() {
                 src={role.logoSrc}
                 style={{ width: 20, height: 20, objectFit: 'contain' }}
               />
-              <span>{role.label</span>
+              <span>{role.label}</span>
            </button>
           );
         })}
